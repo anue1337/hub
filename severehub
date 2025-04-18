@@ -1,0 +1,721 @@
+local ui_transparency = 1
+local text_transparency = 1
+local text_size = 15
+local font = 5
+local original_width = 350
+local original_height = 240
+
+local expanded_width = 450
+local expanded_height = 550  
+
+local anue_scripts = {
+    {
+        name = "MM2 ESP SCRIPT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/severe-mm2/refs/heads/main/v2"))()',
+        author = "anue"
+    },
+    {
+        name = "BLOOD DEBT ESP SCRIPT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/blood-debt/refs/heads/main/ESP"))()',
+        author = "anue"
+    },
+    {
+        name = "FLEE THE FACILITY",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/flee%20the%20facility"))()',
+        author = "anue"
+    },
+    {
+        name = "THE WILD WEST ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/wildwest"))()',
+        author = "anue"
+    },
+    {
+        name = "BLOX FRUITS - FRUIT ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/fruits%20esp"))()',
+        author = "anue"
+    },
+    {
+        name = "FRONTLINES ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/frontlines"))()',
+        author = "anue"
+    },
+    {
+        name = "BOOGA BOOGA ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/booga%20booga"))()',
+        author = "anue"
+    }
+}
+
+local community_scripts = {
+    {
+        name = "DEEPWOKEN ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/deepwoken"))()',
+        author = "umwfp"
+    },
+    {
+        name = "ARSENAL",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/arsenal"))()',
+        author = "roterygoose23"
+    },
+    {
+        name = "INF JUMP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/inf%20jump"))()',
+        author = "king bob"
+    },
+    {
+        name = "UNIVERSAL MOD CHECKER",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/UNIVERSAL%20MOD%20CHECKER"))()',
+        author = "getchildren"
+    },
+    {
+        name = "LOCK'S NPC AIMBOT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/NotLockTheHobo/LocksNpcAimbot/refs/heads/main/games/severe/sv_lna_baseplate.lua"))()',
+        author = "lock"
+    },
+    {
+        name = "DEAD RAILS ITEM ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Dead%20Rails"))()',
+        author = "q379"
+    },
+    {
+        name = "BRM5",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/BRM5"))()',
+        author = "bernard the butcher"
+    },
+    {
+        name = "DEADLINE",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Deadline"))()',
+        author = "bernard the butcher"
+    },
+    {
+        name = "LONE SURVIVAL",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/LONE%20SURVIVAL"))()',
+        author = "shimotvink"
+    },
+    {
+        name = "FISCH",
+        loadstring = 'loadstring(game:HttpGet("https://i-am.injured.lol/p/raw/686nyqgmlq"))()',
+        author = "Alex - vantareal"
+    },
+    {
+        name = "MTC4 INFINITE MAG AMMO",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/MTC4"))()',
+        author = "bernard the butcher"
+    },
+    {
+        name = "COUNTER BLOX GUN MODS",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/CounterBlox"))()',
+        author = "peke"
+    },
+    {
+        name = "AFTERMATH ZOMBIES AIMBOT/ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Aftermath%20Zombies"))()',
+        author = "9zs"
+    },
+    {
+        name = "AOT FW",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/AOT%20FW"))()',
+        author = "Pork"
+    }
+}
+
+local new_community_scripts = {
+    {
+        name = "More Scripts Coming Soon!",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/a"))()',
+        author = "o.O"
+    }
+}
+
+for _, script in ipairs(new_community_scripts) do
+    table.insert(community_scripts, script)
+end
+
+local selected_index = 1
+local selected_tab = 1
+local current_page = 1 
+local max_items_per_page = 10 
+local SCREEN_DIMENSIONS = getscreendimensions()
+local UIElements = {}
+local TextElements = {}
+local ScriptOptionsElements = {}
+local AuthorElements = {} 
+local PageIndicators = {} 
+local is_expanded = false
+local ui_running = true
+
+local guide_texts = {}
+
+local OPEN_CLOSE_GUIDE = Drawing.new("Text")
+OPEN_CLOSE_GUIDE.Text = "Press [HOME] to open hub"
+OPEN_CLOSE_GUIDE.Visible = true
+OPEN_CLOSE_GUIDE.Center = true
+OPEN_CLOSE_GUIDE.Color = {255, 255, 255}
+OPEN_CLOSE_GUIDE.Size = 14
+OPEN_CLOSE_GUIDE.Font = 5
+OPEN_CLOSE_GUIDE.Transparency = 0.8
+OPEN_CLOSE_GUIDE.Position = {SCREEN_DIMENSIONS.x / 2, 20}
+OPEN_CLOSE_GUIDE.Outline = true
+table.insert(guide_texts, OPEN_CLOSE_GUIDE)
+
+local EXPAND_GUIDE = Drawing.new("Text")
+EXPAND_GUIDE.Text = "Press [ENTER] to expand menu"
+EXPAND_GUIDE.Visible = false
+EXPAND_GUIDE.Center = true
+EXPAND_GUIDE.Color = {255, 255, 255}
+EXPAND_GUIDE.Size = 14
+EXPAND_GUIDE.Font = 5
+EXPAND_GUIDE.Transparency = 0.8
+EXPAND_GUIDE.Position = {SCREEN_DIMENSIONS.x / 2, 40}
+EXPAND_GUIDE.Outline = true
+table.insert(guide_texts, EXPAND_GUIDE)
+
+local NAVIGATION_GUIDE = Drawing.new("Text")
+NAVIGATION_GUIDE.Text = "Use [UP/DOWN] to navigate, [LEFT/RIGHT] to change page, [Y] to select script"
+NAVIGATION_GUIDE.Visible = false
+NAVIGATION_GUIDE.Center = true
+NAVIGATION_GUIDE.Color = {255, 255, 255}
+NAVIGATION_GUIDE.Size = 14
+NAVIGATION_GUIDE.Font = 5
+NAVIGATION_GUIDE.Transparency = 0.8
+NAVIGATION_GUIDE.Position = {SCREEN_DIMENSIONS.x / 2, 40}
+NAVIGATION_GUIDE.Outline = true
+table.insert(guide_texts, NAVIGATION_GUIDE)
+
+for _, guide in ipairs(guide_texts) do
+    table.insert(TextElements, guide)
+end
+
+function table.find(t, value)
+    for _, v in pairs(t) do
+        if v == value then
+            return true
+        end
+    end
+    return false
+end
+
+local FRAME_0 = Drawing.new("Square")
+FRAME_0.Filled = true
+FRAME_0.Visible = true
+FRAME_0.Size = {original_width, original_height}
+FRAME_0.Position = {
+    20,
+    SCREEN_DIMENSIONS.y / 2 - FRAME_0.Size.y / 2
+}
+FRAME_0.Color = {20, 20, 20}
+FRAME_0.Transparency = ui_transparency
+table.insert(UIElements, FRAME_0)
+
+local function create_frame(parent, offset, color)
+    local frame = Drawing.new("Square")
+    frame.Filled = true
+    frame.Visible = true
+    frame.Size = {parent.Size.x - offset, parent.Size.y - offset}
+    frame.Position = {parent.Position.x + offset/2, parent.Position.y + offset/2}
+    frame.Color = color
+    frame.Transparency = ui_transparency
+    table.insert(UIElements, frame)
+    return frame
+end
+
+local FRAME_1 = create_frame(FRAME_0, 2.5, {215, 215, 215})
+local FRAME_2 = create_frame(FRAME_1, 3, {20, 20, 20})
+local FRAME_3 = create_frame(FRAME_2, 3, {40, 40, 40})
+
+local TITLE_FRAME = Drawing.new("Square")
+TITLE_FRAME.Filled = true
+TITLE_FRAME.Visible = true
+TITLE_FRAME.Size = {FRAME_3.Size.x - 10, 20}
+TITLE_FRAME.Position = {FRAME_3.Position.x + 5, FRAME_3.Position.y + 5}
+TITLE_FRAME.Color = {25, 25, 25}
+TITLE_FRAME.Transparency = ui_transparency
+table.insert(UIElements, TITLE_FRAME)
+
+local MAIN_TITLE = Drawing.new("Text")
+MAIN_TITLE.Text = "Anue Severe Hub"
+MAIN_TITLE.Visible = true
+MAIN_TITLE.Color = {255, 255, 255}
+MAIN_TITLE.Size = 15
+MAIN_TITLE.Font = 5
+MAIN_TITLE.Transparency = text_transparency
+table.insert(TextElements, MAIN_TITLE)
+
+local TAB_ANUE = Drawing.new("Text")
+TAB_ANUE.Text = "Anue Scripts (F1)"
+TAB_ANUE.Visible = false
+TAB_ANUE.Color = {255, 255, 255}
+TAB_ANUE.Size = 13
+TAB_ANUE.Font = 5
+table.insert(TextElements, TAB_ANUE)
+
+local TAB_COMMUNITY = Drawing.new("Text")
+TAB_COMMUNITY.Text = "Community Scripts (F2)"
+TAB_COMMUNITY.Visible = false
+TAB_COMMUNITY.Color = {150, 150, 150}
+TAB_COMMUNITY.Size = 13
+TAB_COMMUNITY.Font = 5
+table.insert(TextElements, TAB_COMMUNITY)
+
+local KEY_HINT = Drawing.new("Text")
+KEY_HINT.Text = "(Home)"
+KEY_HINT.Visible = true
+KEY_HINT.Color = {200, 200, 200}
+KEY_HINT.Size = 13
+KEY_HINT.Font = 5
+KEY_HINT.Transparency = text_transparency
+table.insert(TextElements, KEY_HINT)
+
+local CONTENT_FRAME = Drawing.new("Square")
+CONTENT_FRAME.Filled = true
+CONTENT_FRAME.Visible = true
+CONTENT_FRAME.Size = {FRAME_3.Size.x - 10, FRAME_3.Size.y - 35}
+CONTENT_FRAME.Position = {
+    FRAME_3.Position.x + 5,
+    TITLE_FRAME.Position.y + TITLE_FRAME.Size.y + 5
+}
+CONTENT_FRAME.Color = {25, 25, 25}
+CONTENT_FRAME.Transparency = ui_transparency
+table.insert(UIElements, CONTENT_FRAME)
+
+local CONTENT_TEXT = Drawing.new("Text")
+CONTENT_TEXT.Text = "Welcome to Anue Severe Hub\n\n(Enter)"
+CONTENT_TEXT.Visible = true
+CONTENT_TEXT.Center = true
+CONTENT_TEXT.Color = {255, 255, 255}
+CONTENT_TEXT.Size = text_size
+CONTENT_TEXT.Font = font
+CONTENT_TEXT.Transparency = text_transparency
+CONTENT_TEXT.Position = {
+    CONTENT_FRAME.Position.x + CONTENT_FRAME.Size.x / 2,
+    CONTENT_FRAME.Position.y + CONTENT_FRAME.Size.y / 2 - 10
+}
+table.insert(TextElements, CONTENT_TEXT)
+
+local PAGE_INDICATOR = Drawing.new("Text")
+PAGE_INDICATOR.Text = "Page 1/1"
+PAGE_INDICATOR.Visible = false
+PAGE_INDICATOR.Center = false  
+PAGE_INDICATOR.Color = {200, 200, 200}
+PAGE_INDICATOR.Size = 13
+PAGE_INDICATOR.Font = font
+PAGE_INDICATOR.Transparency = text_transparency
+PAGE_INDICATOR.Position = {
+    CONTENT_FRAME.Position.x + 10,  
+    CONTENT_FRAME.Position.y + CONTENT_FRAME.Size.y - 20  
+}
+table.insert(PageIndicators, PAGE_INDICATOR)
+table.insert(TextElements, PAGE_INDICATOR)
+
+local function create_script_options()
+    local start_y = CONTENT_FRAME.Position.y + 40
+    local option_spacing = 30  
+
+    for i, option in ipairs(anue_scripts) do
+
+        local text = Drawing.new("Text")
+        text.Text = option.name .. "   (Y)"
+        text.Visible = false
+        text.Color = {255, 255, 255}
+        text.Size = text_size
+        text.Font = font
+        text.Transparency = text_transparency
+        text.Position = {
+            CONTENT_FRAME.Position.x + 20,
+            start_y + (i-1) % max_items_per_page * option_spacing
+        }
+        table.insert(ScriptOptionsElements, text)
+        table.insert(TextElements, text)
+
+        local author_text = Drawing.new("Text")
+        author_text.Text = "by " .. option.author
+        author_text.Visible = false
+        author_text.Color = {200, 200, 200}  
+        author_text.Size = text_size - 2     
+        author_text.Font = font
+        author_text.Transparency = text_transparency
+        author_text.Position = {
+            CONTENT_FRAME.Position.x + 40,   
+            start_y + (i-1) % max_items_per_page * option_spacing + 18  
+        }
+        table.insert(AuthorElements, author_text)
+        table.insert(TextElements, author_text)
+    end
+
+    for i, option in ipairs(community_scripts) do
+
+        local text = Drawing.new("Text")
+        text.Text = option.name .. "   (Y)"
+        text.Visible = false
+        text.Color = {255, 255, 255}
+        text.Size = text_size
+        text.Font = font
+        text.Transparency = text_transparency
+        text.Position = {
+            CONTENT_FRAME.Position.x + 20,
+            start_y + (i-1) % max_items_per_page * option_spacing
+        }
+        table.insert(ScriptOptionsElements, text)
+        table.insert(TextElements, text)
+
+        local author_text = Drawing.new("Text")
+        author_text.Text = "by " .. option.author
+        author_text.Visible = false
+        author_text.Color = {200, 200, 200}  
+        author_text.Size = text_size - 2     
+        author_text.Font = font
+        author_text.Transparency = text_transparency
+        author_text.Position = {
+            CONTENT_FRAME.Position.x + 40,   
+            start_y + (i-1) % max_items_per_page * option_spacing + 18  
+        }
+        table.insert(AuthorElements, author_text)
+        table.insert(TextElements, author_text)
+    end
+end
+
+create_script_options()
+
+local function update_visibility()
+
+    MAIN_TITLE.Visible = FRAME_0.Visible and not is_expanded
+    CONTENT_TEXT.Visible = not is_expanded and FRAME_0.Visible
+
+    TAB_ANUE.Visible = is_expanded and FRAME_0.Visible
+    TAB_COMMUNITY.Visible = is_expanded and FRAME_0.Visible
+
+    if MAIN_TITLE.Visible then
+        MAIN_TITLE.Position = {
+            FRAME_3.Position.x + FRAME_3.Size.x/2 - MAIN_TITLE.TextBounds.x/2,
+            FRAME_3.Position.y + 8
+        }
+    end
+
+    if PAGE_INDICATOR.Visible then
+        PAGE_INDICATOR.Position = {
+            CONTENT_FRAME.Position.x + 10,
+            CONTENT_FRAME.Position.y + CONTENT_FRAME.Size.y - 20
+        }
+    end
+
+    if is_expanded then
+
+        TAB_ANUE.Position = {
+            FRAME_3.Position.x + 20,
+            FRAME_3.Position.y + 10
+        }
+        TAB_COMMUNITY.Position = {
+            TAB_ANUE.Position.x + TAB_ANUE.TextBounds.x + 30,
+            FRAME_3.Position.y + 10
+        }
+    end
+
+    PAGE_INDICATOR.Visible = is_expanded and FRAME_0.Visible
+
+    local active_scripts = selected_tab == 1 and anue_scripts or community_scripts
+    local total_pages = math.ceil(#active_scripts / max_items_per_page)
+    PAGE_INDICATOR.Text = "Page " .. current_page .. "/" .. total_pages
+
+    local start_index = (current_page - 1) * max_items_per_page + 1
+    local end_index = math.min(start_index + max_items_per_page - 1, #active_scripts)
+
+    for i, text in ipairs(ScriptOptionsElements) do
+        text.Visible = false
+    end
+
+    for i, author_text in ipairs(AuthorElements) do
+        author_text.Visible = false
+    end
+
+	if is_expanded and FRAME_0.Visible then
+    local offset = selected_tab == 1 and 0 or #anue_scripts
+
+    for i = start_index, end_index do
+        local element_index = offset + i
+        local display_index = (i - start_index) + 1
+
+        if ScriptOptionsElements[element_index] then
+            ScriptOptionsElements[element_index].Visible = true
+
+            local start_y = CONTENT_FRAME.Position.y + 40
+            local option_spacing = 30
+            ScriptOptionsElements[element_index].Position = {
+                CONTENT_FRAME.Position.x + 20,
+                start_y + (display_index - 1) * option_spacing
+            }
+
+            if AuthorElements[element_index] then
+                AuthorElements[element_index].Position = {
+                    CONTENT_FRAME.Position.x + 40,
+                    start_y + (display_index - 1) * option_spacing + 18
+                }
+
+                if display_index == selected_index then
+                    AuthorElements[element_index].Visible = true
+                end
+            end
+        end
+    end  
+end  
+
+    OPEN_CLOSE_GUIDE.Text = FRAME_0.Visible and "Press [HOME] to close hub" or "Press [HOME] to open hub"
+
+    EXPAND_GUIDE.Visible = FRAME_0.Visible and not is_expanded
+
+    NAVIGATION_GUIDE.Visible = FRAME_0.Visible and is_expanded
+end
+
+local function update_ui()
+    KEY_HINT.Position = {
+        TITLE_FRAME.Position.x + TITLE_FRAME.Size.x - 45,
+        TITLE_FRAME.Position.y + TITLE_FRAME.Size.y / 2 - KEY_HINT.Size / 2
+    }
+
+    TAB_ANUE.Color = selected_tab == 1 and {255, 255, 255} or {150, 150, 150}
+    TAB_COMMUNITY.Color = selected_tab == 2 and {255, 255, 255} or {150, 150, 150}
+
+    local active_scripts = selected_tab == 1 and anue_scripts or community_scripts
+    local start_index = (current_page - 1) * max_items_per_page + 1
+    local end_index = math.min(start_index + max_items_per_page - 1, #active_scripts)
+    local offset = selected_tab == 1 and 0 or #anue_scripts
+
+    for i = start_index, end_index do
+        local element_index = offset + i
+        local display_index = (i - start_index) + 1
+
+        if ScriptOptionsElements[element_index] then
+            ScriptOptionsElements[element_index].Color = display_index == selected_index and {0, 255, 0} or {255, 255, 255}
+        end
+    end
+
+    update_visibility()
+end
+
+local function toggle_ui()
+    local new_visibility = not FRAME_0.Visible
+
+    for _, element in pairs(UIElements) do element.Visible = new_visibility end
+
+    for _, text in pairs(TextElements) do 
+        if not table.find(guide_texts, text) then
+            text.Visible = new_visibility 
+        end
+    end
+
+    if not new_visibility then
+        selected_index = 1
+        current_page = 1
+        if is_expanded then
+            is_expanded = false
+            FRAME_0.Size = {original_width, original_height}
+            FRAME_1.Size = {FRAME_0.Size.x - 2.5, FRAME_0.Size.y - 2.5}
+            FRAME_2.Size = {FRAME_1.Size.x - 3, FRAME_1.Size.y - 4}
+            FRAME_3.Size = {FRAME_2.Size.x - 3, FRAME_2.Size.y - 4}
+            TITLE_FRAME.Size = {FRAME_3.Size.x - 10, 20}
+            CONTENT_FRAME.Size = {FRAME_3.Size.x - 10, FRAME_3.Size.y - 35}
+        end
+    end
+
+    update_visibility()
+    update_ui()
+end
+
+local home_pressed = false
+local f1_pressed = false
+local f2_pressed = false
+
+spawn(function()
+    while ui_running do
+        local pressed_keys = getpressedkeys()
+        local current_home = false
+        local current_f1 = false
+        local current_f2 = false
+
+        for _, key in ipairs(pressed_keys) do
+            local key_name = key:lower()
+            if key_name == "home" then current_home = true end
+            if key_name == "f1" then current_f1 = true end
+            if key_name == "f2" then current_f2 = true end
+        end
+
+        if current_home and not home_pressed then toggle_ui() end
+        if current_f1 and not f1_pressed and selected_tab ~= 1 then
+            selected_tab = 1
+            selected_index = 1
+            current_page = 1
+            update_visibility()
+            update_ui()
+        end
+        if current_f2 and not f2_pressed and selected_tab ~= 2 then
+            selected_tab = 2
+            selected_index = 1
+            current_page = 1
+            update_visibility()
+            update_ui()
+        end
+
+        home_pressed = current_home
+        f1_pressed = current_f1
+        f2_pressed = current_f2
+        wait()
+    end
+end)
+
+local function resize_ui()
+    if not FRAME_0.Visible then return end
+
+    is_expanded = not is_expanded
+
+    FRAME_0.Size = {
+        is_expanded and expanded_width or original_width,
+        is_expanded and expanded_height or original_height
+    }
+
+    FRAME_1.Size = {FRAME_0.Size.x - 2.5, FRAME_0.Size.y - 2.5}
+    FRAME_2.Size = {FRAME_1.Size.x - 3, FRAME_1.Size.y - 4}
+    FRAME_3.Size = {FRAME_2.Size.x - 3, FRAME_2.Size.y - 4}
+
+    TITLE_FRAME.Size = {FRAME_3.Size.x - 10, 20}
+    CONTENT_FRAME.Size = {FRAME_3.Size.x - 10, FRAME_3.Size.y - 35}
+
+    update_visibility()
+    update_ui()
+end
+
+local enter_pressed = false
+
+spawn(function()
+    while ui_running do
+        local currently_pressed = false
+        local pressed_keys = getpressedkeys()
+
+        for _, key in ipairs(pressed_keys) do
+            if key:lower() == "enter" then
+                currently_pressed = true
+                break
+            end
+        end
+
+        if currently_pressed and not enter_pressed then
+            resize_ui()
+        end
+
+        enter_pressed = currently_pressed
+        wait()
+    end
+end)
+
+spawn(function()
+    local arrow_pressed = false
+    local y_pressed = false
+    local page_pressed = false
+
+    while ui_running do
+        if FRAME_0.Visible and is_expanded then
+            local pressed_keys = getpressedkeys()
+            local arrow_up = false
+            local arrow_down = false
+            local arrow_left = false
+            local arrow_right = false
+            local y_key = false
+
+            for _, key in ipairs(pressed_keys) do
+                local key_name = key:lower()
+                if key_name == "uparrow" then arrow_up = true end
+                if key_name == "downarrow" then arrow_down = true end
+                if key_name == "leftarrow" then arrow_left = true end
+                if key_name == "rightarrow" then arrow_right = true end
+                if key_name == "y" then y_key = true end
+            end
+
+            if not arrow_pressed then
+                local active_scripts = selected_tab == 1 and anue_scripts or community_scripts
+                local start_index = (current_page - 1) * max_items_per_page + 1
+                local end_index = math.min(start_index + max_items_per_page - 1, #active_scripts)
+                local items_in_current_page = end_index - start_index + 1
+
+                if arrow_up then 
+                    selected_index = math.max(1, selected_index - 1) 
+                end
+
+                if arrow_down then 
+                    selected_index = math.min(items_in_current_page, selected_index + 1) 
+                end
+
+                update_ui()
+            end
+            arrow_pressed = arrow_up or arrow_down
+
+            if not page_pressed then
+                local active_scripts = selected_tab == 1 and anue_scripts or community_scripts
+                local total_pages = math.ceil(#active_scripts / max_items_per_page)
+
+                if arrow_left and current_page > 1 then
+                    current_page = current_page - 1
+                    selected_index = 1
+                    update_visibility()
+                    update_ui()
+                end
+
+                if arrow_right and current_page < total_pages then
+                    current_page = current_page + 1
+                    selected_index = 1
+                    update_visibility()
+                    update_ui()
+                end
+            end
+            page_pressed = arrow_left or arrow_right
+
+            if y_key and not y_pressed then
+                local active_scripts = selected_tab == 1 and anue_scripts or community_scripts
+                local start_index = (current_page - 1) * max_items_per_page + 1
+                local script_index = start_index + selected_index - 1
+
+                if script_index <= #active_scripts then
+                    local selected_script = active_scripts[script_index]
+                    ui_running = false
+                    toggle_ui()
+
+                    local countdown_text = Drawing.new("Text")
+                    countdown_text.Visible = true
+                    countdown_text.Center = true
+                    countdown_text.Color = {0, 255, 0}
+                    countdown_text.Size = text_size
+                    countdown_text.Font = font
+                    countdown_text.Position = {
+                        SCREEN_DIMENSIONS.x / 2,
+                        SCREEN_DIMENSIONS.y / 2
+                    }
+
+                    for i = 5, 1, -1 do
+                        countdown_text.Text = ("Executing %s by %s... %d"):format(
+                            selected_script.name,
+                            selected_script.author,
+                            i
+                        )
+                        wait(1)
+                    end
+
+                    countdown_text.Text = "Executed successfully!"
+                    wait(2)
+
+                    countdown_text:Remove()
+
+                    for _, element in pairs(UIElements) do pcall(function() element:Remove() end) end
+                    for _, text in pairs(TextElements) do pcall(function() text:Remove() end) end
+
+                    loadstring(selected_script.loadstring)()
+                    return
+                end
+            end
+            y_pressed = y_key
+        end
+        wait()
+    end
+end)
+
+spawn(function()
+    wait(0.1)
+    update_visibility()
+    update_ui()
+end)
