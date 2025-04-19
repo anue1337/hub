@@ -79,7 +79,7 @@ local community_scripts = {
     },
     {
         name = "BRM5",
-        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/BRM5"))()',
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/BRM5.lua"))()',
         author = "bernard the butcher"
     },
     {
