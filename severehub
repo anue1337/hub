@@ -15,6 +15,11 @@ local anue_scripts = {
         author = "anue"
     },
     {
+        name = "CRIMINALITY UI ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/crim.lua"))()',
+        author = "anue"
+    },
+    {
         name = "BLOOD DEBT ESP SCRIPT",
         loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/blood-debt/refs/heads/main/ESP"))()',
         author = "anue"
