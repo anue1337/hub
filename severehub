@@ -45,6 +45,11 @@ local anue_scripts = {
         author = "anue"
     },
     {
+        name = "PROJECT REMIX",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/project%20remix"))()',
+        author = "anue"
+    },
+    {
         name = "BOOGA BOOGA ESP",
         loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/booga%20booga"))()',
         author = "anue"
