@@ -50,8 +50,13 @@ local anue_scripts = {
         author = "anue"
     },
     {
-        name = "PROJECT REMIX",
+        name = "PROJECT REMIX SUPPORT",
         loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/project%20remix"))()',
+        author = "anue"
+    },
+    {
+        name = "TRIDENT SURVIVAL SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/trident"))()',
         author = "anue"
     },
     {
