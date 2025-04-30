@@ -60,6 +60,11 @@ local anue_scripts = {
         author = "anue"
     },
     {
+        name = "LONE SURVIVAL SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Lone%20Survival%20Support"))()',
+        author = "anue"
+    },
+    {
         name = "BOOGA BOOGA ESP",
         loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/booga%20booga"))()',
         author = "anue"
@@ -131,6 +136,21 @@ local community_scripts = {
         name = "AFTERMATH ZOMBIES AIMBOT/ESP",
         loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Aftermath%20Zombies"))()',
         author = "9zs"
+    },
+    {
+        name = "DEADLINE SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/Deadline.lua"))()',
+        author = "bernard the butcher"
+    },
+    {
+        name = "BRM5 SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/BRM5.lua"))()',
+        author = "bernard the butcher"
+    },
+    {
+        name = "AOT: FREEDOM WAR UI",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/1byp4/Severe/refs/heads/main/AOT%20Freedom%20War.lua"))()',
+        author = "1byp4"
     },
     {
         name = "AOT FW",
