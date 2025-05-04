@@ -21,7 +21,12 @@ local anue_scripts = {
     },
     {
         name = "FORSAKEN UI ESP",
-        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/forsaken"))()"))()',
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/forsaken"))()',
+        author = "anue"
+    },
+    {
+        name = "BGSI AUTO FARM / RIFTS ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/bgsi"))()',
         author = "anue"
     },
     {
