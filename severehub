@@ -1,5 +1,5 @@
-local ui_transparency = 1
-local text_transparency = 1
+local ui_transparency = 0.95
+local text_transparency = 0.95
 local text_size = 15
 local font = 5
 local original_width = 350
@@ -163,6 +163,61 @@ local community_scripts = {
         author = "1byp4"
     },
     {
+        name = "DEAD RAILS PARTIAL SUPPORT (ZOMBIES)",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/sen-jp/Severe-Luas/refs/heads/main/Deadrails.lua"))()',
+        author = "sen"
+    },
+    {
+        name = "JUMPHEIGHT BOOST FOR FF2",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/sen-jp/Severe-Luas/refs/heads/main/FootballFusion2.lua"))()',
+        author = "sen"
+    },
+    {
+        name = "SCORCHED EARTH SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/ScorchedEarth"))()',
+        author = "bernard the butcher"
+    },
+    {
+        name = "ARMSOFSOLITAIRE",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/ArmsOfSolitaire"))()',
+        author = "bernard the butcher"
+    },
+    {
+        name = "POSSESOR SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Possesor"))()',
+        author = "Opokeu"
+    },
+    {
+        name = "AFTERMATH SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/minions638/severe-lua/refs/heads/main/aftermath.lua"))()',
+        author = "umwfp"
+    },
+    {
+        name = "RIOTFALL [BETA] SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/sen-jp/Severe-Luas/refs/heads/main/RIOTFALL.lua"))()',
+        author = "sen"
+    },
+    {
+        name = "RUSH POINT SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/sen-jp/Severe-Luas/refs/heads/main/RushPoint.lua"))()',
+        author = "sen"
+    },
+    {
+        name = "FRONTLINES SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/sen-jp/Severe-Luas/refs/heads/main/Frontlines.lua"))()',
+        author = "sen"
+    },
+    {
+        name = "POSSESOR SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Possesor"))()',
+        author = "Opokeu"
+    },
+    {
+        name = "INVISIBLE CHECK",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/INVISIBLE%20CHECK"))()',
+        author = "1byp4"
+    },
+    {
         name = "AOT FW",
         loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/AOT%20FW"))()',
         author = "Pork"
@@ -200,7 +255,7 @@ local OPEN_CLOSE_GUIDE = Drawing.new("Text")
 OPEN_CLOSE_GUIDE.Text = "Press [HOME] to open hub"
 OPEN_CLOSE_GUIDE.Visible = true
 OPEN_CLOSE_GUIDE.Center = true
-OPEN_CLOSE_GUIDE.Color = {255, 255, 255}
+OPEN_CLOSE_GUIDE.Color = {80, 80, 200}
 OPEN_CLOSE_GUIDE.Size = 14
 OPEN_CLOSE_GUIDE.Font = 5
 OPEN_CLOSE_GUIDE.Transparency = 0.8
@@ -212,7 +267,7 @@ local EXPAND_GUIDE = Drawing.new("Text")
 EXPAND_GUIDE.Text = "Press [ENTER] to expand menu"
 EXPAND_GUIDE.Visible = false
 EXPAND_GUIDE.Center = true
-EXPAND_GUIDE.Color = {255, 255, 255}
+EXPAND_GUIDE.Color = {80, 80, 200}
 EXPAND_GUIDE.Size = 14
 EXPAND_GUIDE.Font = 5
 EXPAND_GUIDE.Transparency = 0.8
@@ -224,7 +279,7 @@ local NAVIGATION_GUIDE = Drawing.new("Text")
 NAVIGATION_GUIDE.Text = "Use [UP/DOWN] to navigate, [LEFT/RIGHT] to change page, [Y] to select script"
 NAVIGATION_GUIDE.Visible = false
 NAVIGATION_GUIDE.Center = true
-NAVIGATION_GUIDE.Color = {255, 255, 255}
+NAVIGATION_GUIDE.Color = {80, 80, 200}
 NAVIGATION_GUIDE.Size = 14
 NAVIGATION_GUIDE.Font = 5
 NAVIGATION_GUIDE.Transparency = 0.8
@@ -236,26 +291,21 @@ for _, guide in ipairs(guide_texts) do
     table.insert(TextElements, guide)
 end
 
-function table.find(t, value)
-    for _, v in pairs(t) do
-        if v == value then
-            return true
-        end
-    end
-    return false
-end
-
-local FRAME_0 = Drawing.new("Square")
-FRAME_0.Filled = true
-FRAME_0.Visible = true
-FRAME_0.Size = {original_width, original_height}
-FRAME_0.Position = {
-    20,
-    SCREEN_DIMENSIONS.y / 2 - FRAME_0.Size.y / 2
+local UI_COLORS = {
+    background = {20, 20, 30},  
+    border = {80, 80, 200},     
+    inner_bg = {30, 30, 40},    
+    inner_bg2 = {40, 40, 55},   
+    title_bg = {25, 25, 35},    
+    highlight = {100, 100, 255}, 
+    text = {255, 255, 255},     
+    text_secondary = {200, 200, 200}  
 }
-FRAME_0.Color = {20, 20, 20}
-FRAME_0.Transparency = ui_transparency
-table.insert(UIElements, FRAME_0)
+
+local last_update_time = 0
+local update_interval = 0.016  
+
+local ElementProperties = {} 
 
 local function create_frame(parent, offset, color)
     local frame = Drawing.new("Square")
@@ -269,16 +319,64 @@ local function create_frame(parent, offset, color)
     return frame
 end
 
-local FRAME_1 = create_frame(FRAME_0, 2.5, {215, 215, 215})
-local FRAME_2 = create_frame(FRAME_1, 3, {20, 20, 20})
-local FRAME_3 = create_frame(FRAME_2, 3, {40, 40, 40})
+local FRAME_0 = Drawing.new("Square")
+FRAME_0.Filled = true
+FRAME_0.Visible = true
+FRAME_0.Size = {original_width, original_height}
+FRAME_0.Position = {
+    20,
+    SCREEN_DIMENSIONS.y / 2 - FRAME_0.Size.y / 2
+}
+FRAME_0.Color = UI_COLORS.background
+FRAME_0.Transparency = ui_transparency
+table.insert(UIElements, FRAME_0)
+
+local FRAME_1 = create_frame(FRAME_0, 2.5, UI_COLORS.border)
+local FRAME_2 = create_frame(FRAME_1, 3, UI_COLORS.background)
+local FRAME_3 = create_frame(FRAME_2, 3, UI_COLORS.inner_bg)
+
+top_left = Drawing.new("Square")
+top_left.Filled = true
+top_left.Visible = true
+top_left.Size = {10, 10}
+top_left.Position = {FRAME_0.Position.x - 5, FRAME_0.Position.y - 5}
+top_left.Color = UI_COLORS.border
+top_left.Transparency = ui_transparency * 0.7
+table.insert(UIElements, top_left)
+
+top_right = Drawing.new("Square")
+top_right.Filled = true
+top_right.Visible = true
+top_right.Size = {10, 10}
+top_right.Position = {FRAME_0.Position.x + FRAME_0.Size.x - 5, FRAME_0.Position.y - 5}
+top_right.Color = UI_COLORS.border
+top_right.Transparency = ui_transparency * 0.7
+table.insert(UIElements, top_right)
+
+bottom_left = Drawing.new("Square")
+bottom_left.Filled = true
+bottom_left.Visible = true
+bottom_left.Size = {10, 10}
+bottom_left.Position = {FRAME_0.Position.x - 5, FRAME_0.Position.y + FRAME_0.Size.y - 5}
+bottom_left.Color = UI_COLORS.border
+bottom_left.Transparency = ui_transparency * 0.7
+table.insert(UIElements, bottom_left)
+
+bottom_right = Drawing.new("Square")
+bottom_right.Filled = true
+bottom_right.Visible = true
+bottom_right.Size = {10, 10}
+bottom_right.Position = {FRAME_0.Position.x + FRAME_0.Size.x - 5, FRAME_0.Position.y + FRAME_0.Size.y - 5}
+bottom_right.Color = UI_COLORS.border
+bottom_right.Transparency = ui_transparency * 0.7
+table.insert(UIElements, bottom_right)
 
 local TITLE_FRAME = Drawing.new("Square")
 TITLE_FRAME.Filled = true
 TITLE_FRAME.Visible = true
 TITLE_FRAME.Size = {FRAME_3.Size.x - 10, 20}
 TITLE_FRAME.Position = {FRAME_3.Position.x + 5, FRAME_3.Position.y + 5}
-TITLE_FRAME.Color = {25, 25, 25}
+TITLE_FRAME.Color = UI_COLORS.title_bg
 TITLE_FRAME.Transparency = ui_transparency
 table.insert(UIElements, TITLE_FRAME)
 
@@ -294,7 +392,7 @@ table.insert(TextElements, MAIN_TITLE)
 local TAB_ANUE = Drawing.new("Text")
 TAB_ANUE.Text = "Anue Scripts (F1)"
 TAB_ANUE.Visible = false
-TAB_ANUE.Color = {255, 255, 255}
+TAB_ANUE.Color = UI_COLORS.highlight
 TAB_ANUE.Size = 13
 TAB_ANUE.Font = 5
 table.insert(TextElements, TAB_ANUE)
@@ -351,7 +449,7 @@ PAGE_INDICATOR.Size = 13
 PAGE_INDICATOR.Font = font
 PAGE_INDICATOR.Transparency = text_transparency
 PAGE_INDICATOR.Position = {
-    CONTENT_FRAME.Position.x + 10,  
+    CONTENT_FRAME.Position.x + CONTENT_FRAME.Size.x - 60,  
     CONTENT_FRAME.Position.y + CONTENT_FRAME.Size.y - 20  
 }
 table.insert(PageIndicators, PAGE_INDICATOR)
@@ -359,12 +457,11 @@ table.insert(TextElements, PAGE_INDICATOR)
 
 local function create_script_options()
     local start_y = CONTENT_FRAME.Position.y + 40
-    local option_spacing = 30  
+    local option_spacing = 40  
 
     for i, option in ipairs(anue_scripts) do
-
         local text = Drawing.new("Text")
-        text.Text = option.name .. "   (Y)"
+        text.Text = option.name
         text.Visible = false
         text.Color = {255, 255, 255}
         text.Size = text_size
@@ -380,22 +477,21 @@ local function create_script_options()
         local author_text = Drawing.new("Text")
         author_text.Text = "by " .. option.author
         author_text.Visible = false
-        author_text.Color = {200, 200, 200}  
+        author_text.Color = {180, 180, 255}  
         author_text.Size = text_size - 2     
         author_text.Font = font
         author_text.Transparency = text_transparency
         author_text.Position = {
-            CONTENT_FRAME.Position.x + 40,   
-            start_y + (i-1) % max_items_per_page * option_spacing + 18  
+            CONTENT_FRAME.Position.x + 25,   
+            start_y + (i-1) % max_items_per_page * option_spacing + 20  
         }
         table.insert(AuthorElements, author_text)
         table.insert(TextElements, author_text)
     end
 
     for i, option in ipairs(community_scripts) do
-
         local text = Drawing.new("Text")
-        text.Text = option.name .. "   (Y)"
+        text.Text = option.name
         text.Visible = false
         text.Color = {255, 255, 255}
         text.Size = text_size
@@ -411,13 +507,13 @@ local function create_script_options()
         local author_text = Drawing.new("Text")
         author_text.Text = "by " .. option.author
         author_text.Visible = false
-        author_text.Color = {200, 200, 200}  
+        author_text.Color = {180, 180, 255}  
         author_text.Size = text_size - 2     
         author_text.Font = font
         author_text.Transparency = text_transparency
         author_text.Position = {
-            CONTENT_FRAME.Position.x + 40,   
-            start_y + (i-1) % max_items_per_page * option_spacing + 18  
+            CONTENT_FRAME.Position.x + 25,   
+            start_y + (i-1) % max_items_per_page * option_spacing + 20  
         }
         table.insert(AuthorElements, author_text)
         table.insert(TextElements, author_text)
@@ -426,7 +522,97 @@ end
 
 create_script_options()
 
+local function create_hub_logo()
+    local logo_frame = Drawing.new("Square")
+    logo_frame.Filled = true
+    logo_frame.Visible = true
+    logo_frame.Size = {FRAME_3.Size.x - 20, 30}
+    logo_frame.Position = {FRAME_3.Position.x + 10, CONTENT_FRAME.Position.y + 5}
+    logo_frame.Color = UI_COLORS.inner_bg2
+    logo_frame.Transparency = ui_transparency * 0.9
+    table.insert(UIElements, logo_frame)
+
+    local logo_text = Drawing.new("Text")
+    logo_text.Text = "ANUE SEVERE HUB"
+    logo_text.Visible = true
+    logo_text.Center = true
+    logo_text.Color = UI_COLORS.border
+    logo_text.Size = text_size + 2
+    logo_text.Font = font
+    logo_text.Transparency = text_transparency
+    logo_text.Position = {
+        logo_frame.Position.x + logo_frame.Size.x / 2,
+        logo_frame.Position.y + logo_frame.Size.y / 2 - 7
+    }
+    table.insert(TextElements, logo_text)
+
+    return {frame = logo_frame, text = logo_text}
+end
+
+local hub_logo = create_hub_logo()
+
+local function updateCornerPositions()
+    pcall(function()
+
+        if not FRAME_0 or not FRAME_0.Position or not FRAME_0.Size then return end
+
+        local x = FRAME_0.Position.x
+        local y = FRAME_0.Position.y
+        local width = FRAME_0.Size.x
+        local height = FRAME_0.Size.y
+
+        if top_left and top_left.Position then
+            top_left.Position = {x - 5, y - 5}
+        end
+
+        if top_right and top_right.Position then
+            top_right.Position = {x + width - 5, y - 5}
+        end
+
+        if bottom_left and bottom_left.Position then
+            bottom_left.Position = {x - 5, y + height - 5}
+        end
+
+        if bottom_right and bottom_right.Position then
+            bottom_right.Position = {x + width - 5, y + height - 5}
+        end
+    end)
+end
+
+local function create_selection_highlight()
+    local highlight = Drawing.new("Square")
+    highlight.Filled = true
+    highlight.Visible = false
+    highlight.Size = {CONTENT_FRAME.Size.x - 20, 24}
+    highlight.Color = UI_COLORS.highlight
+    highlight.Transparency = 0.2
+    table.insert(UIElements, highlight)
+    return highlight
+end
+
+local selection_highlight = create_selection_highlight()
+
+local function update_welcome_text_position()
+    if CONTENT_TEXT and CONTENT_TEXT.Visible and CONTENT_FRAME and CONTENT_FRAME.Position and CONTENT_FRAME.Size then
+        CONTENT_TEXT.Position = {
+            CONTENT_FRAME.Position.x + CONTENT_FRAME.Size.x / 2,
+            CONTENT_FRAME.Position.y + CONTENT_FRAME.Size.y / 2 - 10
+        }
+    end
+end
+
 local function update_visibility()
+    local current_state = {}
+    for _, element in pairs(UIElements) do
+        if element.Visible ~= nil then
+            current_state[element] = element.Visible
+        end
+    end
+    for _, text in pairs(TextElements) do
+        if text.Visible ~= nil then
+            current_state[text] = text.Visible
+        end
+    end
 
     MAIN_TITLE.Visible = FRAME_0.Visible and not is_expanded
     CONTENT_TEXT.Visible = not is_expanded and FRAME_0.Visible
@@ -434,30 +620,42 @@ local function update_visibility()
     TAB_ANUE.Visible = is_expanded and FRAME_0.Visible
     TAB_COMMUNITY.Visible = is_expanded and FRAME_0.Visible
 
-    if MAIN_TITLE.Visible then
+    if MAIN_TITLE.Visible and MAIN_TITLE.TextBounds then
         MAIN_TITLE.Position = {
             FRAME_3.Position.x + FRAME_3.Size.x/2 - MAIN_TITLE.TextBounds.x/2,
+            FRAME_3.Position.y + 8
+        }
+    elseif MAIN_TITLE.Visible then
+        MAIN_TITLE.Position = {
+            FRAME_3.Position.x + FRAME_3.Size.x/2 - 60,
             FRAME_3.Position.y + 8
         }
     end
 
     if PAGE_INDICATOR.Visible then
         PAGE_INDICATOR.Position = {
-            CONTENT_FRAME.Position.x + 10,
-            CONTENT_FRAME.Position.y + CONTENT_FRAME.Size.y - 20
+            CONTENT_FRAME.Position.x + CONTENT_FRAME.Size.x - 60, 
+            CONTENT_FRAME.Position.y + CONTENT_FRAME.Size.y - 20  
         }
     end
 
-    if is_expanded then
-
+    if is_expanded and TAB_ANUE.Visible then
         TAB_ANUE.Position = {
             FRAME_3.Position.x + 20,
             FRAME_3.Position.y + 10
         }
-        TAB_COMMUNITY.Position = {
-            TAB_ANUE.Position.x + TAB_ANUE.TextBounds.x + 30,
-            FRAME_3.Position.y + 10
-        }
+
+        if TAB_ANUE.TextBounds then
+            TAB_COMMUNITY.Position = {
+                TAB_ANUE.Position.x + TAB_ANUE.TextBounds.x + 30,
+                FRAME_3.Position.y + 10
+            }
+        else
+            TAB_COMMUNITY.Position = {
+                TAB_ANUE.Position.x + 120,
+                FRAME_3.Position.y + 10
+            }
+        end
     end
 
     PAGE_INDICATOR.Visible = is_expanded and FRAME_0.Visible
@@ -469,100 +667,244 @@ local function update_visibility()
     local start_index = (current_page - 1) * max_items_per_page + 1
     local end_index = math.min(start_index + max_items_per_page - 1, #active_scripts)
 
-    for i, text in ipairs(ScriptOptionsElements) do
-        text.Visible = false
+    for i = 1, #ScriptOptionsElements do
+        if ScriptOptionsElements[i] then
+            ScriptOptionsElements[i].Visible = false
+        end
     end
 
-    for i, author_text in ipairs(AuthorElements) do
-        author_text.Visible = false
+    for i = 1, #AuthorElements do 
+        if AuthorElements[i] then
+            AuthorElements[i].Visible = false
+        end
     end
 
-	if is_expanded and FRAME_0.Visible then
-    local offset = selected_tab == 1 and 0 or #anue_scripts
+    if is_expanded and FRAME_0.Visible then
+        local offset = selected_tab == 1 and 0 or #anue_scripts
 
-    for i = start_index, end_index do
-        local element_index = offset + i
-        local display_index = (i - start_index) + 1
+        for i = start_index, end_index do
+            local element_index = offset + i
+            local display_index = (i - start_index) + 1
 
-        if ScriptOptionsElements[element_index] then
-            ScriptOptionsElements[element_index].Visible = true
+            if ScriptOptionsElements[element_index] then
+                ScriptOptionsElements[element_index].Visible = true
 
-            local start_y = CONTENT_FRAME.Position.y + 40
-            local option_spacing = 30
-            ScriptOptionsElements[element_index].Position = {
-                CONTENT_FRAME.Position.x + 20,
-                start_y + (display_index - 1) * option_spacing
-            }
-
-            if AuthorElements[element_index] then
-                AuthorElements[element_index].Position = {
-                    CONTENT_FRAME.Position.x + 40,
-                    start_y + (display_index - 1) * option_spacing + 18
+                local start_y = CONTENT_FRAME.Position.y + 40
+                local option_spacing = 40  
+                ScriptOptionsElements[element_index].Position = {
+                    CONTENT_FRAME.Position.x + 20,
+                    start_y + (display_index - 1) * option_spacing
                 }
 
-                if display_index == selected_index then
+                if AuthorElements[element_index] then
+
                     AuthorElements[element_index].Visible = true
+
+                    AuthorElements[element_index].Position = {
+                        CONTENT_FRAME.Position.x + 25, 
+                        start_y + (display_index - 1) * option_spacing + 20 
+                    }
                 end
             end
         end
-    end  
-end  
+    end
 
     OPEN_CLOSE_GUIDE.Text = FRAME_0.Visible and "Press [HOME] to close hub" or "Press [HOME] to open hub"
-
     EXPAND_GUIDE.Visible = FRAME_0.Visible and not is_expanded
-
     NAVIGATION_GUIDE.Visible = FRAME_0.Visible and is_expanded
+
+    if is_expanded and FRAME_0.Visible then
+        local start_y = CONTENT_FRAME.Position.y + 40
+        local option_spacing = 40  
+        selection_highlight.Visible = true
+        selection_highlight.Position = {
+            CONTENT_FRAME.Position.x + 10,
+            start_y + (selected_index - 1) * option_spacing - 2
+        }
+    else
+        selection_highlight.Visible = false
+    end
+
+    if CONTENT_TEXT.Visible then
+        update_welcome_text_position()
+    end
+
+    KEY_HINT.Position = {
+        TITLE_FRAME.Position.x + TITLE_FRAME.Size.x - 45,
+        TITLE_FRAME.Position.y + TITLE_FRAME.Size.y / 2 - KEY_HINT.Size / 2
+    }
 end
 
 local function update_ui()
+    local current_time = time()
+
+    last_update_time = current_time
+
     KEY_HINT.Position = {
         TITLE_FRAME.Position.x + TITLE_FRAME.Size.x - 45,
         TITLE_FRAME.Position.y + TITLE_FRAME.Size.y / 2 - KEY_HINT.Size / 2
     }
 
-    TAB_ANUE.Color = selected_tab == 1 and {255, 255, 255} or {150, 150, 150}
-    TAB_COMMUNITY.Color = selected_tab == 2 and {255, 255, 255} or {150, 150, 150}
+    TAB_ANUE.Color = selected_tab == 1 and UI_COLORS.highlight or {150, 150, 150}
+    TAB_COMMUNITY.Color = selected_tab == 2 and UI_COLORS.highlight or {150, 150, 150}
+
+    hub_logo.frame.Visible = is_expanded and FRAME_0.Visible
+    hub_logo.text.Visible = is_expanded and FRAME_0.Visible
 
     local active_scripts = selected_tab == 1 and anue_scripts or community_scripts
     local start_index = (current_page - 1) * max_items_per_page + 1
     local end_index = math.min(start_index + max_items_per_page - 1, #active_scripts)
     local offset = selected_tab == 1 and 0 or #anue_scripts
 
-    for i = start_index, end_index do
-        local element_index = offset + i
-        local display_index = (i - start_index) + 1
+    selection_highlight.Visible = is_expanded and FRAME_0.Visible
 
-        if ScriptOptionsElements[element_index] then
-            ScriptOptionsElements[element_index].Color = display_index == selected_index and {0, 255, 0} or {255, 255, 255}
+    for i = 1, #ScriptOptionsElements do
+        local element = ScriptOptionsElements[i]
+        if element and element.Visible then
+
+            local display_index = i - offset - (current_page - 1) * max_items_per_page
+            if display_index == selected_index and display_index > 0 and display_index <= max_items_per_page then
+                element.Color = UI_COLORS.highlight
+            else
+                element.Color = UI_COLORS.text
+            end
         end
+    end
+
+    if is_expanded and FRAME_0.Visible then
+        local start_y = CONTENT_FRAME.Position.y + 40
+        local option_spacing = 40  
+        selection_highlight.Position = {
+            CONTENT_FRAME.Position.x + 10,
+            start_y + (selected_index - 1) * option_spacing - 2
+        }
     end
 
     update_visibility()
 end
 
+local function create_smooth_animation(element, property, start_value, end_value, duration, callback)
+    local start_time = time()
+    local range = {}
+
+    if type(start_value) == "table" and type(end_value) == "table" then
+        for i, v in pairs(start_value) do
+            range[i] = end_value[i] - v
+        end
+    else
+        range = end_value - start_value
+    end
+
+    spawn(function()
+        local elapsed = 0
+        local progress = 0
+
+        while elapsed < duration and ui_running do
+            elapsed = time() - start_time
+            progress = math.min(elapsed / duration, 1)
+
+            local eased_progress = progress * (2 - progress)
+
+            if type(start_value) == "table" and type(end_value) == "table" then
+                local current_value = {}
+                for i, v in pairs(start_value) do
+                    current_value[i] = v + range[i] * eased_progress
+                end
+                element[property] = current_value
+            else
+                element[property] = start_value + range * eased_progress
+            end
+
+            wait(0.016) 
+        end
+
+        element[property] = end_value
+
+        if callback then
+            callback()
+        end
+    end)
+end
+
+local function getElementProperty(element, property, default)
+    if not element then return default end
+    if not ElementProperties[element] then return default end
+    if ElementProperties[element][property] == nil then return default end
+    return ElementProperties[element][property]
+end
+
+local function setElementProperty(element, property, value)
+    if not element then return end
+    ElementProperties[element] = ElementProperties[element] or {}
+    ElementProperties[element][property] = value
+end
+
 local function toggle_ui()
     local new_visibility = not FRAME_0.Visible
 
-    for _, element in pairs(UIElements) do element.Visible = new_visibility end
+    if new_visibility then
 
-    for _, text in pairs(TextElements) do 
-        if not table.find(guide_texts, text) then
-            text.Visible = new_visibility 
+        for _, element in pairs(UIElements) do 
+            element.Visible = true
+            if element.Transparency ~= nil then
+
+                local original = getElementProperty(element, "original_transparency", ui_transparency)
+                element.Transparency = original
+            end
         end
-    end
 
-    if not new_visibility then
+        for _, text in pairs(TextElements) do 
+            if not table.find(guide_texts, text) then
+                text.Visible = true
+                if text.Transparency ~= nil then
+
+                    local original = getElementProperty(text, "original_transparency", text_transparency)
+                    text.Transparency = original
+                end
+            end
+        end
+
+        updateCornerPositions()
+
+        update_visibility()
+        update_ui()
+    else
+
+        for _, element in pairs(UIElements) do
+            if element.Transparency ~= nil then
+                setElementProperty(element, "original_transparency", element.Transparency)
+            end
+        end
+
+        for _, text in pairs(TextElements) do 
+            if text.Transparency ~= nil then
+                setElementProperty(text, "original_transparency", text.Transparency)
+            end
+        end
+
+        for _, element in pairs(UIElements) do
+            element.Visible = false
+        end
+
+        for _, text in pairs(TextElements) do 
+            if not table.find(guide_texts, text) then
+                text.Visible = false
+            end
+        end
+
         selected_index = 1
         current_page = 1
         if is_expanded then
             is_expanded = false
+
             FRAME_0.Size = {original_width, original_height}
             FRAME_1.Size = {FRAME_0.Size.x - 2.5, FRAME_0.Size.y - 2.5}
             FRAME_2.Size = {FRAME_1.Size.x - 3, FRAME_1.Size.y - 4}
             FRAME_3.Size = {FRAME_2.Size.x - 3, FRAME_2.Size.y - 4}
             TITLE_FRAME.Size = {FRAME_3.Size.x - 10, 20}
             CONTENT_FRAME.Size = {FRAME_3.Size.x - 10, FRAME_3.Size.y - 35}
+
+            updateCornerPositions()
         end
     end
 
@@ -570,44 +912,96 @@ local function toggle_ui()
     update_ui()
 end
 
+spawn(function()
+    while ui_running do
+        wait(1)
+
+        local keys_to_remove = {}
+        for element, _ in pairs(ElementProperties) do
+            if pcall(function() return element.Visible end) == false then
+                table.insert(keys_to_remove, element)
+            end
+        end
+
+        for _, key in ipairs(keys_to_remove) do
+            ElementProperties[key] = nil
+        end
+    end
+end)
+
 local home_pressed = false
 local f1_pressed = false
 local f2_pressed = false
 
 spawn(function()
+    wait(0.1)
+    update_visibility()
+    update_ui()
+
     while ui_running do
-        local pressed_keys = getpressedkeys()
-        local current_home = false
-        local current_f1 = false
-        local current_f2 = false
+        local current_time = time()
 
-        for _, key in ipairs(pressed_keys) do
-            local key_name = key:lower()
-            if key_name == "home" then current_home = true end
-            if key_name == "f1" then current_f1 = true end
-            if key_name == "f2" then current_f2 = true end
-        end
-
-        if current_home and not home_pressed then toggle_ui() end
-        if current_f1 and not f1_pressed and selected_tab ~= 1 then
-            selected_tab = 1
-            selected_index = 1
-            current_page = 1
-            update_visibility()
-            update_ui()
-        end
-        if current_f2 and not f2_pressed and selected_tab ~= 2 then
-            selected_tab = 2
-            selected_index = 1
-            current_page = 1
+        if current_time - last_update_time >= update_interval then
+            last_update_time = current_time
             update_visibility()
             update_ui()
         end
 
-        home_pressed = current_home
-        f1_pressed = current_f1
-        f2_pressed = current_f2
-        wait()
+        wait(0.01)
+    end
+end)
+
+spawn(function()
+
+    local last_check_time_home = 0
+    local check_interval_home = 0.05
+
+    while ui_running do
+        local current_time = time()
+
+        if current_time - last_check_time_home >= check_interval_home then
+            last_check_time_home = current_time
+
+            local pressed_keys = getpressedkeys()
+            local current_home = false
+            local current_f1 = false
+            local current_f2 = false
+
+            for _, key in ipairs(pressed_keys) do
+                local key_name = key:lower()
+                if key_name == "home" then current_home = true end
+                if key_name == "f1" then current_f1 = true end
+                if key_name == "f2" then current_f2 = true end
+            end
+
+            if current_home and not home_pressed then 
+                pcall(function() toggle_ui() end)
+            end
+            if current_f1 and not f1_pressed and selected_tab ~= 1 then
+                pcall(function()
+                    selected_tab = 1
+                    selected_index = 1
+                    current_page = 1
+                    update_visibility()
+                    update_ui()
+                end)
+            end
+            if current_f2 and not f2_pressed and selected_tab ~= 2 then
+                pcall(function()
+                    selected_tab = 2
+                    selected_index = 1
+                    current_page = 1
+                    update_visibility()
+                    update_ui()
+                end)
+            end
+
+            home_pressed = current_home
+            f1_pressed = current_f1
+            f2_pressed = current_f2
+        end
+
+        wait(0.01)
     end
 end)
 
@@ -616,156 +1010,438 @@ local function resize_ui()
 
     is_expanded = not is_expanded
 
-    FRAME_0.Size = {
-        is_expanded and expanded_width or original_width,
-        is_expanded and expanded_height or original_height
-    }
+    local target_width = is_expanded and expanded_width or original_width
+    local target_height = is_expanded and expanded_height or original_height
 
+    FRAME_0.Size = {target_width, target_height}
     FRAME_1.Size = {FRAME_0.Size.x - 2.5, FRAME_0.Size.y - 2.5}
     FRAME_2.Size = {FRAME_1.Size.x - 3, FRAME_1.Size.y - 4}
     FRAME_3.Size = {FRAME_2.Size.x - 3, FRAME_2.Size.y - 4}
-
     TITLE_FRAME.Size = {FRAME_3.Size.x - 10, 20}
     CONTENT_FRAME.Size = {FRAME_3.Size.x - 10, FRAME_3.Size.y - 35}
 
+    if selection_highlight then
+        selection_highlight.Size = {CONTENT_FRAME.Size.x - 20, 24}
+    end
+
+    pcall(function() updateCornerPositions() end)
+
+    if hub_logo then
+        hub_logo.frame.Size = {FRAME_3.Size.x - 20, 30}
+        hub_logo.frame.Position = {FRAME_3.Position.x + 10, CONTENT_FRAME.Position.y + 5}
+        hub_logo.text.Position = {
+            hub_logo.frame.Position.x + hub_logo.frame.Size.x / 2,
+            hub_logo.frame.Position.y + hub_logo.frame.Size.y / 2 - 7
+        }
+    end
+
+    pcall(function() updateCornerPositions() end)
+
     update_visibility()
     update_ui()
+
+    spawn(function()
+        wait(0.05)
+        pcall(function() updateCornerPositions() end)
+    end)
 end
 
-local enter_pressed = false
-
 spawn(function()
+    local enter_pressed_local = false
+    local last_check_time_enter = 0
+    local check_interval_enter = 0.05
+
     while ui_running do
-        local currently_pressed = false
-        local pressed_keys = getpressedkeys()
+        local current_time = time()
 
-        for _, key in ipairs(pressed_keys) do
-            if key:lower() == "enter" then
-                currently_pressed = true
-                break
+        if current_time - last_check_time_enter >= check_interval_enter then
+            last_check_time_enter = current_time
+
+            local currently_pressed = false
+            local pressed_keys = getpressedkeys()
+
+            for _, key in ipairs(pressed_keys) do
+                if key:lower() == "enter" then
+                    currently_pressed = true
+                    break
+                end
             end
+
+            if currently_pressed and not enter_pressed_local then
+                pcall(function() resize_ui() end)
+            end
+
+            enter_pressed_local = currently_pressed
         end
 
-        if currently_pressed and not enter_pressed then
-            resize_ui()
-        end
-
-        enter_pressed = currently_pressed
-        wait()
+        wait(0.01)
     end
 end)
 
 spawn(function()
-    local arrow_pressed = false
-    local y_pressed = false
-    local page_pressed = false
+    local arrow_pressed_local = false
+    local y_pressed_local = false
+    local page_pressed_local = false
+    local last_check_time_nav = 0
+    local check_interval_nav = 0.05
 
     while ui_running do
         if FRAME_0.Visible and is_expanded then
-            local pressed_keys = getpressedkeys()
-            local arrow_up = false
-            local arrow_down = false
-            local arrow_left = false
-            local arrow_right = false
-            local y_key = false
+            local current_time = time()
 
-            for _, key in ipairs(pressed_keys) do
-                local key_name = key:lower()
-                if key_name == "uparrow" then arrow_up = true end
-                if key_name == "downarrow" then arrow_down = true end
-                if key_name == "leftarrow" then arrow_left = true end
-                if key_name == "rightarrow" then arrow_right = true end
-                if key_name == "y" then y_key = true end
-            end
+            if current_time - last_check_time_nav >= check_interval_nav then
+                last_check_time_nav = current_time
 
-            if not arrow_pressed then
-                local active_scripts = selected_tab == 1 and anue_scripts or community_scripts
-                local start_index = (current_page - 1) * max_items_per_page + 1
-                local end_index = math.min(start_index + max_items_per_page - 1, #active_scripts)
-                local items_in_current_page = end_index - start_index + 1
+                local pressed_keys = getpressedkeys()
+                local arrow_up = false
+                local arrow_down = false
+                local arrow_left = false
+                local arrow_right = false
+                local y_key = false
 
-                if arrow_up then 
-                    selected_index = math.max(1, selected_index - 1) 
+                for _, key in ipairs(pressed_keys) do
+                    local key_name = key:lower()
+                    if key_name == "uparrow" then arrow_up = true end
+                    if key_name == "downarrow" then arrow_down = true end
+                    if key_name == "leftarrow" then arrow_left = true end
+                    if key_name == "rightarrow" then arrow_right = true end
+                    if key_name == "y" then y_key = true end
                 end
 
-                if arrow_down then 
-                    selected_index = math.min(items_in_current_page, selected_index + 1) 
+                local selection_changed = false
+
+                if not arrow_pressed_local then
+                    pcall(function()
+                        local active_scripts = selected_tab == 1 and anue_scripts or community_scripts
+                        local start_index = (current_page - 1) * max_items_per_page + 1
+                        local end_index = math.min(start_index + max_items_per_page - 1, #active_scripts)
+                        local items_in_current_page = end_index - start_index + 1
+
+                        local old_index = selected_index
+
+                        if arrow_up then 
+                            selected_index = math.max(1, selected_index - 1) 
+                        end
+
+                        if arrow_down then 
+                            selected_index = math.min(items_in_current_page, selected_index + 1) 
+                        end
+
+                        selection_changed = (old_index ~= selected_index)
+                    end)
                 end
+                arrow_pressed_local = arrow_up or arrow_down
 
-                update_ui()
-            end
-            arrow_pressed = arrow_up or arrow_down
+                if not page_pressed_local then
+                    pcall(function()
+                        local active_scripts = selected_tab == 1 and anue_scripts or community_scripts
+                        local total_pages = math.ceil(#active_scripts / max_items_per_page)
 
-            if not page_pressed then
-                local active_scripts = selected_tab == 1 and anue_scripts or community_scripts
-                local total_pages = math.ceil(#active_scripts / max_items_per_page)
+                        if arrow_left and current_page > 1 then
+                            current_page = current_page - 1
+                            selected_index = 1
+                            selection_changed = true
+                        end
 
-                if arrow_left and current_page > 1 then
-                    current_page = current_page - 1
-                    selected_index = 1
+                        if arrow_right and current_page < total_pages then
+                            current_page = current_page + 1
+                            selected_index = 1
+                            selection_changed = true
+                        end
+                    end)
+                end
+                page_pressed_local = arrow_left or arrow_right
+
+                if selection_changed then
                     update_visibility()
                     update_ui()
                 end
 
-                if arrow_right and current_page < total_pages then
-                    current_page = current_page + 1
-                    selected_index = 1
-                    update_visibility()
-                    update_ui()
+                if y_key and not y_pressed_local then
+                    pcall(function()
+                        local active_scripts = selected_tab == 1 and anue_scripts or community_scripts
+                        local start_index = (current_page - 1) * max_items_per_page + 1
+                        local script_index = start_index + selected_index - 1
+
+                        if script_index <= #active_scripts then
+                            local selected_script = active_scripts[script_index]
+                            ui_running = false
+                            toggle_ui()
+
+                            local countdown_text = Drawing.new("Text")
+                            countdown_text.Visible = true
+                            countdown_text.Center = true
+                            countdown_text.Color = {0, 255, 0}
+                            countdown_text.Size = text_size
+                            countdown_text.Font = font
+                            countdown_text.Position = {
+                                SCREEN_DIMENSIONS.x / 2,
+                                SCREEN_DIMENSIONS.y / 2
+                            }
+
+                            for i = 5, 1, -1 do
+                                countdown_text.Text = ("Executing %s by %s... %d"):format(
+                                    selected_script.name,
+                                    selected_script.author,
+                                    i
+                                )
+                                wait(1)
+                            end
+
+                            countdown_text.Text = "Executed successfully!"
+                            wait(2)
+
+                            pcall(function() countdown_text:Remove() end)
+
+                            for _, element in pairs(UIElements) do pcall(function() element:Remove() end) end
+                            for _, text in pairs(TextElements) do pcall(function() text:Remove() end) end
+
+                            pcall(function() loadstring(selected_script.loadstring)() end)
+                            return
+                        end
+                    end)
                 end
+                y_pressed_local = y_key
             end
-            page_pressed = arrow_left or arrow_right
+        end
 
-            if y_key and not y_pressed then
-                local active_scripts = selected_tab == 1 and anue_scripts or community_scripts
-                local start_index = (current_page - 1) * max_items_per_page + 1
-                local script_index = start_index + selected_index - 1
+        wait(0.01)
+    end
+end)
 
-                if script_index <= #active_scripts then
-                    local selected_script = active_scripts[script_index]
-                    ui_running = false
-                    toggle_ui()
+local is_dragging = false
+local drag_offset = {x = 0, y = 0}
 
-                    local countdown_text = Drawing.new("Text")
-                    countdown_text.Visible = true
-                    countdown_text.Center = true
-                    countdown_text.Color = {0, 255, 0}
-                    countdown_text.Size = text_size
-                    countdown_text.Font = font
-                    countdown_text.Position = {
-                        SCREEN_DIMENSIONS.x / 2,
-                        SCREEN_DIMENSIONS.y / 2
+local title_hover_indicator = Drawing.new("Square")
+title_hover_indicator.Filled = true
+title_hover_indicator.Visible = false
+title_hover_indicator.Color = UI_COLORS.highlight
+title_hover_indicator.Transparency = 0.3
+table.insert(UIElements, title_hover_indicator)
+
+spawn(function()
+    while ui_running do
+        if FRAME_0.Visible then
+            local mouse_pos = getmouseposition()
+
+            local is_over_title = 
+                mouse_pos.x >= TITLE_FRAME.Position.x and 
+                mouse_pos.x <= TITLE_FRAME.Position.x + TITLE_FRAME.Size.x and
+                mouse_pos.y >= TITLE_FRAME.Position.y and
+                mouse_pos.y <= TITLE_FRAME.Position.y + TITLE_FRAME.Size.y
+
+            if is_over_title and not is_dragging then
+                title_hover_indicator.Visible = true
+                title_hover_indicator.Size = TITLE_FRAME.Size
+                title_hover_indicator.Position = TITLE_FRAME.Position
+            else
+                title_hover_indicator.Visible = false
+            end
+
+            if is_over_title and isleftpressed() and not is_dragging then
+                is_dragging = true
+                drag_offset.x = mouse_pos.x - FRAME_0.Position.x
+                drag_offset.y = mouse_pos.y - FRAME_0.Position.y
+            end
+
+            if is_dragging then
+                if isleftpressed() then
+
+                    FRAME_0.Position = {
+                        mouse_pos.x - drag_offset.x,
+                        mouse_pos.y - drag_offset.y
                     }
 
-                    for i = 5, 1, -1 do
-                        countdown_text.Text = ("Executing %s by %s... %d"):format(
-                            selected_script.name,
-                            selected_script.author,
-                            i
-                        )
-                        wait(1)
+                    FRAME_1.Position = {FRAME_0.Position.x + 2.5/2, FRAME_0.Position.y + 2.5/2}
+                    FRAME_2.Position = {FRAME_1.Position.x + 3/2, FRAME_1.Position.y + 3/2}
+                    FRAME_3.Position = {FRAME_2.Position.x + 3/2, FRAME_2.Position.y + 3/2}
+                    TITLE_FRAME.Position = {FRAME_3.Position.x + 5, FRAME_3.Position.y + 5}
+                    CONTENT_FRAME.Position = {
+                        FRAME_3.Position.x + 5,
+                        TITLE_FRAME.Position.y + TITLE_FRAME.Size.y + 5
+                    }
+
+                    updateCornerPositions()
+
+                    if hub_logo then
+                        hub_logo.frame.Position = {FRAME_3.Position.x + 10, CONTENT_FRAME.Position.y + 5}
+                        hub_logo.text.Position = {
+                            hub_logo.frame.Position.x + hub_logo.frame.Size.x / 2,
+                            hub_logo.frame.Position.y + hub_logo.frame.Size.y / 2 - 7
+                        }
                     end
 
-                    countdown_text.Text = "Executed successfully!"
-                    wait(2)
-
-                    countdown_text:Remove()
-
-                    for _, element in pairs(UIElements) do pcall(function() element:Remove() end) end
-                    for _, text in pairs(TextElements) do pcall(function() text:Remove() end) end
-
-                    loadstring(selected_script.loadstring)()
-                    return
+                    update_visibility()
+                else
+                    is_dragging = false
                 end
             end
-            y_pressed = y_key
+        else
+            is_dragging = false
+            title_hover_indicator.Visible = false
         end
-        wait()
+
+        wait(0.01)
     end
 end)
 
 spawn(function()
-    wait(0.1)
-    update_visibility()
-    update_ui()
+    while ui_running do
+        local current_time = time()
+
+        if needs_ui_update and current_time - last_ui_update >= ui_update_throttle then
+            update_ui()
+        end
+
+        wait(0.01)
+    end
 end)
+
+function table.find(t, value)
+    if type(t) ~= "table" then
+        return false
+    end
+
+    for _, v in pairs(t) do
+        if v == value then
+            return true
+        end
+    end
+    return false
+end
+
+local is_dragging = false
+local drag_offset_x = 0
+local drag_offset_y = 0
+local drag_last_mouse_position = {x = 0, y = 0}
+local last_update_drag_time = 0
+
+local function update_drag_movement()
+    if not FRAME_0.Visible then 
+        is_dragging = false
+        return 
+    end
+
+    local mouse_pos = getmouseposition()
+
+    local title_hovered = 
+        mouse_pos.x >= TITLE_FRAME.Position.x and 
+        mouse_pos.x <= TITLE_FRAME.Position.x + TITLE_FRAME.Size.x and
+        mouse_pos.y >= TITLE_FRAME.Position.y and 
+        mouse_pos.y <= TITLE_FRAME.Position.y + TITLE_FRAME.Size.y
+
+    if title_hovered and isleftpressed() and not is_dragging then
+        is_dragging = true
+        drag_offset_x = mouse_pos.x - FRAME_0.Position.x
+        drag_offset_y = mouse_pos.y - FRAME_0.Position.y
+    end
+
+    if is_dragging then
+        if isleftpressed() then
+            local new_x = mouse_pos.x - drag_offset_x
+            local new_y = mouse_pos.y - drag_offset_y
+
+            FRAME_0.Position = {new_x, new_y}
+
+            FRAME_1.Position = {FRAME_0.Position.x + 2.5/2, FRAME_0.Position.y + 2.5/2}
+            FRAME_2.Position = {FRAME_1.Position.x + 3/2, FRAME_1.Position.y + 3/2}
+            FRAME_3.Position = {FRAME_2.Position.x + 3/2, FRAME_2.Position.y + 3/2}
+
+            TITLE_FRAME.Position = {FRAME_3.Position.x + 5, FRAME_3.Position.y + 5}
+            CONTENT_FRAME.Position = {
+                FRAME_3.Position.x + 5,
+                TITLE_FRAME.Position.y + TITLE_FRAME.Size.y + 5
+            }
+
+            KEY_HINT.Position = {
+                TITLE_FRAME.Position.x + TITLE_FRAME.Size.x - 45,
+                TITLE_FRAME.Position.y + TITLE_FRAME.Size.y / 2 - KEY_HINT.Size / 2
+            }
+
+            CONTENT_TEXT.Position = {
+                CONTENT_FRAME.Position.x + CONTENT_FRAME.Size.x / 2,
+                CONTENT_FRAME.Position.y + CONTENT_FRAME.Size.y / 2 - 10
+            }
+
+            MAIN_TITLE.Position = {
+                FRAME_3.Position.x + FRAME_3.Size.x/2 - (MAIN_TITLE.TextBounds and MAIN_TITLE.TextBounds.x/2 or 60),
+                FRAME_3.Position.y + 8
+            }
+
+            updateCornerPositions()
+
+            if hub_logo then
+                hub_logo.frame.Position = {FRAME_3.Position.x + 10, CONTENT_FRAME.Position.y + 5}
+                hub_logo.text.Position = {
+                    hub_logo.frame.Position.x + hub_logo.frame.Size.x / 2,
+                    hub_logo.frame.Position.y + hub_logo.frame.Size.y / 2 - 7
+                }
+            end
+
+            if is_expanded and TAB_ANUE.Visible then
+                TAB_ANUE.Position = {
+                    FRAME_3.Position.x + 20,
+                    FRAME_3.Position.y + 10
+                }
+
+                if TAB_ANUE.TextBounds then
+                    TAB_COMMUNITY.Position = {
+                        TAB_ANUE.Position.x + TAB_ANUE.TextBounds.x + 30,
+                        FRAME_3.Position.y + 10
+                    }
+                else
+                    TAB_COMMUNITY.Position = {
+                        TAB_ANUE.Position.x + 120,
+                        FRAME_3.Position.y + 10
+                    }
+                end
+            end
+
+            update_visibility()
+
+            drag_last_mouse_position = mouse_pos
+        else
+            is_dragging = false
+        end
+    end
+end
+
+spawn(function()
+    local check_interval = 0.01
+
+    while ui_running do
+        local current_time = time()
+
+        update_drag_movement()
+
+        wait(check_interval)
+    end
+end)
+
+local function update_title_hover_indicator()
+    if not FRAME_0.Visible then return end
+
+    local mouse_pos = getmouseposition()
+
+    local title_hovered = 
+        mouse_pos.x >= TITLE_FRAME.Position.x and 
+        mouse_pos.x <= TITLE_FRAME.Position.x + TITLE_FRAME.Size.x and
+        mouse_pos.y >= TITLE_FRAME.Position.y and 
+        mouse_pos.y <= TITLE_FRAME.Position.y + TITLE_FRAME.Size.y
+
+    if title_hovered and not is_dragging then
+        TITLE_FRAME.Color = {
+            UI_COLORS.title_bg[1] + 10,
+            UI_COLORS.title_bg[2] + 10,
+            UI_COLORS.title_bg[3] + 10
+        }
+    else
+        TITLE_FRAME.Color = UI_COLORS.title_bg
+    end
+end
+
+local original_update_ui = update_ui
+function update_ui()
+    original_update_ui()
+    update_title_hover_indicator()
+end
