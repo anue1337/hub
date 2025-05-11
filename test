@@ -196,12 +196,20 @@ end
 -- Clear all drawing objects
 function slib.ClearDrawings()
     for _, object in pairs(slib.Drawings) do
-        if object.Remove then -- Verifica se o objeto tem o método Remove
-            pcall(function() object:Remove() end)
+        if object and typeof(object) == "userdata" and object.Remove then
+            pcall(function() 
+                object:Remove() 
+                object.Visible = false
+            end)
         end
     end
     
     slib.Drawings = {}
+end
+
+-- Adicionar função para verificar se um objeto é uma instância válida
+function slib.IsInstance(obj)
+    return obj ~= nil and type(obj) == "userdata"
 end
 
 -- Create a healthbar
@@ -225,13 +233,12 @@ function slib.HealthBar(params)
     local outlined = params.Outlined ~= false -- Default to true
     
     -- Convert 3D position to 2D screen position
-    local screenPos
+    local screenPos, visible
     if #position == 3 then
-        local wts, visible = worldtoscreenpoint({position[1], position[2], position[3]})
+        screenPos, visible = worldtoscreenpoint({position[1], position[2], position[3]})
         if not visible then return end -- Position is not on screen
-        screenPos = {wts.x, wts.y}
     else
-        screenPos = position
+        screenPos = {x = position[1], y = position[2]}
     end
     
     -- Health percentage
@@ -239,7 +246,7 @@ function slib.HealthBar(params)
     local barWidth = size[1] * healthPercentage
     
     -- Position calculation
-    local x, y = screenPos[1] + offset[1], screenPos[2] + offset[2]
+    local x, y = screenPos.x + offset[1], screenPos.y + offset[2]
     
     -- Calculate health color (green to red gradient)
     local healthColor = {
@@ -311,11 +318,8 @@ function slib.BoxESP(params)
     -- Check if on screen
     if not topVisible or not bottomVisible then return end
     
-    local top = topPos[1]
-    local bottom = bottomPos[1]
-    
     -- Calculate box dimensions
-    local height = top.y - bottom.y
+    local height = math.abs(topPos.y - bottomPos.y)
     local width = height / 2.4
     
     local drawObjects = {}
@@ -324,7 +328,7 @@ function slib.BoxESP(params)
     if boxType == "2D" then
         -- Create full box
         local box = slib.NewDrawing("Square", {
-            Position = {bottom.x - width/2, top.y},
+            Position = {bottomPos.x - width/2, topPos.y},
             Size = {width, height},
             Color = color,
             Thickness = 1,
@@ -339,16 +343,16 @@ function slib.BoxESP(params)
         
         -- Top left
         table.insert(drawObjects, slib.NewDrawing("Line", {
-            From = {bottom.x - width/2, top.y},
-            To = {bottom.x - width/2 + cornerSize, top.y},
+            From = {bottomPos.x - width/2, topPos.y},
+            To = {bottomPos.x - width/2 + cornerSize, topPos.y},
             Color = color,
             Thickness = 1,
             Visible = true
         }))
         
         table.insert(drawObjects, slib.NewDrawing("Line", {
-            From = {bottom.x - width/2, top.y},
-            To = {bottom.x - width/2, top.y + cornerSize},
+            From = {bottomPos.x - width/2, topPos.y},
+            To = {bottomPos.x - width/2, topPos.y + cornerSize},
             Color = color,
             Thickness = 1,
             Visible = true
@@ -356,16 +360,16 @@ function slib.BoxESP(params)
         
         -- Top right
         table.insert(drawObjects, slib.NewDrawing("Line", {
-            From = {bottom.x + width/2, top.y},
-            To = {bottom.x + width/2 - cornerSize, top.y},
+            From = {bottomPos.x + width/2, topPos.y},
+            To = {bottomPos.x + width/2 - cornerSize, topPos.y},
             Color = color,
             Thickness = 1,
             Visible = true
         }))
         
         table.insert(drawObjects, slib.NewDrawing("Line", {
-            From = {bottom.x + width/2, top.y},
-            To = {bottom.x + width/2, top.y + cornerSize},
+            From = {bottomPos.x + width/2, topPos.y},
+            To = {bottomPos.x + width/2, topPos.y + cornerSize},
             Color = color,
             Thickness = 1,
             Visible = true
@@ -373,16 +377,16 @@ function slib.BoxESP(params)
         
         -- Bottom left
         table.insert(drawObjects, slib.NewDrawing("Line", {
-            From = {bottom.x - width/2, bottom.y},
-            To = {bottom.x - width/2 + cornerSize, bottom.y},
+            From = {bottomPos.x - width/2, bottomPos.y},
+            To = {bottomPos.x - width/2 + cornerSize, bottomPos.y},
             Color = color,
             Thickness = 1,
             Visible = true
         }))
         
         table.insert(drawObjects, slib.NewDrawing("Line", {
-            From = {bottom.x - width/2, bottom.y},
-            To = {bottom.x - width/2, bottom.y - cornerSize},
+            From = {bottomPos.x - width/2, bottomPos.y},
+            To = {bottomPos.x - width/2, bottomPos.y - cornerSize},
             Color = color,
             Thickness = 1,
             Visible = true
@@ -390,16 +394,16 @@ function slib.BoxESP(params)
         
         -- Bottom right
         table.insert(drawObjects, slib.NewDrawing("Line", {
-            From = {bottom.x + width/2, bottom.y},
-            To = {bottom.x + width/2 - cornerSize, bottom.y},
+            From = {bottomPos.x + width/2, bottomPos.y},
+            To = {bottomPos.x + width/2 - cornerSize, bottomPos.y},
             Color = color,
             Thickness = 1,
             Visible = true
         }))
         
         table.insert(drawObjects, slib.NewDrawing("Line", {
-            From = {bottom.x + width/2, bottom.y},
-            To = {bottom.x + width/2, bottom.y - cornerSize},
+            From = {bottomPos.x + width/2, bottomPos.y},
+            To = {bottomPos.x + width/2, bottomPos.y - cornerSize},
             Color = color,
             Thickness = 1,
             Visible = true
@@ -411,7 +415,7 @@ function slib.BoxESP(params)
         local name = getname(target) or "Player"
         table.insert(drawObjects, slib.NewDrawing("Text", {
             Text = name,
-            Position = {bottom.x, top.y - 15},
+            Position = {bottomPos.x, topPos.y - 15},
             Size = 13,
             Center = true,
             Color = color,
@@ -433,7 +437,7 @@ function slib.BoxESP(params)
                 
                 table.insert(drawObjects, slib.NewDrawing("Text", {
                     Text = distText,
-                    Position = {bottom.x, bottom.y + 5},
+                    Position = {bottomPos.x, bottomPos.y + 5},
                     Size = 12,
                     Center = true,
                     Color = color,
@@ -560,7 +564,7 @@ function slib.CompleteESP(params)
             local maxHp = getmaxhealth(humanoid)
             
             local healthObjects = slib.HealthBar({
-                Position = {pos.x, pos.y + 3, pos.z},
+                Position = rootPart,
                 HP = hp,
                 MaxHP = maxHp,
                 Size = {80, 5},
@@ -576,6 +580,36 @@ function slib.CompleteESP(params)
     end
     
     return drawObjects
+end
+
+-- Create Rainbow ESP
+function slib.RainbowESP(params)
+    assert(type(params) == "table", "RainbowESP: First argument needs to be a table!")
+    assert(params.Target, "RainbowESP: Target field must be provided!")
+    
+    local target = params.Target
+    local boxType = params.BoxType or "2D"
+    local healthbar = params.Healthbar or false
+    local nametag = params.Nametag or false
+    local distance = params.Distance or false
+    local tracer = params.Tracer or false
+    local tracerOrigin = params.TracerOrigin or "Bottom"
+    local updateSpeed = params.Speed or 3
+    
+    -- Atualizar cor do arco-íris
+    local color = slib.UpdateRainbow(updateSpeed)
+    
+    -- Usar CompleteESP com a cor do arco-íris
+    return slib.CompleteESP({
+        Target = target,
+        BoxType = boxType,
+        Color = color,
+        Healthbar = healthbar,
+        Nametag = nametag,
+        Distance = distance,
+        Tracer = tracer,
+        TracerOrigin = tracerOrigin
+    })
 end
 
 --// Player Functions //--
