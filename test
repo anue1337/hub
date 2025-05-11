@@ -1,948 +1,582 @@
--- SevereLib by anue
--- ESP, Aimbot, and Debug Library for Roblox exploits
+--[[
+    Severe Library v1.0.0
+    A comprehensive utility library for script development with built-in ESP capabilities
+]]
 
 local SevereLib = {}
-
--- Library configuration
-SevereLib.Config = {
-    ESP = {
-        Enabled = true,
-        MaxDistance = 2000,
-        ShowDistance = true,
-        ShowName = true,
-        ShowHealth = true,
-        ShowTeam = true,
-        BoxEnabled = true,
-        BoxType = "2D", -- "2D", "3D", "Corners"
-        BoxColor = {255, 255, 255},
-        BoxThickness = 1,
-        TextSize = 14,
-        TextFont = 2, -- 0: UI, 1: System, 2: Plex, 3: Monospace, 4: Bold
-        TracerEnabled = false,
-        TracerOrigin = "Bottom", -- "Bottom", "Center", "Mouse"
-        TracerThickness = 1,
-    },
-    Aimbot = {
-        Enabled = false,
-        TargetPart = "Head", -- "Head", "Torso", "HumanoidRootPart"
-        Sensitivity = 0.5,
-        MaxDistance = 500,
-        TeamCheck = true,
-        VisibilityCheck = true,
-        TriggerKey = "MouseButton2",
-        FOV = 400,
-        ShowFOV = true,
-        FOVColor = {255, 255, 255},
-        FOVThickness = 1,
-    },
-    Debug = {
-        Enabled = true,
-        ShowFPS = true,
-        LogLevel = 3, -- 1: Error, 2: Warning, 3: Info, 4: Debug
-        SaveLogs = false,
-        LogFilePath = "SevereLib.log"
-    },
-    Advanced = {
-        ValidationRetries = 3,
-        ValidationDelay = 0.2, -- seconds
-        RefreshRate = 1/30, -- seconds
-        ObjectCheckInterval = 1, -- seconds
-        SafeMode = true -- Use pcall around all API calls
-    }
-}
+SevereLib.__index = SevereLib
 
 -- Internal variables
-local Services = {}
-local Utils = {}
-local Drawing = Drawing
-local Players = {}
-local Camera = nil
-local LocalPlayer = nil
-local RunService = nil
-local UserInputService = nil
-local Workspace = nil
-
-local EspObjects = {}
-local AimbotData = {
-    Target = nil,
-    FOVCircle = nil,
-}
-local DebugInfo = {
-    StartTime = os.time(),
-    FrameCount = 0,
-    LastFPS = 0,
-    LastFPSUpdate = os.clock(),
-    ErrorCount = 0,
-    WarningCount = 0,
+local drawingNew = Drawing.new
+local mathFloor, mathSqrt = math.floor, math.sqrt
+local camera = workspace:FindFirstChild('Camera')
+local localPlayer = game:GetService("Players").LocalPlayer
+local stop = false
+local espObjects = {
+    players = {},
+    items = {},
+    entities = {},
+    custom = {}
 }
 
--- Debug functions
-local function LogMessage(level, message)
-    local levels = {
-        [1] = "ERROR",
-        [2] = "WARNING",
-        [3] = "INFO",
-        [4] = "DEBUG"
-    }
-    
-    if level <= SevereLib.Config.Debug.LogLevel then
-        local timestamp = os.date("%H:%M:%S")
-        local formatted = string.format("[%s][SevereLib][%s] %s", timestamp, levels[level], message)
-        print(formatted)
-        
-        if level == 1 then DebugInfo.ErrorCount = DebugInfo.ErrorCount + 1 end
-        if level == 2 then DebugInfo.WarningCount = DebugInfo.WarningCount + 1 end
-        
-        if SevereLib.Config.Debug.SaveLogs then
-            -- Implement log saving
-        end
-    end
+-- Console Functions
+SevereLib.Console = {}
+
+-- Shows the Severe console for debugging
+function SevereLib.Console:Show()
+    -- Implementation depends on GUI system
+    print("[Severe] Console shown")
+    return true
 end
 
-local function LogError(message) LogMessage(1, message) end
-local function LogWarning(message) LogMessage(2, message) end
-local function LogInfo(message) LogMessage(3, message) end
-local function LogDebug(message) LogMessage(4, message) end
-
--- Safe API wrappers with validation
-local function SafeGetService(serviceName)
-    local success, result = pcall(function()
-        return game:GetService(serviceName)
-    end)
+-- Print to Severe console with optional formatting
+function SevereLib.Console:Print(...)
+    local args = {...}
+    local message = ""
     
-    if success then
-        return result
-    else
-        LogError("Failed to get service: " .. serviceName)
-        return nil
-    end
-end
-
-local function IsValidInstance(obj)
-    if obj == nil then return false end
-    
-    local success = pcall(function()
-        -- Just accessing a property will throw if the instance is invalid
-        local _ = obj.ClassName
-    end)
-    
-    return success
-end
-
-local function SafeWaitForChild(parent, childName, timeout)
-    timeout = timeout or 5
-    
-    if not IsValidInstance(parent) then
-        LogError("SafeWaitForChild: Invalid parent")
-        return nil
-    end
-    
-    local startTime = os.clock()
-    local child = nil
-    
-    -- Try the standard WaitForChild first
-    local success, result = pcall(function()
-        return parent:WaitForChild(childName, timeout)
-    end)
-    
-    if success and result then
-        return result
-    end
-    
-    -- Fallback to polling if WaitForChild fails
-    while os.clock() - startTime < timeout do
-        child = parent:FindFirstChild(childName)
-        if child then 
-            return child 
-        end
-        wait(0.1)
-    end
-    
-    LogWarning("SafeWaitForChild: Failed to find " .. childName)
-    return nil
-end
-
-local function SafeFindFirstChild(parent, childName)
-    if not IsValidInstance(parent) then
-        return nil
-    end
-    
-    local success, result = pcall(function()
-        return parent:FindFirstChild(childName)
-    end)
-    
-    if success then
-        return result
-    else
-        return nil
-    end
-end
-
-local function SafeGetChildren(parent)
-    if not IsValidInstance(parent) then
-        return {}
-    end
-    
-    local success, children = pcall(function()
-        return parent:GetChildren()
-    end)
-    
-    if success then
-        return children
-    else
-        LogWarning("SafeGetChildren failed: " .. tostring(parent))
-        return {}
-    end
-end
-
-local function SafeGetPosition(obj)
-    if not IsValidInstance(obj) then
-        return Vector3.new(0, 0, 0)
-    end
-    
-    local success, position = pcall(function()
-        if obj:IsA("BasePart") then
-            return obj.Position
-        elseif obj:IsA("Model") and obj.PrimaryPart then
-            return obj.PrimaryPart.Position
-        elseif obj:IsA("Model") then
-            -- Try to find HumanoidRootPart or other primary parts
-            local hrp = obj:FindFirstChild("HumanoidRootPart")
-            local torso = obj:FindFirstChild("Torso") or obj:FindFirstChild("UpperTorso")
-            local head = obj:FindFirstChild("Head")
-            
-            if hrp and hrp:IsA("BasePart") then
-                return hrp.Position
-            elseif torso and torso:IsA("BasePart") then
-                return torso.Position
-            elseif head and head:IsA("BasePart") then
-                return head.Position
-            end
-            
-            -- Last resort: average position of all parts
-            local parts = {}
-            for _, child in ipairs(SafeGetChildren(obj)) do
-                if child:IsA("BasePart") then
-                    table.insert(parts, child)
-                end
-            end
-            
-            if #parts > 0 then
-                local sum = Vector3.new(0, 0, 0)
-                for _, part in ipairs(parts) do
-                    sum = sum + part.Position
-                end
-                return sum / #parts
-            end
+    for i, v in ipairs(args) do
+        if type(v) == "table" then
+            message = message .. table.concat(v, ", ")
+        else
+            message = message .. tostring(v)
         end
         
-        return Vector3.new(0, 0, 0)
-    end)
-    
-    if success then
-        return position
-    else
-        return Vector3.new(0, 0, 0)
+        if i < #args then
+            message = message .. " "
+        end
     end
+    
+    print("[Severe] " .. message)
+    return true
 end
 
-local function SafeIsDescendantOf(obj, ancestor)
-    if not IsValidInstance(obj) or not IsValidInstance(ancestor) then
-        return false
-    end
-    
-    local success, result = pcall(function()
-        return obj:IsDescendantOf(ancestor)
-    end)
-    
-    if success then
-        return result
-    else
-        return false
-    end
+-- Show error in Severe console
+function SevereLib.Console:Error(message)
+    warn("[Severe] ERROR: " .. tostring(message))
+    return true
 end
 
-local function SafeWorldToScreenPoint(worldPoint)
-    if not IsValidInstance(Camera) then
-        return Vector2.new(0, 0), false
+-- General Functions
+-- Navigate through game instances easily (similar to DXLib.Game)
+function SevereLib:Game(...)
+    local args = {...}
+    local current = game
+    
+    for _, path in ipairs(args) do
+        current = current:FindFirstChild(path)
+        if not current then
+            return nil
+        end
     end
     
-    local success, result, onScreen = pcall(function()
-        return Camera:WorldToScreenPoint(worldPoint)
-    end)
-    
-    if success then
-        return Vector2.new(result.X, result.Y), onScreen
-    else
-        return Vector2.new(0, 0), false
-    end
+    return current
 end
 
-local function SafeGetPlayerFromCharacter(character)
-    if not IsValidInstance(character) then
-        return nil
+-- Get closest part from parts collection to the origin point
+function SevereLib:GetClosestPart(origin, parts)
+    if not origin or not parts then return nil end
+    
+    local closest, distance = nil, math.huge
+    
+    for _, part in ipairs(parts) do
+        local partPos = part.Position
+        local dist = (partPos - origin).Magnitude
+        
+        if dist < distance then
+            closest = part
+            distance = dist
+        end
     end
     
-    local success, player = pcall(function()
-        return Players:GetPlayerFromCharacter(character)
-    end)
-    
-    if success then
-        return player
-    else
-        return nil
-    end
+    return closest, distance
 end
 
-local function SafeGetHumanoid(character)
-    if not IsValidInstance(character) then
-        return nil
+-- Get all descendants of an instance
+function SevereLib:GetDescendants(instance)
+    if not instance then return {} end
+    return instance:GetDescendants()
+end
+
+-- Get descendants of a specific class from an instance
+function SevereLib:GetDescendantsOfClass(instance, className)
+    if not instance or not className then return {} end
+    
+    local results = {}
+    
+    for _, desc in ipairs(instance:GetDescendants()) do
+        if desc:IsA(className) then
+            table.insert(results, desc)
+        end
     end
     
-    local humanoid = SafeFindFirstChild(character, "Humanoid")
-    if IsValidInstance(humanoid) then
-        return humanoid
+    return results
+end
+
+-- Calculate distance between two Vector3 positions
+function SevereLib:GetDistance(pos1, pos2)
+    if not pos1 or not pos2 then return 0 end
+    
+    local dx, dy, dz = pos1.X - pos2.X, pos1.Y - pos2.Y, pos1.Z - pos2.Z
+    return mathSqrt(dx * dx + dy * dy + dz * dz)
+end
+
+-- Calculate distance from a position to the local player
+function SevereLib:GetDistanceFromPlayer(position)
+    if not position or not localPlayer.Character then return 0 end
+    
+    local rootPart = localPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return 0 end
+    
+    return SevereLib:GetDistance(rootPart.Position, position)
+end
+
+-- Get local player character
+function SevereLib:GetLocalCharacter()
+    if not localPlayer then return nil end
+    return localPlayer.Character
+end
+
+-- Get local player
+function SevereLib:GetLocalPlayer()
+    return localPlayer
+end
+
+-- Get player by name or display name
+function SevereLib:GetPlayer(name)
+    if not name then return nil end
+    
+    for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+        if player.Name:lower() == name:lower() or player.DisplayName:lower() == name:lower() then
+            return player
+        end
     end
     
     return nil
 end
 
-local function SafeGetHealth(humanoid)
-    if not IsValidInstance(humanoid) then
-        return 0, 0
-    end
+-- Check if mouse is in a rectangular area of the screen
+function SevereLib:IsMouseInArea(x1, y1, x2, y2)
+    local mouse = game:GetService("UserInputService"):GetMouseLocation()
+    return mouse.X >= x1 and mouse.X <= x2 and mouse.Y >= y1 and mouse.Y <= y2
+end
+
+-- Convert JSON string to table
+function SevereLib:JsonToTable(jsonString)
+    if not jsonString then return {} end
     
-    local success, health, maxHealth = pcall(function()
-        return humanoid.Health, humanoid.MaxHealth
+    local success, result = pcall(function()
+        return game:GetService("HttpService"):JSONDecode(jsonString)
     end)
     
     if success then
-        return health, maxHealth
+        return result
     else
-        return 0, 0
+        SevereLib.Console:Error("Failed to parse JSON: " .. result)
+        return {}
     end
 end
 
--- Extended validation functions for specific object types
-local function IsValidCharacter(char)
-    if not IsValidInstance(char) then return false end
-    
-    local humanoid = SafeFindFirstChild(char, "Humanoid")
-    local rootPart = SafeFindFirstChild(char, "HumanoidRootPart")
-    
-    return IsValidInstance(humanoid) and IsValidInstance(rootPart)
-end
-
-local function IsPlayerAlive(player)
-    if not IsValidInstance(player) then return false end
+-- Convert table to JSON string
+function SevereLib:TableToJson(tbl)
+    if not tbl then return "{}" end
     
     local success, result = pcall(function()
-        local char = player.Character
-        if not IsValidCharacter(char) then return false end
-        
-        local humanoid = char:FindFirstChild("Humanoid")
-        return humanoid and humanoid.Health > 0
+        return game:GetService("HttpService"):JSONEncode(tbl)
     end)
     
-    return success and result
+    if success then
+        return result
+    else
+        SevereLib.Console:Error("Failed to encode JSON: " .. result)
+        return "{}"
+    end
 end
 
-local function IsValidTeam(team)
-    if not IsValidInstance(team) then return false end
-    
-    local success = pcall(function()
-        local _ = team.TeamColor
-    end)
-    
-    return success
-end
+-- ESP Functions
+SevereLib.ESP = {}
 
--- Drawing utilities
-local function CreateDrawingObject(type, properties)
-    local obj = Drawing.new(type)
+-- Create new drawing object with specified properties
+local function createDrawingObject(class, props)
+    local obj = drawingNew(class)
     
-    for prop, value in pairs(properties) do
-        obj[prop] = value
+    for property, value in pairs(props) do
+        obj[property] = value
     end
     
     return obj
 end
 
-local function UpdateDrawingObject(obj, properties)
-    if not obj then return end
-    
-    for prop, value in pairs(properties) do
-        obj[prop] = value
-    end
-end
-
-local function RemoveDrawingObject(obj)
-    if obj then
-        obj.Visible = false
-        obj:Remove()
-    end
-end
-
--- Core ESP functionality
-local function CreateESPForPlayer(player)
-    if not IsValidInstance(player) then return end
-    
-    local espData = {
-        Player = player,
-        Character = nil,
-        Box = CreateDrawingObject("Square", {
-            Visible = false,
-            Color = Color3.fromRGB(unpack(SevereLib.Config.ESP.BoxColor)),
-            Thickness = SevereLib.Config.ESP.BoxThickness,
-            Filled = false,
+-- Create ESP visual elements for an object
+local function createEspElements(color, radius, showTracer)
+    local elements = {
+        text = createDrawingObject('Text', {
+            Text = '', 
+            Size = 14, 
+            Font = 2, 
+            Color = color,
+            Center = true, 
+            Outline = true, 
+            Visible = false, 
             Transparency = 1
         }),
-        Name = CreateDrawingObject("Text", {
-            Visible = false,
-            Color = Color3.fromRGB(255, 255, 255),
-            Size = SevereLib.Config.ESP.TextSize,
-            Font = SevereLib.Config.ESP.TextFont,
-            Center = true,
-            Outline = true,
-            Transparency = 1
-        }),
-        Distance = CreateDrawingObject("Text", {
-            Visible = false,
-            Color = Color3.fromRGB(255, 255, 255),
-            Size = SevereLib.Config.ESP.TextSize,
-            Font = SevereLib.Config.ESP.TextFont,
-            Center = true,
-            Outline = true,
-            Transparency = 1
-        }),
-        Tracer = CreateDrawingObject("Line", {
-            Visible = false,
-            Color = Color3.fromRGB(255, 255, 255),
-            Thickness = SevereLib.Config.ESP.TracerThickness,
-            Transparency = 1
-        }),
-        HealthBar = CreateDrawingObject("Square", {
-            Visible = false,
-            Color = Color3.fromRGB(0, 255, 0),
-            Thickness = 1,
+        circle = createDrawingObject('Circle', {
+            Radius = radius or 5, 
+            Thickness = 1, 
+            NumSides = 12, 
             Filled = true,
-            Transparency = 1
-        }),
-        HealthBarOutline = CreateDrawingObject("Square", {
-            Visible = false,
-            Color = Color3.fromRGB(0, 0, 0),
+            Color = color, 
+            Transparency = 0.8, 
+            Visible = false
+        })
+    }
+    
+    if showTracer then
+        elements.tracer = createDrawingObject('Line', {
             Thickness = 1,
-            Filled = false,
-            Transparency = 1
-        }),
-        Corners = {
-            TopLeft = CreateDrawingObject("Line", {
-                Visible = false,
-                Color = Color3.fromRGB(255, 255, 255),
-                Thickness = SevereLib.Config.ESP.BoxThickness,
-                Transparency = 1
-            }),
-            TopRight = CreateDrawingObject("Line", {
-                Visible = false,
-                Color = Color3.fromRGB(255, 255, 255),
-                Thickness = SevereLib.Config.ESP.BoxThickness,
-                Transparency = 1
-            }),
-            BottomLeft = CreateDrawingObject("Line", {
-                Visible = false,
-                Color = Color3.fromRGB(255, 255, 255),
-                Thickness = SevereLib.Config.ESP.BoxThickness,
-                Transparency = 1
-            }),
-            BottomRight = CreateDrawingObject("Line", {
-                Visible = false,
-                Color = Color3.fromRGB(255, 255, 255),
-                Thickness = SevereLib.Config.ESP.BoxThickness,
-                Transparency = 1
-            }),
-        },
-        LastUpdate = os.clock(),
-        IsValid = true
+            Color = color,
+            Transparency = 0.6,
+            Visible = false
+        })
+    end
+    
+    return elements
+end
+
+-- Update ESP elements based on camera position and target position
+local function updateEspObject(espObject, camPos, maxDistance, drawDistance)
+    local rootPart = espObject.root
+    
+    if not rootPart then
+        return false
+    end
+    
+    local screenPos, isOnScreen = workspace.CurrentCamera:WorldToScreenPoint(rootPart.Position)
+    local distance = mathFloor((rootPart.Position - camPos).Magnitude)
+    
+    if isOnScreen and distance <= maxDistance then
+        local displayName = drawDistance 
+            and espObject.name .. ' [' .. tostring(distance) .. 'm]' 
+            or espObject.name
+        
+        espObject.text.Text = displayName
+        espObject.text.Position = Vector2.new(screenPos.X, screenPos.Y + 10)
+        espObject.text.Color = espObject.custom_color
+        espObject.text.Visible = true
+        
+        espObject.circle.Position = Vector2.new(screenPos.X, screenPos.Y)
+        espObject.circle.Color = espObject.custom_color
+        espObject.circle.Visible = true
+        
+        if espObject.tracer then
+            espObject.tracer.From = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y)
+            espObject.tracer.To = Vector2.new(screenPos.X, screenPos.Y)
+            espObject.tracer.Color = espObject.custom_color
+            espObject.tracer.Visible = true
+        end
+        
+        return true
+    else
+        espObject.text.Visible = false
+        espObject.circle.Visible = false
+        
+        if espObject.tracer then
+            espObject.tracer.Visible = false
+        end
+        
+        return false
+    end
+end
+
+-- Main ESP update function
+local function updateEsp()
+    while not stop do
+        local camPos = workspace.CurrentCamera.CFrame.Position
+        
+        for espType, objects in pairs(espObjects) do
+            local config = SevereLib.ESP.Config[espType] or SevereLib.ESP.Config.default
+            
+            if config.enabled then
+                for index, object in pairs(objects) do
+                    if not object.root or not object.root:IsDescendantOf(workspace) then
+                        -- Clean up if object no longer exists
+                        if object.text then object.text:Remove() end
+                        if object.circle then object.circle:Remove() end
+                        if object.tracer then object.tracer:Remove() end
+                        objects[index] = nil
+                    else
+                        updateEspObject(object, camPos, config.maxDistance, config.drawDistance)
+                    end
+                end
+            else
+                -- Hide all objects of this type if disabled
+                for _, object in pairs(objects) do
+                    if object.text then object.text.Visible = false end
+                    if object.circle then object.circle.Visible = false end
+                    if object.tracer then object.tracer.Visible = false end
+                end
+            end
+        end
+        
+        wait(1/60) -- Update at 60fps
+    end
+    
+    -- Clean up all drawings when stopped
+    for _, objects in pairs(espObjects) do
+        for _, object in pairs(objects) do
+            if object.text then object.text:Remove() end
+            if object.circle then object.circle:Remove() end
+            if object.tracer then object.tracer:Remove() end
+        end
+    end
+end
+
+-- Default ESP configuration
+SevereLib.ESP.Config = {
+    default = {
+        enabled = true,
+        maxDistance = 1000,
+        drawDistance = true,
+        color = {255, 255, 255},
+        radius = 5,
+        showTracer = false
+    },
+    players = {
+        enabled = true,
+        maxDistance = 1000,
+        drawDistance = true,
+        color = {255, 0, 0},
+        radius = 5,
+        showTracer = true,
+        showTeam = false
+    },
+    items = {
+        enabled = true,
+        maxDistance = 400,
+        drawDistance = true,
+        color = {235, 237, 143},
+        radius = 5,
+        showTracer = false
+    },
+    entities = {
+        enabled = true,
+        maxDistance = 500,
+        drawDistance = true,
+        color = {0, 255, 0},
+        radius = 5,
+        showTracer = false
+    },
+    custom = {
+        enabled = true,
+        maxDistance = 1000,
+        drawDistance = true,
+        color = {0, 255, 255},
+        radius = 5,
+        showTracer = false
+    }
+}
+
+-- BoxESP - Create an ESP box, name, tracer for target
+function SevereLib.ESP:BoxESP(options)
+    if not options or not options.Target then
+        SevereLib.Console:Error("BoxESP requires a Target parameter")
+        return nil
+    end
+    
+    local target = options.Target
+    local espType = options.Type or "custom"
+    local config = SevereLib.ESP.Config[espType] or SevereLib.ESP.Config.default
+    
+    -- Get target root part
+    local rootPart
+    if target:IsA("Model") then
+        rootPart = target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("PrimaryPart")
+        
+        if not rootPart then
+            for _, child in ipairs(target:GetChildren()) do
+                if child:IsA("BasePart") then
+                    rootPart = child
+                    break
+                end
+            end
+        end
+    elseif target:IsA("BasePart") then
+        rootPart = target
+    end
+    
+    if not rootPart then
+        SevereLib.Console:Error("BoxESP target must have a valid part")
+        return nil
+    end
+    
+    -- Set up color
+    local color = options.Color or config.color
+    if type(color) == "table" and #color >= 3 then
+        color = Color3.fromRGB(color[1], color[2], color[3])
+    end
+    
+    -- Create ESP elements
+    local elements = createEspElements(
+        color, 
+        options.Radius or config.radius,
+        options.Tracer or config.showTracer
+    )
+    
+    -- Build ESP object
+    local espObject = {
+        root = rootPart,
+        name = options.Name or target.Name,
+        text = elements.text,
+        circle = elements.circle,
+        tracer = elements.tracer,
+        custom_color = color
     }
     
-    EspObjects[player] = espData
+    -- Add to appropriate collection
+    table.insert(espObjects[espType], espObject)
+    
+    return espObject
 end
 
-local function RemoveESPForPlayer(player)
-    local espData = EspObjects[player]
-    if not espData then return end
-    
-    RemoveDrawingObject(espData.Box)
-    RemoveDrawingObject(espData.Name)
-    RemoveDrawingObject(espData.Distance)
-    RemoveDrawingObject(espData.Tracer)
-    RemoveDrawingObject(espData.HealthBar)
-    RemoveDrawingObject(espData.HealthBarOutline)
-    
-    RemoveDrawingObject(espData.Corners.TopLeft)
-    RemoveDrawingObject(espData.Corners.TopRight)
-    RemoveDrawingObject(espData.Corners.BottomLeft)
-    RemoveDrawingObject(espData.Corners.BottomRight)
-    
-    EspObjects[player] = nil
-end
-
-local function UpdateESP()
-    if not SevereLib.Config.ESP.Enabled then
-        for player, espData in pairs(EspObjects) do
-            espData.Box.Visible = false
-            espData.Name.Visible = false
-            espData.Distance.Visible = false
-            espData.Tracer.Visible = false
-            espData.HealthBar.Visible = false
-            espData.HealthBarOutline.Visible = false
-            
-            espData.Corners.TopLeft.Visible = false
-            espData.Corners.TopRight.Visible = false
-            espData.Corners.BottomLeft.Visible = false
-            espData.Corners.BottomRight.Visible = false
-        end
-        return
-    end
-
-    local cameraPos = SafeGetPosition(Camera)
-    local viewportSize = Camera.ViewportSize
-    
-    for player, espData in pairs(EspObjects) do
-        if not IsValidInstance(player) then
-            RemoveESPForPlayer(player)
-            continue
-        end
-        
-        -- Get character and check validity
-        local character = player.Character
-        espData.Character = character
-        
-        if not IsValidCharacter(character) or not IsPlayerAlive(player) then
-            espData.Box.Visible = false
-            espData.Name.Visible = false
-            espData.Distance.Visible = false
-            espData.Tracer.Visible = false
-            espData.HealthBar.Visible = false
-            espData.HealthBarOutline.Visible = false
-            
-            espData.Corners.TopLeft.Visible = false
-            espData.Corners.TopRight.Visible = false
-            espData.Corners.BottomLeft.Visible = false
-            espData.Corners.BottomRight.Visible = false
-            
-            continue
-        end
-        
-        -- Check if the player is on the same team as the local player
-        local teamCheck = true
-        if SevereLib.Config.ESP.TeamCheck and IsValidInstance(LocalPlayer) then
-            local playerTeam = player.Team
-            local localTeam = LocalPlayer.Team
-            
-            if IsValidTeam(playerTeam) and IsValidTeam(localTeam) and playerTeam == localTeam then
-                teamCheck = false
-            end
-        end
-        
-        if not teamCheck and player ~= LocalPlayer then
-            espData.Box.Visible = false
-            espData.Name.Visible = false
-            espData.Distance.Visible = false
-            espData.Tracer.Visible = false
-            espData.HealthBar.Visible = false
-            espData.HealthBarOutline.Visible = false
-            
-            espData.Corners.TopLeft.Visible = false
-            espData.Corners.TopRight.Visible = false
-            espData.Corners.BottomLeft.Visible = false
-            espData.Corners.BottomRight.Visible = false
-            
-            continue
-        end
-        
-        -- Ignore local player for ESP
-        if player == LocalPlayer then
-            espData.Box.Visible = false
-            espData.Name.Visible = false
-            espData.Distance.Visible = false
-            espData.Tracer.Visible = false
-            espData.HealthBar.Visible = false
-            espData.HealthBarOutline.Visible = false
-            
-            espData.Corners.TopLeft.Visible = false
-            espData.Corners.TopRight.Visible = false
-            espData.Corners.BottomLeft.Visible = false
-            espData.Corners.BottomRight.Visible = false
-            
-            continue
-        end
-        
-        -- Get positions for box calculation
-        local rootPart = SafeFindFirstChild(character, "HumanoidRootPart")
-        local head = SafeFindFirstChild(character, "Head")
-        
-        if not IsValidInstance(rootPart) or not IsValidInstance(head) then
-            continue
-        end
-        
-        local rootPos = SafeGetPosition(rootPart)
-        local distance = (rootPos - cameraPos).Magnitude
-        
-        -- Check if the player is within the distance limit
-        if distance > SevereLib.Config.ESP.MaxDistance then
-            espData.Box.Visible = false
-            espData.Name.Visible = false
-            espData.Distance.Visible = false
-            espData.Tracer.Visible = false
-            espData.HealthBar.Visible = false
-            espData.HealthBarOutline.Visible = false
-            
-            espData.Corners.TopLeft.Visible = false
-            espData.Corners.TopRight.Visible = false
-            espData.Corners.BottomLeft.Visible = false
-            espData.Corners.BottomRight.Visible = false
-            
-            continue
-        end
-        
-        -- Calculate 3D positions for the box
-        local topPos = rootPos + Vector3.new(0, 3, 0)
-        local bottomPos = rootPos - Vector3.new(0, 3, 0)
-        
-        -- Convert 3D positions to screen positions
-        local topScreen, topOnScreen = SafeWorldToScreenPoint(topPos)
-        local bottomScreen, bottomOnScreen = SafeWorldToScreenPoint(bottomPos)
-        
-        -- Check if the player is on screen
-        if not (topOnScreen or bottomOnScreen) then
-            espData.Box.Visible = false
-            espData.Name.Visible = false
-            espData.Distance.Visible = false
-            espData.Tracer.Visible = false
-            espData.HealthBar.Visible = false
-            espData.HealthBarOutline.Visible = false
-            
-            espData.Corners.TopLeft.Visible = false
-            espData.Corners.TopRight.Visible = false
-            espData.Corners.BottomLeft.Visible = false
-            espData.Corners.BottomRight.Visible = false
-            
-            continue
-        end
-        
-        -- Calculate box dimensions
-        local height = math.abs(topScreen.Y - bottomScreen.Y)
-        local width = height * 0.6
-        local boxX = topScreen.X - width / 2
-        local boxY = topScreen.Y
-        
-        -- Update box
-        if SevereLib.Config.ESP.BoxEnabled then
-            if SevereLib.Config.ESP.BoxType == "2D" then
-                espData.Box.Visible = true
-                espData.Box.Size = Vector2.new(width, height)
-                espData.Box.Position = Vector2.new(boxX, boxY)
-                
-                espData.Corners.TopLeft.Visible = false
-                espData.Corners.TopRight.Visible = false
-                espData.Corners.BottomLeft.Visible = false
-                espData.Corners.BottomRight.Visible = false
-            elseif SevereLib.Config.ESP.BoxType == "Corners" then
-                espData.Box.Visible = false
-                
-                -- Corner calculations
-                local cornerSize = math.min(width, height) * 0.2
-                
-                -- Top left corner
-                espData.Corners.TopLeft.Visible = true
-                espData.Corners.TopLeft.From = Vector2.new(boxX, boxY)
-                espData.Corners.TopLeft.To = Vector2.new(boxX + cornerSize, boxY)
-                
-                -- Top right corner
-                espData.Corners.TopRight.Visible = true
-                espData.Corners.TopRight.From = Vector2.new(boxX + width, boxY)
-                espData.Corners.TopRight.To = Vector2.new(boxX + width - cornerSize, boxY)
-                
-                -- Bottom left corner
-                espData.Corners.BottomLeft.Visible = true
-                espData.Corners.BottomLeft.From = Vector2.new(boxX, boxY + height)
-                espData.Corners.BottomLeft.To = Vector2.new(boxX + cornerSize, boxY + height)
-                
-                -- Bottom right corner
-                espData.Corners.BottomRight.Visible = true
-                espData.Corners.BottomRight.From = Vector2.new(boxX + width, boxY + height)
-                espData.Corners.BottomRight.To = Vector2.new(boxX + width - cornerSize, boxY + height)
-            else
-                espData.Box.Visible = false
-                
-                espData.Corners.TopLeft.Visible = false
-                espData.Corners.TopRight.Visible = false
-                espData.Corners.BottomLeft.Visible = false
-                espData.Corners.BottomRight.Visible = false
-            end
-        else
-            espData.Box.Visible = false
-            
-            espData.Corners.TopLeft.Visible = false
-            espData.Corners.TopRight.Visible = false
-            espData.Corners.BottomLeft.Visible = false
-            espData.Corners.BottomRight.Visible = false
-        end
-        
-        -- Update name
-        if SevereLib.Config.ESP.ShowName then
-            espData.Name.Visible = true
-            espData.Name.Text = player.Name
-            espData.Name.Position = Vector2.new(boxX + width / 2, boxY - 20)
-            
-            -- Set color based on team
-            local nameColor = Color3.fromRGB(255, 255, 255)
-            if IsValidTeam(player.Team) then
-                nameColor = player.TeamColor.Color
-            end
-            
-            espData.Name.Color = nameColor
-        else
-            espData.Name.Visible = false
-        end
-        
-        -- Update distance
-        if SevereLib.Config.ESP.ShowDistance then
-            espData.Distance.Visible = true
-            espData.Distance.Text = math.floor(distance) .. "m"
-            espData.Distance.Position = Vector2.new(boxX + width / 2, boxY + height + 5)
-        else
-            espData.Distance.Visible = false
-        end
-        
-        -- Update tracer
-        if SevereLib.Config.ESP.TracerEnabled then
-            espData.Tracer.Visible = true
-            
-            local tracerOrigin = Vector2.new(viewportSize.X / 2, viewportSize.Y)
-            if SevereLib.Config.ESP.TracerOrigin == "Center" then
-                tracerOrigin = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
-            elseif SevereLib.Config.ESP.TracerOrigin == "Mouse" then
-                tracerOrigin = UserInputService:GetMouseLocation()
-            end
-            
-            espData.Tracer.From = tracerOrigin
-            espData.Tracer.To = Vector2.new(boxX + width / 2, boxY + height)
-        else
-            espData.Tracer.Visible = false
-        end
-        
-        -- Update health bar
-        if SevereLib.Config.ESP.ShowHealth then
-            local humanoid = SafeGetHumanoid(character)
-            if humanoid then
-                local health, maxHealth = SafeGetHealth(humanoid)
-                local healthPercent = math.clamp(health / maxHealth, 0, 1)
-                
-                espData.HealthBar.Visible = true
-                espData.HealthBarOutline.Visible = true
-                
-                local barWidth = 4
-                local barHeight = height
-                local barX = boxX - barWidth * 2
-                
-                espData.HealthBarOutline.Size = Vector2.new(barWidth, barHeight)
-                espData.HealthBarOutline.Position = Vector2.new(barX, boxY)
-                
-                espData.HealthBar.Size = Vector2.new(barWidth, barHeight * healthPercent)
-                espData.HealthBar.Position = Vector2.new(barX, boxY + barHeight * (1 - healthPercent))
-                
-                -- Set color based on health
-                local r = math.floor(255 * (1 - healthPercent))
-                local g = math.floor(255 * healthPercent)
-                espData.HealthBar.Color = Color3.fromRGB(r, g, 0)
-            else
-                espData.HealthBar.Visible = false
-                espData.HealthBarOutline.Visible = false
-            end
-        else
-            espData.HealthBar.Visible = false
-            espData.HealthBarOutline.Visible = false
-        end
-        
-        espData.LastUpdate = os.clock()
-    end
-end
-
--- Initialization functions
-local function InitializeServices()
-    Services.RunService = SafeGetService("RunService")
-    Services.UserInputService = SafeGetService("UserInputService")
-    Services.Players = SafeGetService("Players")
-    Services.Workspace = SafeGetService("Workspace")
-    
-    -- Store references to commonly used services
-    RunService = Services.RunService
-    UserInputService = Services.UserInputService
-    Players = Services.Players
-    Workspace = Services.Workspace
-    
-    -- Initialize camera and local player
-    Camera = Workspace.CurrentCamera
-    LocalPlayer = Players.LocalPlayer
-    
-    if not Camera then
-        LogError("Failed to get camera")
+-- Initialize a 2D box ESP (corners only)
+function SevereLib.ESP:Box2D(options)
+    if not options or not options.Target then
+        SevereLib.Console:Error("Box2D requires a Target parameter")
+        return nil
     end
     
-    if not LocalPlayer then
-        LogError("Failed to get local player")
-    end
-end
-
-local function SetupConnections()
-    -- Player connections
-    Players.PlayerAdded:Connect(function(player)
-        CreateESPForPlayer(player)
-    end)
+    -- Box2D implementation would go here
+    -- Similar to BoxESP but with different visual style
+    -- Using Corner points instead of a full box
     
-    Players.PlayerRemoving:Connect(function(player)
-        RemoveESPForPlayer(player)
-    end)
-    
-    -- Camera connection
-    if Workspace then
-        Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
-            Camera = Workspace.CurrentCamera
-        end)
-    end
-    
-    -- Initialize ESP for all players
-    for _, player in ipairs(Players:GetPlayers()) do
-        CreateESPForPlayer(player)
-    end
-    
-    -- Main update loop
-    RunService.RenderStepped:Connect(function(deltaTime)
-        -- Update FPS counter
-        DebugInfo.FrameCount = DebugInfo.FrameCount + 1
-        
-        local currentTime = os.clock()
-        if currentTime - DebugInfo.LastFPSUpdate >= 1 then
-            DebugInfo.LastFPS = DebugInfo.FrameCount
-            DebugInfo.FrameCount = 0
-            DebugInfo.LastFPSUpdate = currentTime
-        end
-        
-        -- Update ESP
-        UpdateESP()
-        
-        -- Update Aimbot
-        -- UpdateAimbot() -- Not implemented yet
-    end)
-end
-
--- Public API functions
-function SevereLib.Initialize()
-    LogInfo("Initializing SevereLib...")
-    
-    -- Initialize services and connections
-    InitializeServices()
-    SetupConnections()
-    
-    -- Create Aimbot FOV circle
-    AimbotData.FOVCircle = CreateDrawingObject("Circle", {
-        Visible = SevereLib.Config.Aimbot.ShowFOV,
-        Color = Color3.fromRGB(unpack(SevereLib.Config.Aimbot.FOVColor)),
-        Thickness = SevereLib.Config.Aimbot.FOVThickness,
-        NumSides = 36,
-        Radius = SevereLib.Config.Aimbot.FOV,
-        Filled = false,
-        Transparency = 1
+    return SevereLib.ESP:BoxESP({
+        Target = options.Target,
+        Type = options.Type or "custom",
+        Color = options.Color,
+        Name = options.Name,
+        BoxType = 2 -- 2D box style
     })
+end
+
+-- Initialize a 3D box ESP
+function SevereLib.ESP:Box3D(options)
+    if not options or not options.Target then
+        SevereLib.Console:Error("Box3D requires a Target parameter")
+        return nil
+    end
     
-    LogInfo("SevereLib initialized successfully!")
+    -- Box3D implementation would go here
+    -- Similar to BoxESP but with 3D box rendering
+    
+    return SevereLib.ESP:BoxESP({
+        Target = options.Target,
+        Type = options.Type or "custom",
+        Color = options.Color,
+        Name = options.Name,
+        BoxType = 3 -- 3D box style
+    })
+end
+
+-- Add health bar to ESP object
+function SevereLib.ESP:HealthBar(espObject, humanoid)
+    if not espObject or not humanoid then
+        SevereLib.Console:Error("HealthBar requires both espObject and humanoid")
+        return false
+    end
+    
+    -- HealthBar implementation would go here
+    -- Add health bar visual elements to existing espObject
+    
     return true
 end
 
-function SevereLib.Uninitialize()
-    LogInfo("Uninitializing SevereLib...")
-    
-    -- Remove all ESP objects
-    for player, _ in pairs(EspObjects) do
-        RemoveESPForPlayer(player)
+-- Start the ESP system
+function SevereLib.ESP:Start()
+    if stop then
+        stop = false
+        spawn(updateEsp)
+        SevereLib.Console:Print("ESP system started")
     end
-    
-    -- Remove aimbot objects
-    if AimbotData.FOVCircle then
-        RemoveDrawingObject(AimbotData.FOVCircle)
-    end
-    
-    LogInfo("SevereLib uninitialized successfully!")
-    
-    -- Clear references
-    EspObjects = {}
-    AimbotData = {
-        Target = nil,
-        FOVCircle = nil,
-    }
-    
     return true
 end
 
-function SevereLib.ToggleESP(enabled)
-    if enabled ~= nil then
-        SevereLib.Config.ESP.Enabled = enabled
-    else
-        SevereLib.Config.ESP.Enabled = not SevereLib.Config.ESP.Enabled
-    end
+-- Stop the ESP system and clean up
+function SevereLib.ESP:Stop()
+    stop = true
+    SevereLib.Console:Print("ESP system stopped")
+    return true
+end
+
+-- Utility function to add players to ESP
+function SevereLib.ESP:AddAllPlayers(options)
+    options = options or {}
+    local players = game:GetService("Players"):GetPlayers()
     
-    return SevereLib.Config.ESP.Enabled
-end
-
-function SevereLib.ToggleAimbot(enabled)
-    if enabled ~= nil then
-        SevereLib.Config.Aimbot.Enabled = enabled
-    else
-        SevereLib.Config.Aimbot.Enabled = not SevereLib.Config.Aimbot.Enabled
-    end
-    
-    return SevereLib.Config.Aimbot.Enabled
-end
-
-function SevereLib.GetDebugInfo()
-    return {
-        FPS = DebugInfo.LastFPS,
-        RunTime = os.time() - DebugInfo.StartTime,
-        ErrorCount = DebugInfo.ErrorCount,
-        WarningCount = DebugInfo.WarningCount,
-        ESPObjectCount = #EspObjects,
-        ConfigSettings = SevereLib.Config
-    }
-end
-
-function SevereLib.IsValid(obj)
-    return IsValidInstance(obj)
-end
-
-function SevereLib.SafeGetPosition(obj)
-    return SafeGetPosition(obj)
-end
-
-function SevereLib.SafeGetChildren(parent)
-    return SafeGetChildren(parent)
-end
-
-function SevereLib.SafeFindFirstChild(parent, childName)
-    return SafeFindFirstChild(parent, childName)
-end
-
-function SevereLib.UpdateConfig(newConfig)
-    -- Deep merge the configs
-    for category, settings in pairs(newConfig) do
-        if SevereLib.Config[category] then
-            for setting, value in pairs(settings) do
-                SevereLib.Config[category][setting] = value
-            end
+    for _, player in ipairs(players) do
+        if player ~= localPlayer then
+            spawn(function()
+                local character = player.Character
+                if character then
+                    SevereLib.ESP:BoxESP({
+                        Target = character,
+                        Type = "players",
+                        Name = player.Name,
+                        Color = options.Color,
+                        Tracer = options.Tracer
+                    })
+                end
+            end)
         end
     end
+    
+    return true
 end
 
--- Return the library
-return SevereLib
+-- Utility function to add a custom object to ESP
+function SevereLib.ESP:AddCustomObject(object, name, color, type)
+    if not object then return nil end
+    
+    return SevereLib.ESP:BoxESP({
+        Target = object,
+        Type = type or "custom",
+        Name = name or object.Name,
+        Color = color
+    })
+end
+
+-- Create UI Elements
+SevereLib.UI = {}
+
+-- Create a new window
+function SevereLib.UI:Window(options)
+    options = options or {}
+    -- UI window implementation would go here
+    -- This would be a placeholder for a UI library implementation
+    SevereLib.Console:Print("Created UI Window: " .. (options.Title or "Untitled"))
+    return {}
+end
+
+-- Initialize the library
+function SevereLib:Init()
+    SevereLib.Console:Print("Severe Library initialized")
+    return self
+end
+
+-- Unload the library and clean up
+function SevereLib:Unload()
+    SevereLib.ESP:Stop()
+    stop = true
+    
+    -- Clean up ESP objects
+    for _, objects in pairs(espObjects) do
+        for _, object in pairs(objects) do
+            if object.text then object.text:Remove() end
+            if object.circle then object.circle:Remove() end
+            if object.tracer then object.tracer:Remove() end
+        end
+    end
+    
+    SevereLib.Console:Print("Severe Library unloaded")
+    return true
+end
+
+return SevereLib:Init()
