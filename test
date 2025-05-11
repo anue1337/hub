@@ -1,306 +1,632 @@
-local sgl_loader_url = "https://raw.githubusercontent.com/anue1337/hub/refs/heads/main/test"
-local success_get, script_content = pcall(game.HttpGet, game, sgl_loader_url)
+--[[ 
+    Severe Addon Library
+    A performant utility library for Severe Lua API
+    
+    Features:
+    - Optimized drawing functions
+    - Game object helpers
+    - Distance/position utilities
+    - Player utilities
+    - Improved error handling
+]]
 
-if success_get and script_content then
-    local success_load, sgl_main_func = pcall(loadstring, script_content)
-    if success_load and type(sgl_main_func) == "function" then
-        local success_run, result = pcall(sgl_main_func)
-        if success_run then
-            print("SGL Addon loaded successfully.")
-            -- _G.sgl should now be available
-        else
-            warn("SGL Addon: Error during execution: ", result)
-        end
-    else
-        warn("SGL Addon: Failed to loadstring script: ", sgl_main_func)
-    end
-else
-    warn("SGL Addon: Failed to HttpGet script from URL: ", script_content)
-end
-
--- SGL Demo UI using kingbob's UI Library
--- IMPORTANT: Ensure severe_addon_lib.lua (populating _G.sgl) is loaded BEFORE this script.
-
-if not _G.sgl or not _G.sgl.print then
-    warn("SGL (_G.sgl) not found or incomplete. Please load severe_addon_lib.lua first.")
-    return
-end
-
-local sgl = _G.sgl
-
--- Load Kingbob's UI Library
-local kingbob_ui_lib_url = "https://raw.githubusercontent.com/DCHARLESAKAMRGREEN/Severe-Luas/refs/heads/main/Severe%20UI%20Library.lua"
-local success, Library = pcall(function()
-    return loadstring(game:HttpGet(kingbob_ui_lib_url))()
-end)
-
-if not success or not Library then
-    sgl.error("[SGL Demo] Failed to load Kingbob\'s UI Library from: " .. kingbob_ui_lib_url)
-    sgl.error("[SGL Demo] Error: ", Library) -- Library here would be the error message
-    return
-end
-
-sgl.print("[SGL Demo] Kingbob UI Library loaded.")
-
--- Demo Configuration Table
-local demo_config = {
-    rainbow_enabled = true,
-    esp = {
-        enabled = true,
-        healthbar = true,
-        nametag = true,
-        distance = true,
-        tracer = true,
-        box_type_str = "Corners", -- "Corners", "2D Box", "3D Box"
-        tracer_type_str = "Near Bottom", -- "Near Bottom", "Bottom", "Top", "Mouse"
-        color = {255, 255, 255} -- Default ESP color if rainbow is off
+-- Initialize our library
+local SevereLib = {
+    -- Core settings
+    Settings = {
+        DefaultColor = {255, 255, 255},
+        DefaultThickness = 1,
+        DefaultRadius = 5,
+        DefaultTransparency = 1,
+        DefaultTextSize = 15,
+        DefaultFont = 0,
+        DefaultTracerOrigin = "bottom", -- bottom, top, center, mouse
+        BoxTypes = {
+            Corner = 1,
+            Box2D = 2,
+            Box3D = 3,
+            None = 4
+        }
     },
-    esp_keybind = "LeftAlt" -- Example keybind for ESP toggle (uses string names for keys, check Severe key names)
+    
+    -- Cache objects for performance
+    Cache = {
+        Players = {},
+        Parts = {},
+        Drawings = {},
+        Positions = {}
+    },
+    
+    -- Debug settings
+    Debug = {
+        Enabled = false,
+        LogLevel = 1, -- 1=errors, 2=warnings, 3=info, 4=verbose
+        AutoCleanup = true,
+        DrawingCount = 0
+    }
 }
 
-local box_type_map = {["Corners"] = 1, ["2D Box"] = 2, ["3D Box"] = 3}
-local tracer_type_map = {["Near Bottom"] = 1, ["Bottom"] = 2, ["Top"] = 3, ["Mouse"] = 4}
-
--- Create the UI Window
-local UI = Library:Create({
-    Name = "SGL Demo Controls"
-})
-
-if not UI then
-    sgl.error("[SGL Demo] Failed to create UI Window.")
-    return
+-- Utility functions
+function SevereLib.Log(level, message)
+    if not SevereLib.Debug.Enabled or level > SevereLib.Debug.LogLevel then return end
+    
+    local prefix = "SevereLib"
+    if level == 1 then
+        prefix = "SevereLib [ERROR]"
+    elseif level == 2 then
+        prefix = "SevereLib [WARN]"
+    elseif level == 3 then
+        prefix = "SevereLib [INFO]"
+    elseif level == 4 then
+        prefix = "SevereLib [DEBUG]"
+    end
+    
+    print(prefix .. ": " .. message)
 end
 
--- Tab: General
-local general_tab = UI:Tab({ Name = "General" })
-if general_tab then
-    local console_section = general_tab:Section({ Name = "SGL Console", Side = "Left" })
-    if console_section then
-        console_section:Toggle({
-            Name = "Console Visible",
-            Default = sgl.Open, -- Initial state from SGL
-            Tooltip = "Show or hide the SGL debug console",
-            Callback = function(state)
-                sgl.Open = state
-                sgl.print("[SGL Demo] Console visibility set to: " .. tostring(state))
-            end
-        })
-        console_section:Button({
-            Name = "Clear SGL Logs",
-            Tooltip = "Clears all messages from the SGL console",
-            Callback = function()
-                sgl.StoredLogs = {}
-                sgl.print("[SGL Demo] SGL console logs cleared.")
-            end
-        })
-        console_section:Button({
-            Name = "Print Test to SGL",
-            Tooltip = "Prints a test message to the SGL console",
-            Callback = function()
-                sgl.print("[SGL Test Message] Time: " .. tostring(tick()), {nested = {key = "value"}})
-            end
-        })
-    end
-
-    local rainbow_section = general_tab:Section({ Name = "Rainbow Effect", Side = "Right" })
-    if rainbow_section then
-        rainbow_section:Toggle({
-            Name = "Enable Rainbow Tick",
-            Default = demo_config.rainbow_enabled,
-            Tooltip = "Enable to make certain elements use sgl.CurrentRainbowColor",
-            Callback = function(state)
-                demo_config.rainbow_enabled = state
-                sgl.print("[SGL Demo] Rainbow tick set to: " .. tostring(state))
-            end
-        })
-        -- TODO: Display current rainbow color (e.g., as text or color patch if UI lib supports)
-    end
-else
-    sgl.error("[SGL Demo] Failed to create General tab.")
+-- Geometry and math helpers
+function SevereLib.CalculateDistance(pos1, pos2)
+    -- Calculate 3D distance between two positions
+    if not pos1 or not pos2 then return 0 end
+    
+    local dx = pos1.x - pos2.x
+    local dy = pos1.y - pos2.y
+    local dz = pos1.z - pos2.z
+    
+    return math.sqrt(dx * dx + dy * dy + dz * dz)
 end
 
--- Tab: ESP Settings
-local esp_tab = UI:Tab({ Name = "ESP Settings" })
-if esp_tab then
-    local esp_global_section = esp_tab:Section({ Name = "Global ESP", Side = "Left" })
-    if esp_global_section then
-        local esp_toggle = esp_global_section:Toggle({
-            Name = "Enable Player ESP",
-            Default = demo_config.esp.enabled,
-            Tooltip = "Master toggle for drawing ESP on players",
-            Callback = function(state)
-                demo_config.esp.enabled = state
-                sgl.print("[SGL Demo] Player ESP set to: " .. tostring(state))
-            end
-        })
-        if esp_toggle and esp_toggle.Keybind then -- Check if Keybind method exists
-            esp_toggle:Keybind({
-                Default = demo_config.esp_keybind, -- Key name as string (e.g., "LeftAlt", "F1")
-                Callback = function(key_state) -- state might be key name or true/false
-                    -- Kingbob UI keybind callback for toggles typically changes the toggle state directly.
-                    -- The toggle's main callback will then fire.
-                    -- If it provides state, you can use it: demo_config.esp.enabled = new_state_from_keybind
-                    sgl.print("[SGL Demo] ESP Toggle Keybind pressed. New state: " .. tostring(demo_config.esp.enabled))
-                end
-            })
-        else
-             sgl.print("[SGL Demo] ESP Toggle Keybind method not found on toggle object.")
-        end
-    end
-
-    local visuals_section = esp_tab:Section({ Name = "Visuals", Side = "Left" })
-    if visuals_section then
-        visuals_section:Toggle({ Name = "Healthbar", Default = demo_config.esp.healthbar, Tooltip = "Show health bar", Callback = function(s) demo_config.esp.healthbar = s end })
-        visuals_section:Toggle({ Name = "Nametag", Default = demo_config.esp.nametag, Tooltip = "Show player name", Callback = function(s) demo_config.esp.nametag = s end })
-        visuals_section:Toggle({ Name = "Distance", Default = demo_config.esp.distance, Tooltip = "Show distance to player", Callback = function(s) demo_config.esp.distance = s end })
-    end
-
-    local box_style_section = esp_tab:Section({ Name = "Box Style", Side = "Right" })
-    if box_style_section then
-        box_style_section:Dropdown({
-            Name = "Box Type",
-            Default = demo_config.esp.box_type_str,
-            Options = {"Corners", "2D Box", "3D Box"},
-            Tooltip = "Select the ESP box style",
-            Callback = function(selected)
-                demo_config.esp.box_type_str = selected
-                sgl.print("[SGL Demo] ESP Box Type set to: " .. selected)
-            end
-        })
-    end
-
-    local tracer_section = esp_tab:Section({ Name = "Tracer", Side = "Right" })
-    if tracer_section then
-        tracer_section:Toggle({ Name = "Tracer", Default = demo_config.esp.tracer, Tooltip = "Draw tracer line to players", Callback = function(s) demo_config.esp.tracer = s end })
-        tracer_section:Dropdown({
-            Name = "Tracer Type",
-            Default = demo_config.esp.tracer_type_str,
-            Options = {"Near Bottom", "Bottom", "Top", "Mouse"},
-            Tooltip = "Select tracer line origin",
-            Callback = function(selected)
-                demo_config.esp.tracer_type_str = selected
-                sgl.print("[SGL Demo] ESP Tracer Type set to: " .. selected)
-            end
-        })
-    end
-else
-    sgl.error("[SGL Demo] Failed to create ESP Settings tab.")
-end
-
--- Tab: Utilities
-local utils_tab = UI:Tab({ Name = "Utilities" })
-if utils_tab then
-    local info_section = utils_tab:Section({ Name = "Info Dump", Side = "Left" })
-    if info_section then
-        info_section:Button({ Name = "Log LocalPlayer Name", Tooltip = "Prints local player name to SGL console",
-            Callback = function() sgl.print("[SGL Demo] LocalPlayer Name: ", sgl.GetLocalPlayerName()) end
-        })
-        info_section:Button({ Name = "Log LP Character Descendants", Tooltip = "Prints LocalPlayer character descendants to SGL console",
-            Callback = function()
-                if LocalPlayerCharacter then 
-                    sgl.print("[SGL Demo] LP Character Descendants: ", sgl.GetDescendants(LocalPlayerCharacter))
-                else sgl.print("[SGL Demo] LocalPlayerCharacter not found.") end
-            end
-        })
-    end
-    local targeting_section = utils_tab:Section({ Name = "Targeting Utils", Side = "Right" })
-    if targeting_section then
-        targeting_section:Button({ Name = "Log Closest Part (Self)", Tooltip = "Finds and logs closest part on your own character",
-            Callback = function()
-                if LocalPlayerCharacter then
-                    local part = sgl.GetClosestPartToPlayer(LocalPlayerCharacter)
-                    sgl.print("[SGL Demo] Closest part on self: ", (part and getname(part) or "None"))
-                else sgl.print("[SGL Demo] LocalPlayerCharacter not found.") end
-            end
-        })
-    end
-else
-    sgl.error("[SGL Demo] Failed to create Utilities tab.")
-end
-
-sgl.print("[SGL Demo] UI Setup Complete.")
-
--- ESP Drawing Management
-local active_esp_drawings = {} -- Stores { player_name = {drawing_obj1, ...}, ... }
-
--- Main Update Loop
-local function on_update()
-    -- Update SGL core features
-    sgl.UpdateScreenDimensions()
-    if demo_config.rainbow_enabled then
-        sgl.RainbowTick()
-    end
-    sgl.ShowConsole() -- Render SGL's own console
-
-    -- Clear previous ESP drawings
-    for player_name_key, obj_list in pairs(active_esp_drawings) do
-        for _, obj in ipairs(obj_list) do
-            if obj and obj.Remove then -- Check if object exists and has Remove method
-                 pcall(obj.Remove, obj) -- Use pcall for safety with drawing objects
-            end
-        end
-    end
-    active_esp_drawings = {}
-
-    -- Player ESP Logic
-    if demo_config.esp.enabled and Players and LocalPlayer then
-        local esp_color_to_use = demo_config.rainbow_enabled and sgl.CurrentRainbowColor or demo_config.esp.color
-        local all_players = getchildren(Players)
-        if all_players then
-            for _, player_obj in ipairs(all_players) do
-                if player_obj ~= LocalPlayer then
-                    local char = getcharacter(player_obj)
-                    if char then
-                        local player_name = getname(player_obj) or tostring(player_obj) -- Fallback name
-                        local esp_params = {
-                            Target = char,
-                            Color = esp_color_to_use,
-                            Healthbar = demo_config.esp.healthbar,
-                            Nametag = demo_config.esp.nametag,
-                            Distance = demo_config.esp.distance,
-                            Tracer = demo_config.esp.tracer,
-                            BoxType = box_type_map[demo_config.esp.box_type_str] or 1,
-                            TracerType = tracer_type_map[demo_config.esp.tracer_type_str] or 1
-                        }
-                        local new_drawings = sgl.BoxESP(esp_params)
-                        if #new_drawings > 0 then
-                           active_esp_drawings[player_name] = new_drawings
-                        end
-                    end
-                end
-            end
-        end
-    end
-end
-
--- Run the update loop
--- Severe might have a RenderStepped or Heartbeat equivalent.
--- Using task.spawn with wait() for a generic loop.
-if spawn then
-    spawn(function()
-        sgl.print("[SGL Demo] Update loop started.")
-        while wait(0.016) do -- Aim for ~60 FPS update rate
-            local success_update, err_update = pcall(on_update)
-            if not success_update then
-                sgl.error("[SGL Demo] Error in on_update loop: ", err_update)
-                -- Potentially stop the loop or add a cooldown if it errors repeatedly
-                wait(1) -- Wait a bit longer if there was an error
-            end
-        end
+function SevereLib.WorldToScreen(position)
+    -- Convert 3D world position to 2D screen position
+    local success, screen_pos = pcall(function()
+        return worldtoscreenpoint({position.x, position.y, position.z})
     end)
-else
-    sgl.error("[SGL Demo] spawn not available. Cannot start update loop.")
+    
+    if success and screen_pos then
+        return {x = screen_pos.x, y = screen_pos.y}, true
+    else
+        return {x = 0, y = 0}, false
+    end
 end
 
--- Optional: Function to unload the UI if script is stopped or re-run
--- function OnScriptClose() -- if Severe has such a callback
---    if UI and UI.Unload then UI:Unload() end
---    sgl.print("[SGL Demo] UI Unloaded.")
---    -- Also clear any persistent drawings if not handled by UI:Unload
---    for player_name_key, obj_list in pairs(active_esp_drawings) do
---        for _, obj in ipairs(obj_list) do sgl.internal_RemoveDrawing(obj) end
---    end
---    active_esp_drawings = {}
--- end
+function SevereLib.GetScreenSize()
+    local dimensions = getscreendimensions()
+    return {x = dimensions.x, y = dimensions.y}
+end
 
-sgl.print("[SGL Demo] Demo script initialized. UI should be visible.") 
+function SevereLib.IsOnScreen(position)
+    local _, isVisible = SevereLib.WorldToScreen(position)
+    return isVisible
+end
+
+-- Drawing object management
+function SevereLib.CreateDrawing(drawType, properties)
+    if not drawType then return nil end
+    
+    local obj = Drawing.new(drawType)
+    SevereLib.Debug.DrawingCount = SevereLib.Debug.DrawingCount + 1
+    
+    if properties then
+        for prop, value in pairs(properties) do
+            obj[prop] = value
+        end
+    end
+    
+    table.insert(SevereLib.Cache.Drawings, obj)
+    return obj
+end
+
+function SevereLib.RemoveDrawing(obj)
+    if not obj then return end
+    
+    for i, drawing in pairs(SevereLib.Cache.Drawings) do
+        if drawing == obj then
+            pcall(function() drawing:Remove() end)
+            table.remove(SevereLib.Cache.Drawings, i)
+            SevereLib.Debug.DrawingCount = SevereLib.Debug.DrawingCount - 1
+            return
+        end
+    end
+end
+
+function SevereLib.ClearAllDrawings()
+    for _, drawing in pairs(SevereLib.Cache.Drawings) do
+        pcall(function() drawing:Remove() end)
+    end
+    
+    SevereLib.Cache.Drawings = {}
+    SevereLib.Debug.DrawingCount = 0
+    
+    -- Call Drawing.clear() as a backup to ensure all drawings are removed
+    pcall(function() Drawing.clear() end)
+end
+
+-- Player and character utilities
+function SevereLib.GetLocalPlayer()
+    return getlocalplayer()
+end
+
+function SevereLib.GetLocalCharacter()
+    local player = SevereLib.GetLocalPlayer()
+    if not player then return nil end
+    
+    local char = nil
+    pcall(function()
+        char = getcharacter(player)
+    end)
+    
+    return char
+end
+
+function SevereLib.GetLocalPosition()
+    local char = SevereLib.GetLocalCharacter()
+    if not char then return nil end
+    
+    local humanoidRootPart = nil
+    pcall(function()
+        humanoidRootPart = findfirstchild(char, "HumanoidRootPart")
+    end)
+    
+    if humanoidRootPart then
+        return getposition(humanoidRootPart)
+    end
+    
+    return nil
+end
+
+function SevereLib.GetHumanoidHealth(humanoid)
+    if not humanoid then return 0, 0 end
+    
+    local health, maxHealth = 0, 0
+    pcall(function()
+        health = gethealth(humanoid)
+        maxHealth = getmaxhealth(humanoid)
+    end)
+    
+    return health, maxHealth
+end
+
+-- ESP Drawing Functions
+function SevereLib.DrawBox2D(position, size, color, thickness)
+    -- Draw a 2D box at the given position with the given size
+    local screen_pos, visible = SevereLib.WorldToScreen(position)
+    if not visible then return nil end
+    
+    color = color or SevereLib.Settings.DefaultColor
+    thickness = thickness or SevereLib.Settings.DefaultThickness
+    
+    local half_width = size.x / 2
+    local half_height = size.y / 2
+    
+    local box = SevereLib.CreateDrawing("Square", {
+        Size = {size.x, size.y},
+        Position = {screen_pos.x - half_width, screen_pos.y - half_height},
+        Color = color,
+        Thickness = thickness,
+        Filled = false,
+        Transparency = 1,
+        Visible = true
+    })
+    
+    return box
+end
+
+function SevereLib.DrawCornerBox(position, size, color, thickness)
+    -- Draw a corner box at the given position with the given size
+    local screen_pos, visible = SevereLib.WorldToScreen(position)
+    if not visible then return nil end
+    
+    color = color or SevereLib.Settings.DefaultColor
+    thickness = thickness or SevereLib.Settings.DefaultThickness
+    
+    local half_width = size.x / 2
+    local half_height = size.y / 2
+    local corner_size = math.min(size.x, size.y) / 4
+    
+    local lines = {}
+    
+    -- Top left
+    table.insert(lines, SevereLib.CreateDrawing("Line", {
+        From = {screen_pos.x - half_width, screen_pos.y - half_height},
+        To = {screen_pos.x - half_width + corner_size, screen_pos.y - half_height},
+        Color = color,
+        Thickness = thickness,
+        Transparency = 1,
+        Visible = true
+    }))
+    
+    table.insert(lines, SevereLib.CreateDrawing("Line", {
+        From = {screen_pos.x - half_width, screen_pos.y - half_height},
+        To = {screen_pos.x - half_width, screen_pos.y - half_height + corner_size},
+        Color = color,
+        Thickness = thickness,
+        Transparency = 1,
+        Visible = true
+    }))
+    
+    -- Top right
+    table.insert(lines, SevereLib.CreateDrawing("Line", {
+        From = {screen_pos.x + half_width, screen_pos.y - half_height},
+        To = {screen_pos.x + half_width - corner_size, screen_pos.y - half_height},
+        Color = color,
+        Thickness = thickness,
+        Transparency = 1,
+        Visible = true
+    }))
+    
+    table.insert(lines, SevereLib.CreateDrawing("Line", {
+        From = {screen_pos.x + half_width, screen_pos.y - half_height},
+        To = {screen_pos.x + half_width, screen_pos.y - half_height + corner_size},
+        Color = color,
+        Thickness = thickness,
+        Transparency = 1,
+        Visible = true
+    }))
+    
+    -- Bottom left
+    table.insert(lines, SevereLib.CreateDrawing("Line", {
+        From = {screen_pos.x - half_width, screen_pos.y + half_height},
+        To = {screen_pos.x - half_width + corner_size, screen_pos.y + half_height},
+        Color = color,
+        Thickness = thickness,
+        Transparency = 1,
+        Visible = true
+    }))
+    
+    table.insert(lines, SevereLib.CreateDrawing("Line", {
+        From = {screen_pos.x - half_width, screen_pos.y + half_height},
+        To = {screen_pos.x - half_width, screen_pos.y + half_height - corner_size},
+        Color = color,
+        Thickness = thickness,
+        Transparency = 1,
+        Visible = true
+    }))
+    
+    -- Bottom right
+    table.insert(lines, SevereLib.CreateDrawing("Line", {
+        From = {screen_pos.x + half_width, screen_pos.y + half_height},
+        To = {screen_pos.x + half_width - corner_size, screen_pos.y + half_height},
+        Color = color,
+        Thickness = thickness,
+        Transparency = 1,
+        Visible = true
+    }))
+    
+    table.insert(lines, SevereLib.CreateDrawing("Line", {
+        From = {screen_pos.x + half_width, screen_pos.y + half_height},
+        To = {screen_pos.x + half_width, screen_pos.y + half_height - corner_size},
+        Color = color,
+        Thickness = thickness,
+        Transparency = 1,
+        Visible = true
+    }))
+    
+    return lines
+end
+
+function SevereLib.DrawBox3D(min, max, color, thickness)
+    -- Draw a 3D box from min to max coordinates
+    color = color or SevereLib.Settings.DefaultColor
+    thickness = thickness or SevereLib.Settings.DefaultThickness
+    
+    local corners = {
+        {min.x, min.y, min.z}, -- Bottom near left (1)
+        {max.x, min.y, min.z}, -- Bottom near right (2)
+        {max.x, min.y, max.z}, -- Bottom far right (3)
+        {min.x, min.y, max.z}, -- Bottom far left (4)
+        {min.x, max.y, min.z}, -- Top near left (5)
+        {max.x, max.y, min.z}, -- Top near right (6)
+        {max.x, max.y, max.z}, -- Top far right (7)
+        {min.x, max.y, max.z}  -- Top far left (8)
+    }
+    
+    local edges = {
+        {1, 2}, {2, 3}, {3, 4}, {4, 1}, -- Bottom edges
+        {5, 6}, {6, 7}, {7, 8}, {8, 5}, -- Top edges
+        {1, 5}, {2, 6}, {3, 7}, {4, 8}  -- Vertical edges
+    }
+    
+    local screen_corners = {}
+    local visible_count = 0
+    
+    -- Convert corners to screen positions
+    for i, corner in ipairs(corners) do
+        local screen_pos, visible = SevereLib.WorldToScreen({x = corner[1], y = corner[2], z = corner[3]})
+        screen_corners[i] = {screen_pos, visible}
+        if visible then
+            visible_count = visible_count + 1
+        end
+    end
+    
+    -- Only draw if at least some corners are visible
+    if visible_count < 2 then return nil end
+    
+    local lines = {}
+    
+    -- Draw edges
+    for _, edge in ipairs(edges) do
+        local corner1 = screen_corners[edge[1]]
+        local corner2 = screen_corners[edge[2]]
+        
+        -- Only draw if both corners are visible
+        if corner1[2] and corner2[2] then
+            table.insert(lines, SevereLib.CreateDrawing("Line", {
+                From = {corner1[1].x, corner1[1].y},
+                To = {corner2[1].x, corner2[1].y},
+                Color = color,
+                Thickness = thickness,
+                Transparency = 1,
+                Visible = true
+            }))
+        end
+    end
+    
+    return lines
+end
+
+function SevereLib.DrawHealthBar(position, health, maxHealth, size, offset)
+    -- Draw a health bar next to an ESP box
+    local screen_pos, visible = SevereLib.WorldToScreen(position)
+    if not visible then return nil end
+    
+    size = size or {5, 50}
+    offset = offset or {-8, 0}
+    
+    -- Calculate health percentage
+    local healthPercentage = math.clamp(health / maxHealth, 0, 1)
+    
+    -- Draw background
+    local background = SevereLib.CreateDrawing("Square", {
+        Position = {screen_pos.x + offset[1], screen_pos.y + offset[2] - size[2]/2},
+        Size = {size[1], size[2]},
+        Color = {0, 0, 0},
+        Filled = true,
+        Transparency = 1,
+        Visible = true
+    })
+    
+    -- Draw health fill
+    local fill = SevereLib.CreateDrawing("Square", {
+        Position = {screen_pos.x + offset[1], screen_pos.y + offset[2] - size[2]/2 + (size[2] * (1 - healthPercentage))},
+        Size = {size[1], size[2] * healthPercentage},
+        Color = {255 - 255 * healthPercentage, 255 * healthPercentage, 0},
+        Filled = true,
+        Transparency = 1,
+        Visible = true
+    })
+    
+    return {background, fill}
+end
+
+function SevereLib.DrawTracer(position, origin, color, thickness)
+    -- Draw a tracer line from origin to position
+    local screen_pos, visible = SevereLib.WorldToScreen(position)
+    if not visible then return nil end
+    
+    color = color or SevereLib.Settings.DefaultColor
+    thickness = thickness or SevereLib.Settings.DefaultThickness
+    
+    local screen_size = SevereLib.GetScreenSize()
+    local from_x, from_y
+    
+    if origin == "bottom" or origin == nil then
+        from_x = screen_size.x / 2
+        from_y = screen_size.y
+    elseif origin == "top" then
+        from_x = screen_size.x / 2
+        from_y = 0
+    elseif origin == "center" then
+        from_x = screen_size.x / 2
+        from_y = screen_size.y / 2
+    elseif origin == "mouse" then
+        local mouse_pos = getmouseposition()
+        from_x = mouse_pos.x
+        from_y = mouse_pos.y
+    elseif type(origin) == "table" then
+        from_x = origin[1]
+        from_y = origin[2]
+    end
+    
+    local tracer = SevereLib.CreateDrawing("Line", {
+        From = {from_x, from_y},
+        To = {screen_pos.x, screen_pos.y},
+        Color = color,
+        Thickness = thickness,
+        Transparency = 1,
+        Visible = true
+    })
+    
+    return tracer
+end
+
+function SevereLib.DrawText(position, text, color, size, centered, outline)
+    -- Draw text at the given position
+    local screen_pos, visible = SevereLib.WorldToScreen(position)
+    if not visible then return nil end
+    
+    color = color or SevereLib.Settings.DefaultColor
+    size = size or SevereLib.Settings.DefaultTextSize
+    centered = centered ~= nil and centered or true
+    outline = outline ~= nil and outline or true
+    
+    local text_obj = SevereLib.CreateDrawing("Text", {
+        Text = text,
+        Position = {screen_pos.x, screen_pos.y},
+        Color = color,
+        Size = size,
+        Center = centered,
+        Outline = outline,
+        Transparency = 1,
+        Visible = true,
+        Font = SevereLib.Settings.DefaultFont
+    })
+    
+    return text_obj
+end
+
+function SevereLib.DrawCircle(position, radius, color, segments, filled)
+    -- Draw a circle at the given position
+    local screen_pos, visible = SevereLib.WorldToScreen(position)
+    if not visible then return nil end
+    
+    color = color or SevereLib.Settings.DefaultColor
+    radius = radius or SevereLib.Settings.DefaultRadius
+    segments = segments or 16 -- Higher for smoother circles, lower for better performance
+    filled = filled ~= nil and filled or false
+    
+    local circle = SevereLib.CreateDrawing("Circle", {
+        Position = {screen_pos.x, screen_pos.y},
+        Radius = radius,
+        Color = color,
+        Filled = filled,
+        Transparency = 1,
+        NumSides = segments,
+        Thickness = 1,
+        Visible = true
+    })
+    
+    return circle
+end
+
+function SevereLib.Draw3DCircle(position, radius, color, segments)
+    -- Draw a 3D circle on the ground (XZ plane)
+    color = color or SevereLib.Settings.DefaultColor
+    radius = radius or 5
+    segments = segments or 16
+    
+    local lines = {}
+    local pi = math.pi
+    
+    for i = 1, segments do
+        local angle1 = (2 * pi / segments) * (i - 1)
+        local angle2 = (2 * pi / segments) * i
+        
+        local point1 = {
+            x = position.x + radius * math.cos(angle1),
+            y = position.y,
+            z = position.z + radius * math.sin(angle1)
+        }
+        
+        local point2 = {
+            x = position.x + radius * math.cos(angle2),
+            y = position.y,
+            z = position.z + radius * math.sin(angle2)
+        }
+        
+        local screen1, visible1 = SevereLib.WorldToScreen(point1)
+        local screen2, visible2 = SevereLib.WorldToScreen(point2)
+        
+        if visible1 and visible2 then
+            table.insert(lines, SevereLib.CreateDrawing("Line", {
+                From = {screen1.x, screen1.y},
+                To = {screen2.x, screen2.y},
+                Color = color,
+                Thickness = 1,
+                Transparency = 1,
+                Visible = true
+            }))
+        end
+    end
+    
+    return lines
+end
+
+-- Combined ESP functions
+function SevereLib.CreateBoxESP(position, size, options)
+    -- Create a complete ESP with box, healthbar, tracers, etc.
+    if not position then return nil end
+    
+    options = options or {}
+    local esp_objects = {}
+    
+    -- Setup default options
+    options.color = options.color or SevereLib.Settings.DefaultColor
+    options.boxType = options.boxType or SevereLib.Settings.BoxTypes.Corner
+    options.tracerOrigin = options.tracerOrigin or SevereLib.Settings.DefaultTracerOrigin
+    options.textSize = options.textSize or SevereLib.Settings.DefaultTextSize
+    
+    -- Draw box based on box type
+    if options.boxEnabled ~= false then
+        if options.boxType == SevereLib.Settings.BoxTypes.Corner then
+            esp_objects.box = SevereLib.DrawCornerBox(position, size, options.color)
+        elseif options.boxType == SevereLib.Settings.BoxTypes.Box2D then
+            esp_objects.box = SevereLib.DrawBox2D(position, size, options.color)
+        elseif options.boxType == SevereLib.Settings.BoxTypes.Box3D then
+            local min = {
+                x = position.x - size.x/2,
+                y = position.y - size.y/2,
+                z = position.z - size.z/2
+            }
+            local max = {
+                x = position.x + size.x/2,
+                y = position.y + size.y/2,
+                z = position.z + size.z/2
+            }
+            esp_objects.box = SevereLib.DrawBox3D(min, max, options.color)
+        end
+    end
+    
+    -- Draw health bar if health provided
+    if options.healthEnabled and options.health and options.maxHealth then
+        esp_objects.healthBar = SevereLib.DrawHealthBar(
+            position, 
+            options.health, 
+            options.maxHealth, 
+            options.healthBarSize, 
+            options.healthBarOffset
+        )
+    end
+    
+    -- Draw tracer if enabled
+    if options.tracerEnabled then
+        esp_objects.tracer = SevereLib.DrawTracer(position, options.tracerOrigin, options.color)
+    end
+    
+    -- Draw name/text if provided
+    if options.textEnabled and options.text then
+        local text_pos = {
+            x = position.x,
+            y = position.y - (size.y / 2) - 10, -- Position text above the box
+            z = position.z
+        }
+        
+        esp_objects.text = SevereLib.DrawText(text_pos, options.text, options.color, options.textSize)
+    end
+    
+    -- Draw circle at feet if enabled
+    if options.circleEnabled then
+        esp_objects.circle = SevereLib.DrawCircle(
+            position,
+            options.circleRadius or 4,
+            options.color,
+            options.circleSegments,
+            options.circleFilled
+        )
+    end
+    
+    -- Draw 3D ground circle if enabled
+    if options.groundCircleEnabled then
+        local ground_pos = {x = position.x, y = position.y - size.y/2, z = position.z}
+        esp_objects.groundCircle = SevereLib.Draw3DCircle(
+            ground_pos,
+            options.groundRadius or 5,
+            options.color,
+            options.groundSegments
+        )
+    end
+    
+    return esp_objects
+end
+
+-- Cleanup and resource management
+function SevereLib.Cleanup()
+    SevereLib.ClearAllDrawings()
+    SevereLib.Cache.Players = {}
+    SevereLib.Cache.Parts = {}
+    SevereLib.Cache.Positions = {}
+    
+    SevereLib.Log(3, "Library cleaned up successfully.")
+end
+
+-- Return the library
+return SevereLib
