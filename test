@@ -6,6 +6,7 @@
 local cache = {
     loadstring_cache = {},
     httpget_cache = {},
+    drawing_objects = {},
 }
 
 -- Screen dimensions
@@ -30,6 +31,8 @@ local slib = {
         Purple = {128, 0, 128},
         Pink = {255, 192, 203},
         Gray = {128, 128, 128},
+        LightGray = {211, 211, 211},
+        DarkGray = {80, 80, 80},
     },
     
     -- Rainbow color generator
@@ -37,14 +40,17 @@ local slib = {
     CurrentRainbowColor = {255, 255, 255},
     
     -- Drawing objects collection for easy cleanup
-    DrawingObjects = {},
+    Drawings = {},
     
     -- Debug settings
     Debug = {
         Enabled = false,
         LogHistory = {},
         MaxLogs = 50
-    }
+    },
+    
+    -- Sleep tasks
+    SleepTasks = {}
 }
 
 --// Core Functions //--
@@ -72,7 +78,7 @@ function slib.GetDistance(pos1, pos2)
             assert(#pos1 == 3, "GetDistance: First argument needs to be a table with 3 values!")
             v1 = {x = pos1[1], y = pos1[2], z = pos1[3]}
         end
-    elseif type(pos1) == "number" then
+    elseif type(pos1) == "userdata" then
         v1 = getposition(pos1)
     else
         error("GetDistance: First argument needs to be a table with position values or an instance!")
@@ -87,7 +93,7 @@ function slib.GetDistance(pos1, pos2)
             assert(#pos2 == 3, "GetDistance: Second argument needs to be a table with 3 values!")
             v2 = {x = pos2[1], y = pos2[2], z = pos2[3]}
         end
-    elseif type(pos2) == "number" then
+    elseif type(pos2) == "userdata" then
         v2 = getposition(pos2)
     else
         error("GetDistance: Second argument needs to be a table with position values or an instance!")
@@ -112,20 +118,24 @@ function slib.UpdateRainbow(speed)
         slib.RainbowHue = slib.RainbowHue + speed
     end
     
-    if slib.RainbowHue <= 255 then
-        slib.CurrentRainbowColor = {255, slib.RainbowHue, 0}
-    elseif slib.RainbowHue <= 510 then
-        slib.CurrentRainbowColor = {510 - slib.RainbowHue, 255, 0}
-    elseif slib.RainbowHue <= 765 then
-        slib.CurrentRainbowColor = {0, 255, slib.RainbowHue - 510}
-    elseif slib.RainbowHue <= 1020 then
-        slib.CurrentRainbowColor = {0, 1020 - slib.RainbowHue, 255}
-    elseif slib.RainbowHue <= 1275 then
-        slib.CurrentRainbowColor = {slib.RainbowHue - 1020, 0, 255}
-    elseif slib.RainbowHue <= 1530 then
-        slib.CurrentRainbowColor = {255, 0, 1530 - slib.RainbowHue}
+    local hue = slib.RainbowHue
+    local r, g, b = 0, 0, 0
+    
+    if hue <= 255 then
+        r, g, b = 255, hue, 0
+    elseif hue <= 510 then
+        r, g, b = 510 - hue, 255, 0
+    elseif hue <= 765 then
+        r, g, b = 0, 255, hue - 510
+    elseif hue <= 1020 then
+        r, g, b = 0, 1020 - hue, 255
+    elseif hue <= 1275 then
+        r, g, b = hue - 1020, 0, 255
+    elseif hue <= 1530 then
+        r, g, b = 255, 0, 1530 - hue
     end
     
+    slib.CurrentRainbowColor = {r, g, b}
     return slib.CurrentRainbowColor
 end
 
@@ -179,26 +189,35 @@ function slib.NewDrawing(type, properties)
         end
     end
     
-    table.insert(slib.DrawingObjects, object)
+    table.insert(slib.Drawings, object)
     return object
 end
 
 -- Clear all drawing objects
 function slib.ClearDrawings()
-    for _, object in pairs(slib.DrawingObjects) do
-        object:Remove()
+    for _, object in pairs(slib.Drawings) do
+        if object.Remove then -- Verifica se o objeto tem o método Remove
+            pcall(function() object:Remove() end)
+        end
     end
     
-    slib.DrawingObjects = {}
+    slib.Drawings = {}
 end
 
 -- Create a healthbar
 function slib.HealthBar(params)
     assert(type(params) == "table", "HealthBar: First argument needs to be a table!")
-    assert(type(params.Position) == "table", "HealthBar: Position field must be a table!")
+    assert(type(params.Position) == "table" or type(params.Position) == "userdata", "HealthBar: Position field must be a table or instance!")
     assert(type(params.HP) == "number", "HealthBar: HP field must be a number!")
     
-    local position = params.Position
+    local position
+    if type(params.Position) == "userdata" then
+        position = getposition(params.Position)
+        position = {position.x, position.y, position.z}
+    else
+        position = params.Position
+    end
+    
     local hp = params.HP
     local maxHp = params.MaxHP or 100
     local size = params.Size or {120, 5}
@@ -208,9 +227,9 @@ function slib.HealthBar(params)
     -- Convert 3D position to 2D screen position
     local screenPos
     if #position == 3 then
-        local wts = worldtoscreenpoint({position[1], position[2], position[3]})
-        if not wts[2] then return end -- Position is not on screen
-        screenPos = {wts[1].x, wts[1].y}
+        local wts, visible = worldtoscreenpoint({position[1], position[2], position[3]})
+        if not visible then return end -- Position is not on screen
+        screenPos = {wts.x, wts.y}
     else
         screenPos = position
     end
@@ -229,6 +248,8 @@ function slib.HealthBar(params)
         0
     }
     
+    local drawObjects = {}
+    
     -- Create the health bar background
     if outlined then
         local outline = slib.NewDrawing("Square", {
@@ -238,16 +259,18 @@ function slib.HealthBar(params)
             Filled = true,
             Visible = true
         })
+        table.insert(drawObjects, outline)
     end
     
     -- Create background
     local background = slib.NewDrawing("Square", {
         Position = {x - size[1]/2, y},
         Size = {size[1], size[2]},
-        Color = {40, 40, 40},
+        Color = slib.Colors.DarkGray,
         Filled = true,
         Visible = true
     })
+    table.insert(drawObjects, background)
     
     -- Create foreground health indicator
     local foreground = slib.NewDrawing("Square", {
@@ -257,18 +280,19 @@ function slib.HealthBar(params)
         Filled = true,
         Visible = true
     })
+    table.insert(drawObjects, foreground)
     
-    return {background, foreground}
+    return drawObjects
 end
 
 -- Create ESP box for an entity
 function slib.BoxESP(params)
     assert(type(params) == "table", "BoxESP: First argument needs to be a table!")
-    assert(type(params.Target) == "number", "BoxESP: Target field must be an instance!")
+    assert(params.Target, "BoxESP: Target field must be provided!")
     
     local target = params.Target
     local color = params.Color or slib.Colors.White
-    local boxType = params.BoxType or "2D" -- "2D", "3D", or "Corners"
+    local boxType = params.BoxType or "2D" -- "2D", "Corners"
     
     -- Find HumanoidRootPart
     local torso = findfirstchild(target, "HumanoidRootPart")
@@ -281,11 +305,11 @@ function slib.BoxESP(params)
     local legPosY = pos.y - 3.5
     
     -- Convert to screen positions
-    local topPos = worldtoscreenpoint({pos.x, headPosY, pos.z})
-    local bottomPos = worldtoscreenpoint({pos.x, legPosY, pos.z})
+    local topPos, topVisible = worldtoscreenpoint({pos.x, headPosY, pos.z})
+    local bottomPos, bottomVisible = worldtoscreenpoint({pos.x, legPosY, pos.z})
     
     -- Check if on screen
-    if not topPos[2] or not bottomPos[2] then return end
+    if not topVisible or not bottomVisible then return end
     
     local top = topPos[1]
     local bottom = bottomPos[1]
@@ -293,6 +317,8 @@ function slib.BoxESP(params)
     -- Calculate box dimensions
     local height = top.y - bottom.y
     local width = height / 2.4
+    
+    local drawObjects = {}
     
     -- Draw based on box type
     if boxType == "2D" then
@@ -305,15 +331,14 @@ function slib.BoxESP(params)
             Filled = false,
             Visible = true
         })
-        return box
+        table.insert(drawObjects, box)
         
     elseif boxType == "Corners" then
         -- Create corner lines
-        local lines = {}
         local cornerSize = height / 4
         
         -- Top left
-        table.insert(lines, slib.NewDrawing("Line", {
+        table.insert(drawObjects, slib.NewDrawing("Line", {
             From = {bottom.x - width/2, top.y},
             To = {bottom.x - width/2 + cornerSize, top.y},
             Color = color,
@@ -321,7 +346,7 @@ function slib.BoxESP(params)
             Visible = true
         }))
         
-        table.insert(lines, slib.NewDrawing("Line", {
+        table.insert(drawObjects, slib.NewDrawing("Line", {
             From = {bottom.x - width/2, top.y},
             To = {bottom.x - width/2, top.y + cornerSize},
             Color = color,
@@ -330,7 +355,7 @@ function slib.BoxESP(params)
         }))
         
         -- Top right
-        table.insert(lines, slib.NewDrawing("Line", {
+        table.insert(drawObjects, slib.NewDrawing("Line", {
             From = {bottom.x + width/2, top.y},
             To = {bottom.x + width/2 - cornerSize, top.y},
             Color = color,
@@ -338,7 +363,7 @@ function slib.BoxESP(params)
             Visible = true
         }))
         
-        table.insert(lines, slib.NewDrawing("Line", {
+        table.insert(drawObjects, slib.NewDrawing("Line", {
             From = {bottom.x + width/2, top.y},
             To = {bottom.x + width/2, top.y + cornerSize},
             Color = color,
@@ -347,7 +372,7 @@ function slib.BoxESP(params)
         }))
         
         -- Bottom left
-        table.insert(lines, slib.NewDrawing("Line", {
+        table.insert(drawObjects, slib.NewDrawing("Line", {
             From = {bottom.x - width/2, bottom.y},
             To = {bottom.x - width/2 + cornerSize, bottom.y},
             Color = color,
@@ -355,7 +380,7 @@ function slib.BoxESP(params)
             Visible = true
         }))
         
-        table.insert(lines, slib.NewDrawing("Line", {
+        table.insert(drawObjects, slib.NewDrawing("Line", {
             From = {bottom.x - width/2, bottom.y},
             To = {bottom.x - width/2, bottom.y - cornerSize},
             Color = color,
@@ -364,7 +389,7 @@ function slib.BoxESP(params)
         }))
         
         -- Bottom right
-        table.insert(lines, slib.NewDrawing("Line", {
+        table.insert(drawObjects, slib.NewDrawing("Line", {
             From = {bottom.x + width/2, bottom.y},
             To = {bottom.x + width/2 - cornerSize, bottom.y},
             Color = color,
@@ -372,22 +397,60 @@ function slib.BoxESP(params)
             Visible = true
         }))
         
-        table.insert(lines, slib.NewDrawing("Line", {
+        table.insert(drawObjects, slib.NewDrawing("Line", {
             From = {bottom.x + width/2, bottom.y},
             To = {bottom.x + width/2, bottom.y - cornerSize},
             Color = color,
             Thickness = 1,
             Visible = true
         }))
-        
-        return lines
     end
+    
+    -- Adicionar nome se solicitado
+    if params.Nametag then
+        local name = getname(target) or "Player"
+        table.insert(drawObjects, slib.NewDrawing("Text", {
+            Text = name,
+            Position = {bottom.x, top.y - 15},
+            Size = 13,
+            Center = true,
+            Color = color,
+            Outline = true,
+            Visible = true
+        }))
+    end
+    
+    -- Adicionar distância se solicitado
+    if params.Distance then
+        local localPlayer = getlocalplayer()
+        local localCharacter = getcharacter(localPlayer)
+        
+        if localCharacter then
+            local localRoot = findfirstchild(localCharacter, "HumanoidRootPart")
+            if localRoot then
+                local dist = math.floor(slib.GetDistance(localRoot, torso))
+                local distText = tostring(dist) .. "m"
+                
+                table.insert(drawObjects, slib.NewDrawing("Text", {
+                    Text = distText,
+                    Position = {bottom.x, bottom.y + 5},
+                    Size = 12,
+                    Center = true,
+                    Color = color,
+                    Outline = true,
+                    Visible = true
+                }))
+            end
+        end
+    end
+    
+    return drawObjects
 end
 
 -- Create tracer to target
 function slib.Tracer(params)
     assert(type(params) == "table", "Tracer: First argument needs to be a table!")
-    assert(type(params.Target) == "number" or type(params.Position) == "table", "Tracer: Target or Position must be provided!")
+    assert(params.Target or params.Position, "Tracer: Target or Position must be provided!")
     
     local position
     if params.Target then
@@ -403,11 +466,10 @@ function slib.Tracer(params)
     end
     
     -- Convert 3D position to 2D screen position
-    local screenPos
+    local screenPos, onScreen
     if position.x and position.y and position.z then
-        local wts = worldtoscreenpoint({position.x, position.y, position.z})
-        if not wts[2] then return end -- Not on screen
-        screenPos = {wts[1].x, wts[1].y}
+        screenPos, onScreen = worldtoscreenpoint({position.x, position.y, position.z})
+        if not onScreen then return end -- Not on screen
     else
         screenPos = position
     end
@@ -432,13 +494,88 @@ function slib.Tracer(params)
     -- Create tracer
     local tracer = slib.NewDrawing("Line", {
         From = {originPos[1], originPos[2]},
-        To = {screenPos[1], screenPos[2]},
+        To = {screenPos.x, screenPos.y},
         Color = params.Color or slib.Colors.White,
         Thickness = params.Thickness or 1,
         Visible = true
     })
     
     return tracer
+end
+
+-- BoxESP completo (similar ao dx9 addon lib)
+function slib.CompleteESP(params)
+    assert(type(params) == "table", "CompleteESP: First argument needs to be a table!")
+    assert(params.Target, "CompleteESP: Target field must be provided!")
+    
+    local target = params.Target
+    local color = params.Color or slib.Colors.White
+    local boxType = params.BoxType or "2D"
+    local healthbar = params.Healthbar or false
+    local nametag = params.Nametag or false
+    local distance = params.Distance or false
+    local tracer = params.Tracer or false
+    local tracerOrigin = params.TracerOrigin or "Bottom"
+    
+    -- Array para guardar todos os objetos de desenho criados
+    local drawObjects = {}
+    
+    -- ESP Box
+    local boxObjects = slib.BoxESP({
+        Target = target,
+        BoxType = boxType,
+        Color = color,
+        Nametag = nametag,
+        Distance = distance
+    })
+    
+    if boxObjects then
+        for _, obj in pairs(boxObjects) do
+            table.insert(drawObjects, obj)
+        end
+    end
+    
+    -- Tracer
+    if tracer then
+        local tracerObj = slib.Tracer({
+            Target = target,
+            Origin = tracerOrigin,
+            Color = color,
+            Thickness = 1
+        })
+        
+        if tracerObj then
+            table.insert(drawObjects, tracerObj)
+        end
+    end
+    
+    -- Barra de vida
+    if healthbar then
+        local humanoid = findfirstchild(target, "Humanoid")
+        local rootPart = findfirstchild(target, "HumanoidRootPart")
+        
+        if humanoid and rootPart then
+            local pos = getposition(rootPart)
+            local hp = gethealth(humanoid)
+            local maxHp = getmaxhealth(humanoid)
+            
+            local healthObjects = slib.HealthBar({
+                Position = {pos.x, pos.y + 3, pos.z},
+                HP = hp,
+                MaxHP = maxHp,
+                Size = {80, 5},
+                Offset = {0, -50}
+            })
+            
+            if healthObjects then
+                for _, obj in pairs(healthObjects) do
+                    table.insert(drawObjects, obj)
+                end
+            end
+        end
+    end
+    
+    return drawObjects
 end
 
 --// Player Functions //--
@@ -485,7 +622,7 @@ end
 
 -- Create model data for Severe
 function slib.CreateModelData(model)
-    assert(type(model) == "number", "CreateModelData: First argument needs to be an instance!")
+    assert(model, "CreateModelData: Model is required!")
     
     local humanoid = findfirstchild(model, "Humanoid")
     local head = findfirstchild(model, "Head")
@@ -504,7 +641,7 @@ function slib.CreateModelData(model)
     
     local data = {
         Username = getname(model),
-        Displayname = getname(model),
+        Displayname = getdisplayname(model),
         Userid = 0,
         Character = model,
         PrimaryPart = rootPart,
@@ -603,7 +740,6 @@ function slib.DrawDebugConsole(x, y, width, height)
 end
 
 --// Sleep function (non-blocking) //--
-slib.SleepTasks = {}
 function slib.Sleep(duration, callback, identifier)
     assert(type(duration) == "number", "Sleep: First argument needs to be a number!")
     assert(type(callback) == "function", "Sleep: Second argument needs to be a function!")
@@ -626,7 +762,7 @@ function slib.ProcessSleepTasks()
     
     for id, task in pairs(slib.SleepTasks) do
         if currentTime >= task.EndTime then
-            task.Callback()
+            pcall(task.Callback)
             table.insert(tasksToRemove, id)
         end
     end
