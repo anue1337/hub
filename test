@@ -1,1030 +1,948 @@
- --[[
-    Severe Library
-    A utility library for Severe Lua API with enhanced ESP capabilities
-    
-    Author: User
-    Version: 1.0.1
-]]
+-- SevereLib by anue
+-- ESP, Aimbot, and Debug Library for Roblox exploits
 
-local SevereLib = {
-    _VERSION = "1.0.1",
-    Settings = {
-        ESP = {
-            Enabled = true,
-            BoxType = 2, -- 1 = Corners, 2 = 2D Box, 3 = 3D Box
-            ShowHealth = true,
-            ShowName = true,
-            ShowDistance = true,
-            ShowTracers = false,
-            TracerType = 1, -- 1 = Bottom, 2 = Middle, 3 = Mouse
-            MaxDistance = 1000,
-            RefreshRate = 0.01,
-            TeamCheck = true,
-            TeamColor = false,
-            BoxColor = {255, 255, 255},
-            HealthBarColor = {0, 255, 0},
-            TextColor = {255, 255, 255},
-            TracerColor = {255, 255, 255},
-            TextOutline = true,
-            BoxThickness = 1,
-            TextSize = 13,
-            BoxTransparency = 1,
-            TextTransparency = 1,
-            TracerTransparency = 1,
-        },
-        Aimbot = {
-            Enabled = false,
-            Key = 0x02, -- Right mouse button
-            Smoothness = 0.5,
-            FOV = 400,
-            ShowFOV = true,
-            TargetPart = "Head", -- Head, Torso, HumanoidRootPart, etc.
-            TeamCheck = true,
-            VisibilityCheck = true,
-            Prediction = true,
-            PredictionAmount = 0.165,
-        }
+local SevereLib = {}
+
+-- Library configuration
+SevereLib.Config = {
+    ESP = {
+        Enabled = true,
+        MaxDistance = 2000,
+        ShowDistance = true,
+        ShowName = true,
+        ShowHealth = true,
+        ShowTeam = true,
+        BoxEnabled = true,
+        BoxType = "2D", -- "2D", "3D", "Corners"
+        BoxColor = {255, 255, 255},
+        BoxThickness = 1,
+        TextSize = 14,
+        TextFont = 2, -- 0: UI, 1: System, 2: Plex, 3: Monospace, 4: Bold
+        TracerEnabled = false,
+        TracerOrigin = "Bottom", -- "Bottom", "Center", "Mouse"
+        TracerThickness = 1,
     },
-    Cache = {
-        ESP = {
-            Boxes = {},
-            Names = {},
-            Distances = {},
-            HealthBars = {},
-            Tracers = {},
-            Models = {}
-        }
-    },
-    Connections = {},
-    Running = false,
-    Console = {
-        Visible = false
+    Aimbot = {
+        Enabled = false,
+        TargetPart = "Head", -- "Head", "Torso", "HumanoidRootPart"
+        Sensitivity = 0.5,
+        MaxDistance = 500,
+        TeamCheck = true,
+        VisibilityCheck = true,
+        TriggerKey = "MouseButton2",
+        FOV = 400,
+        ShowFOV = true,
+        FOVColor = {255, 255, 255},
+        FOVThickness = 1,
     },
     Debug = {
         Enabled = true,
-        LastError = "",
-        ErrorCount = 0
+        ShowFPS = true,
+        LogLevel = 3, -- 1: Error, 2: Warning, 3: Info, 4: Debug
+        SaveLogs = false,
+        LogFilePath = "SevereLib.log"
+    },
+    Advanced = {
+        ValidationRetries = 3,
+        ValidationDelay = 0.2, -- seconds
+        RefreshRate = 1/30, -- seconds
+        ObjectCheckInterval = 1, -- seconds
+        SafeMode = true -- Use pcall around all API calls
     }
 }
 
--- Função auxiliar para verificar se um objeto é válido
-function SevereLib:IsValid(obj)
-    if obj == nil then
-        return false
-    end
-    
-    local success = pcall(function()
-        -- Tentar acessar uma propriedade qualquer para verificar se o objeto é válido
-        local _ = obj.ClassName or obj.Name
-    end)
-    
-    return success
-end
+-- Internal variables
+local Services = {}
+local Utils = {}
+local Drawing = Drawing
+local Players = {}
+local Camera = nil
+local LocalPlayer = nil
+local RunService = nil
+local UserInputService = nil
+local Workspace = nil
 
--- Função auxiliar para verificar se o workplace está disponível
-function SevereLib:IsWorkspaceReady()
-    local success = pcall(function()
-        local _ = workspace.DistributedGameTime
-    end)
-    
-    return success
-end
+local EspObjects = {}
+local AimbotData = {
+    Target = nil,
+    FOVCircle = nil,
+}
+local DebugInfo = {
+    StartTime = os.time(),
+    FrameCount = 0,
+    LastFPS = 0,
+    LastFPSUpdate = os.clock(),
+    ErrorCount = 0,
+    WarningCount = 0,
+}
 
--- Função para obter a câmera com segurança
-function SevereLib:GetCamera()
-    if not self:IsWorkspaceReady() then
-        return nil
-    end
+-- Debug functions
+local function LogMessage(level, message)
+    local levels = {
+        [1] = "ERROR",
+        [2] = "WARNING",
+        [3] = "INFO",
+        [4] = "DEBUG"
+    }
     
-    local success, camera = pcall(function()
-        return workspace.CurrentCamera
-    end)
-    
-    if success and self:IsValid(camera) then
-        return camera
-    end
-    
-    return nil
-end
-
--- Função para obter a posição da câmera com segurança
-function SevereLib:GetCameraPosition()
-    local camera = self:GetCamera()
-    if not camera then
-        return {x = 0, y = 0, z = 0}
-    end
-    
-    local success, position = pcall(function()
-        return getposition(camera)
-    end)
-    
-    if success and position then
-        return position
-    end
-    
-    return {x = 0, y = 0, z = 0}
-end
-
--- Console Functions
-function SevereLib:ShowConsole()
-    local console = Drawing.new("Square")
-    console.Size = {500, 300}
-    console.Position = {10, 10}
-    console.Color = {0, 0, 0}
-    console.Filled = true
-    console.Transparency = 0.7
-    console.Visible = true
-    
-    local header = Drawing.new("Text")
-    header.Text = "SevereLib Console"
-    header.Size = 18
-    header.Color = {255, 255, 255}
-    header.Position = {20, 15}
-    header.Visible = true
-    
-    self.Console.Background = console
-    self.Console.Header = header
-    self.Console.Logs = {}
-    self.Console.Visible = true
-    
-    return self.Console
-end
-
-function SevereLib:Print(text, color)
-    color = color or {255, 255, 255}
-    
-    if not self.Console.Visible then
-        self:ShowConsole()
-    end
-    
-    -- Remove oldest log if we have too many
-    if #self.Console.Logs >= 12 then
-        self.Console.Logs[1].Text:Remove()
-        table.remove(self.Console.Logs, 1)
+    if level <= SevereLib.Config.Debug.LogLevel then
+        local timestamp = os.date("%H:%M:%S")
+        local formatted = string.format("[%s][SevereLib][%s] %s", timestamp, levels[level], message)
+        print(formatted)
         
-        -- Shift all logs up
-        for i, log in ipairs(self.Console.Logs) do
-            log.Text.Position = {20, 40 + (i * 20)}
-        end
-    end
-    
-    local log = Drawing.new("Text")
-    log.Text = tostring(text)
-    log.Size = 14
-    log.Color = color
-    log.Position = {20, 40 + (#self.Console.Logs * 20)}
-    log.Visible = true
-    
-    table.insert(self.Console.Logs, {
-        Text = log,
-        Time = tick()
-    })
-    
-    -- Also print to actual console
-    print(text)
-    
-    return log
-end
-
-function SevereLib:Error(text)
-    self.Debug.LastError = text
-    self.Debug.ErrorCount = self.Debug.ErrorCount + 1
-    return self:Print(text, {255, 0, 0})
-end
-
-function SevereLib:Warning(text)
-    return self:Print(text, {255, 255, 0})
-end
-
-function SevereLib:Success(text)
-    return self:Print(text, {0, 255, 0})
-end
-
-function SevereLib:ClearConsole()
-    if self.Console.Visible then
-        for _, log in pairs(self.Console.Logs) do
-            if log.Text then
-                log.Text:Remove()
-            end
-        end
+        if level == 1 then DebugInfo.ErrorCount = DebugInfo.ErrorCount + 1 end
+        if level == 2 then DebugInfo.WarningCount = DebugInfo.WarningCount + 1 end
         
-        self.Console.Logs = {}
-    end
-end
-
--- Utility Functions
-function SevereLib:GetGameService(serviceName)
-    if not game then
-        return nil
-    end
-    
-    local service
-    local success = pcall(function()
-        service = game:FindService(serviceName)
-    end)
-    
-    if success and service then
-        return service
-    end
-    
-    return nil
-end
-
-function SevereLib:GetLocalPlayer()
-    local success, player = pcall(function()
-        return getlocalplayer()
-    end)
-    
-    if success and self:IsValid(player) then
-        return player
-    end
-    
-    return nil
-end
-
-function SevereLib:GetPlayers()
-    local players = {}
-    
-    -- Use pcall para evitar erros de "invalid userdata"
-    local playerService = self:GetGameService("Players")
-    if not playerService then
-        if self.Debug.Enabled then
-            self:Warning("GetPlayers: Players service not found")
-        end
-        return {}
-    end
-    
-    local success, playerList = pcall(function()
-        return getchildren(playerService)
-    end)
-    
-    if not success or not playerList then
-        if self.Debug.Enabled then
-            self:Warning("GetPlayers: Failed to get children - " .. tostring(playerList))
-        end
-        return {}
-    end
-    
-    local localPlayer = self:GetLocalPlayer()
-    
-    for _, player in pairs(playerList) do
-        if self:IsValid(player) and player ~= localPlayer then
-            table.insert(players, player)
+        if SevereLib.Config.Debug.SaveLogs then
+            -- Implement log saving
         end
     end
-    
-    return players
 end
 
-function SevereLib:GetCharacter(player)
-    if not self:IsValid(player) then return nil end
-    
-    local success, character = pcall(function()
-        return getcharacter(player)
-    end)
-    
-    if success and self:IsValid(character) then
-        return character
-    end
-    
-    return nil
-end
+local function LogError(message) LogMessage(1, message) end
+local function LogWarning(message) LogMessage(2, message) end
+local function LogInfo(message) LogMessage(3, message) end
+local function LogDebug(message) LogMessage(4, message) end
 
-function SevereLib:FindFirstChild(parent, childName)
-    if not self:IsValid(parent) or not childName then
-        return nil
-    end
-    
-    local success, child = pcall(function()
-        return findfirstchild(parent, childName)
-    end)
-    
-    if success and self:IsValid(child) then
-        return child
-    end
-    
-    return nil
-end
-
-function SevereLib:FindFirstChildOfClass(parent, className)
-    if not self:IsValid(parent) or not className then
-        return nil
-    end
-    
-    local success, child = pcall(function()
-        return findfirstchildofclass(parent, className)
-    end)
-    
-    if success and self:IsValid(child) then
-        return child
-    end
-    
-    return nil
-end
-
-function SevereLib:GetHumanoid(character)
-    if not self:IsValid(character) then return nil end
-    return self:FindFirstChildOfClass(character, "Humanoid")
-end
-
-function SevereLib:GetRootPart(character)
-    if not self:IsValid(character) then return nil end
-    return self:FindFirstChild(character, "HumanoidRootPart")
-end
-
-function SevereLib:GetHead(character)
-    if not self:IsValid(character) then return nil end
-    return self:FindFirstChild(character, "Head")
-end
-
-function SevereLib:GetPosition(instance)
-    if not self:IsValid(instance) then
-        return {x = 0, y = 0, z = 0}
-    end
-    
-    local success, position = pcall(function()
-        return getposition(instance)
-    end)
-    
-    if success and position then
-        return position
-    end
-    
-    return {x = 0, y = 0, z = 0}
-end
-
-function SevereLib:GetDistance(position1, position2)
-    if not position1 or not position2 then return math.huge end
-    
+-- Safe API wrappers with validation
+local function SafeGetService(serviceName)
     local success, result = pcall(function()
-        local x = position1.x - position2.x
-        local y = position1.y - position2.y
-        local z = position1.z - position2.z
-        
-        return math.sqrt(x * x + y * y + z * z)
+        return game:GetService(serviceName)
     end)
     
     if success then
         return result
     else
-        return math.huge
+        LogError("Failed to get service: " .. serviceName)
+        return nil
     end
 end
 
-function SevereLib:IsAlive(character)
-    if not self:IsValid(character) then return false end
+local function IsValidInstance(obj)
+    if obj == nil then return false end
     
-    local humanoid = self:GetHumanoid(character)
-    if not humanoid then return false end
+    local success = pcall(function()
+        -- Just accessing a property will throw if the instance is invalid
+        local _ = obj.ClassName
+    end)
     
-    local success, health = pcall(function()
-        return gethealth(humanoid)
+    return success
+end
+
+local function SafeWaitForChild(parent, childName, timeout)
+    timeout = timeout or 5
+    
+    if not IsValidInstance(parent) then
+        LogError("SafeWaitForChild: Invalid parent")
+        return nil
+    end
+    
+    local startTime = os.clock()
+    local child = nil
+    
+    -- Try the standard WaitForChild first
+    local success, result = pcall(function()
+        return parent:WaitForChild(childName, timeout)
+    end)
+    
+    if success and result then
+        return result
+    end
+    
+    -- Fallback to polling if WaitForChild fails
+    while os.clock() - startTime < timeout do
+        child = parent:FindFirstChild(childName)
+        if child then 
+            return child 
+        end
+        wait(0.1)
+    end
+    
+    LogWarning("SafeWaitForChild: Failed to find " .. childName)
+    return nil
+end
+
+local function SafeFindFirstChild(parent, childName)
+    if not IsValidInstance(parent) then
+        return nil
+    end
+    
+    local success, result = pcall(function()
+        return parent:FindFirstChild(childName)
     end)
     
     if success then
-        return health > 0
+        return result
+    else
+        return nil
+    end
+end
+
+local function SafeGetChildren(parent)
+    if not IsValidInstance(parent) then
+        return {}
+    end
+    
+    local success, children = pcall(function()
+        return parent:GetChildren()
+    end)
+    
+    if success then
+        return children
+    else
+        LogWarning("SafeGetChildren failed: " .. tostring(parent))
+        return {}
+    end
+end
+
+local function SafeGetPosition(obj)
+    if not IsValidInstance(obj) then
+        return Vector3.new(0, 0, 0)
+    end
+    
+    local success, position = pcall(function()
+        if obj:IsA("BasePart") then
+            return obj.Position
+        elseif obj:IsA("Model") and obj.PrimaryPart then
+            return obj.PrimaryPart.Position
+        elseif obj:IsA("Model") then
+            -- Try to find HumanoidRootPart or other primary parts
+            local hrp = obj:FindFirstChild("HumanoidRootPart")
+            local torso = obj:FindFirstChild("Torso") or obj:FindFirstChild("UpperTorso")
+            local head = obj:FindFirstChild("Head")
+            
+            if hrp and hrp:IsA("BasePart") then
+                return hrp.Position
+            elseif torso and torso:IsA("BasePart") then
+                return torso.Position
+            elseif head and head:IsA("BasePart") then
+                return head.Position
+            end
+            
+            -- Last resort: average position of all parts
+            local parts = {}
+            for _, child in ipairs(SafeGetChildren(obj)) do
+                if child:IsA("BasePart") then
+                    table.insert(parts, child)
+                end
+            end
+            
+            if #parts > 0 then
+                local sum = Vector3.new(0, 0, 0)
+                for _, part in ipairs(parts) do
+                    sum = sum + part.Position
+                end
+                return sum / #parts
+            end
+        end
+        
+        return Vector3.new(0, 0, 0)
+    end)
+    
+    if success then
+        return position
+    else
+        return Vector3.new(0, 0, 0)
+    end
+end
+
+local function SafeIsDescendantOf(obj, ancestor)
+    if not IsValidInstance(obj) or not IsValidInstance(ancestor) then
+        return false
+    end
+    
+    local success, result = pcall(function()
+        return obj:IsDescendantOf(ancestor)
+    end)
+    
+    if success then
+        return result
     else
         return false
     end
 end
 
-function SevereLib:GetTeam(player)
-    if not self:IsValid(player) then return nil end
-    
-    local success, team = pcall(function()
-        return getteam(player)
-    end)
-    
-    if success and team then
-        return team
-    end
-    
-    return nil
-end
-
-function SevereLib:IsOnTeam(player1, player2)
-    local team1 = self:GetTeam(player1)
-    local team2 = self:GetTeam(player2)
-    
-    if not team1 or not team2 then return false end
-    
-    return team1 == team2
-end
-
-function SevereLib:WorldToScreen(position)
-    if not position or not position.x then 
-        return Vector2.new(0, 0), false 
+local function SafeWorldToScreenPoint(worldPoint)
+    if not IsValidInstance(Camera) then
+        return Vector2.new(0, 0), false
     end
     
     local success, result, onScreen = pcall(function()
-        return worldtoscreenpoint(position)
+        return Camera:WorldToScreenPoint(worldPoint)
     end)
     
     if success then
-        return result, onScreen
+        return Vector2.new(result.X, result.Y), onScreen
     else
         return Vector2.new(0, 0), false
     end
 end
 
-function SevereLib:IsOnScreen(position)
-    local _, onScreen = self:WorldToScreen(position)
-    return onScreen
-end
-
-function SevereLib:GetMouseLocation()
-    local success, result = pcall(function()
-        return getmouseposition()
+local function SafeGetPlayerFromCharacter(character)
+    if not IsValidInstance(character) then
+        return nil
+    end
+    
+    local success, player = pcall(function()
+        return Players:GetPlayerFromCharacter(character)
     end)
     
     if success then
-        return result
+        return player
     else
-        return {x = 0, y = 0}
+        return nil
     end
 end
 
-function SevereLib:GetScreenSize()
-    local success, result = pcall(function()
-        return getscreendimensions()
+local function SafeGetHumanoid(character)
+    if not IsValidInstance(character) then
+        return nil
+    end
+    
+    local humanoid = SafeFindFirstChild(character, "Humanoid")
+    if IsValidInstance(humanoid) then
+        return humanoid
+    end
+    
+    return nil
+end
+
+local function SafeGetHealth(humanoid)
+    if not IsValidInstance(humanoid) then
+        return 0, 0
+    end
+    
+    local success, health, maxHealth = pcall(function()
+        return humanoid.Health, humanoid.MaxHealth
     end)
     
     if success then
-        return result
+        return health, maxHealth
     else
-        return {x = 1920, y = 1080}  -- Valores padrão se falhar
+        return 0, 0
     end
 end
 
-function SevereLib:IsMouseInArea(x1, y1, x2, y2)
-    local mouse = self:GetMouseLocation()
-    return mouse.x >= x1 and mouse.y >= y1 and mouse.x <= x2 and mouse.y <= y2
+-- Extended validation functions for specific object types
+local function IsValidCharacter(char)
+    if not IsValidInstance(char) then return false end
+    
+    local humanoid = SafeFindFirstChild(char, "Humanoid")
+    local rootPart = SafeFindFirstChild(char, "HumanoidRootPart")
+    
+    return IsValidInstance(humanoid) and IsValidInstance(rootPart)
 end
 
-function SevereLib:Lerp(a, b, t)
-    return a + (b - a) * t
-end
-
--- ESP Functions
-function SevereLib:CreateBox(model)
-    local box = {
-        Outline = Drawing.new("Square"),
-        Main = Drawing.new("Square")
-    }
+local function IsPlayerAlive(player)
+    if not IsValidInstance(player) then return false end
     
-    box.Outline.Color = {0, 0, 0}
-    box.Outline.Thickness = self.Settings.ESP.BoxThickness + 2
-    box.Outline.Filled = false
-    box.Outline.Visible = false
-    
-    box.Main.Color = self.Settings.ESP.BoxColor
-    box.Main.Thickness = self.Settings.ESP.BoxThickness
-    box.Main.Filled = false
-    box.Main.Transparency = self.Settings.ESP.BoxTransparency
-    box.Main.Visible = false
-    
-    return box
-end
-
-function SevereLib:CreateText()
-    local text = {
-        Main = Drawing.new("Text"),
-        Outline = Drawing.new("Text")
-    }
-    
-    text.Outline.Color = {0, 0, 0}
-    text.Outline.Size = self.Settings.ESP.TextSize
-    text.Outline.Center = true
-    text.Outline.Outline = false
-    text.Outline.Visible = false
-    
-    text.Main.Color = self.Settings.ESP.TextColor
-    text.Main.Size = self.Settings.ESP.TextSize
-    text.Main.Center = true
-    text.Main.Outline = false
-    text.Main.Transparency = self.Settings.ESP.TextTransparency
-    text.Main.Visible = false
-    
-    return text
-end
-
-function SevereLib:CreateLine()
-    local line = {
-        Main = Drawing.new("Line")
-    }
-    
-    line.Main.Color = self.Settings.ESP.TracerColor
-    line.Main.Thickness = 1
-    line.Main.Transparency = self.Settings.ESP.TracerTransparency
-    line.Main.Visible = false
-    
-    return line
-end
-
-function SevereLib:CreateHealthBar()
-    local healthBar = {
-        Outline = Drawing.new("Square"),
-        Main = Drawing.new("Square")
-    }
-    
-    healthBar.Outline.Thickness = 1
-    healthBar.Outline.Filled = false
-    healthBar.Outline.Color = {0, 0, 0}
-    healthBar.Outline.Visible = false
-    
-    healthBar.Main.Thickness = 1
-    healthBar.Main.Filled = true
-    healthBar.Main.Color = self.Settings.ESP.HealthBarColor
-    healthBar.Main.Visible = false
-    
-    return healthBar
-end
-
-function SevereLib:UpdateESP()
-    if not self.Settings.ESP.Enabled then return end
-    
-    local camPos = self:GetCameraPosition()
-    local players = self:GetPlayers()
-    
-    for i, player in ipairs(players) do
-        local character = self:GetCharacter(player)
-        if character and self:IsAlive(character) then
-            -- Skip if team check is enabled and player is on the same team
-            if self.Settings.ESP.TeamCheck and self:IsOnTeam(player, self:GetLocalPlayer()) then
-                continue
-            end
-            
-            local rootPart = self:GetRootPart(character)
-            if rootPart then
-                local humanoid = self:GetHumanoid(character)
-                local head = self:GetHead(character)
-                
-                if humanoid and head then
-                    -- Get positions
-                    local rootPos = self:GetPosition(rootPart)
-                    local distance = self:GetDistance(camPos, rootPos)
-                    
-                    -- Skip if too far
-                    if distance > self.Settings.ESP.MaxDistance then
-                        continue
-                    end
-                    
-                    local rootPos2D, onScreen = self:WorldToScreen(rootPos)
-                    
-                    -- Skip if not on screen
-                    if not onScreen then
-                        continue
-                    end
-                    
-                    -- Calculate size based on distance
-                    local size = math.clamp(1000 / distance, 10, 30)
-                    local boxSize = Vector2.new(size * 1.5, size * 2.75)
-                    
-                    -- Init or get ESP objects
-                    if not self.Cache.ESP.Models[player] then
-                        self.Cache.ESP.Models[player] = {
-                            Box = self:CreateBox(),
-                            Name = self:CreateText(),
-                            Distance = self:CreateText(),
-                            HealthBar = self:CreateHealthBar(),
-                            Tracer = self:CreateLine()
-                        }
-                    end
-                    
-                    local esp = self.Cache.ESP.Models[player]
-                    
-                    -- Update Box
-                    esp.Box.Main.Position = Vector2.new(rootPos2D.x - boxSize.x / 2, rootPos2D.y - boxSize.y / 2)
-                    esp.Box.Main.Size = boxSize
-                    esp.Box.Main.Visible = true
-                    
-                    esp.Box.Outline.Position = esp.Box.Main.Position
-                    esp.Box.Outline.Size = esp.Box.Main.Size
-                    esp.Box.Outline.Visible = self.Settings.ESP.TextOutline
-                    
-                    -- Update Name
-                    if self.Settings.ESP.ShowName then
-                        local displayName = "Unknown"
-                        
-                        pcall(function()
-                            displayName = getdisplayname(player) or getname(player) or "Unknown"
-                        end)
-                        
-                        esp.Name.Main.Text = displayName
-                        esp.Name.Main.Position = Vector2.new(rootPos2D.x, rootPos2D.y - boxSize.y / 2 - 15)
-                        esp.Name.Main.Visible = true
-                        
-                        if self.Settings.ESP.TextOutline then
-                            esp.Name.Outline.Text = displayName
-                            esp.Name.Outline.Position = Vector2.new(esp.Name.Main.Position.x + 1, esp.Name.Main.Position.y + 1)
-                            esp.Name.Outline.Visible = true
-                        else
-                            esp.Name.Outline.Visible = false
-                        end
-                    else
-                        esp.Name.Main.Visible = false
-                        esp.Name.Outline.Visible = false
-                    end
-                    
-                    -- Update Distance
-                    if self.Settings.ESP.ShowDistance then
-                        local distanceText = math.floor(distance) .. " studs"
-                        esp.Distance.Main.Text = distanceText
-                        esp.Distance.Main.Position = Vector2.new(rootPos2D.x, rootPos2D.y + boxSize.y / 2 + 5)
-                        esp.Distance.Main.Visible = true
-                        
-                        if self.Settings.ESP.TextOutline then
-                            esp.Distance.Outline.Text = distanceText
-                            esp.Distance.Outline.Position = Vector2.new(esp.Distance.Main.Position.x + 1, esp.Distance.Main.Position.y + 1)
-                            esp.Distance.Outline.Visible = true
-                        else
-                            esp.Distance.Outline.Visible = false
-                        end
-                    else
-                        esp.Distance.Main.Visible = false
-                        esp.Distance.Outline.Visible = false
-                    end
-                    
-                    -- Update Health Bar
-                    if self.Settings.ESP.ShowHealth then
-                        local health, maxHealth = 100, 100
-                        
-                        pcall(function()
-                            health = gethealth(humanoid) or 100
-                            maxHealth = getmaxhealth(humanoid) or 100
-                        end)
-                        
-                        local healthPercent = health / maxHealth
-                        
-                        -- Red to green gradient based on health
-                        local r = 255 * (1 - healthPercent)
-                        local g = 255 * healthPercent
-                        
-                        esp.HealthBar.Outline.Position = Vector2.new(esp.Box.Main.Position.x - 8, esp.Box.Main.Position.y)
-                        esp.HealthBar.Outline.Size = Vector2.new(4, esp.Box.Main.Size.y)
-                        esp.HealthBar.Outline.Visible = true
-                        
-                        esp.HealthBar.Main.Position = Vector2.new(esp.Box.Main.Position.x - 7, esp.Box.Main.Position.y + esp.Box.Main.Size.y * (1 - healthPercent))
-                        esp.HealthBar.Main.Size = Vector2.new(2, esp.Box.Main.Size.y * healthPercent)
-                        esp.HealthBar.Main.Color = {r, g, 0}
-                        esp.HealthBar.Main.Visible = true
-                    else
-                        esp.HealthBar.Outline.Visible = false
-                        esp.HealthBar.Main.Visible = false
-                    end
-                    
-                    -- Update Tracer
-                    if self.Settings.ESP.ShowTracers then
-                        local screenSize = self:GetScreenSize()
-                        local tracerStart
-                        
-                        if self.Settings.ESP.TracerType == 1 then
-                            -- Bottom
-                            tracerStart = Vector2.new(screenSize.x / 2, screenSize.y)
-                        elseif self.Settings.ESP.TracerType == 2 then
-                            -- Middle
-                            tracerStart = Vector2.new(screenSize.x / 2, screenSize.y / 2)
-                        elseif self.Settings.ESP.TracerType == 3 then
-                            -- Mouse
-                            tracerStart = self:GetMouseLocation()
-                        end
-                        
-                        esp.Tracer.Main.From = tracerStart
-                        esp.Tracer.Main.To = Vector2.new(rootPos2D.x, rootPos2D.y)
-                        esp.Tracer.Main.Visible = true
-                    else
-                        esp.Tracer.Main.Visible = false
-                    end
-                    
-                    -- Team colors
-                    if self.Settings.ESP.TeamColor then
-                        local team = self:GetTeam(player)
-                        
-                        if team then
-                            -- TODO: Implement team color fetching based on game
-                            -- For now, use default colors
-                            esp.Box.Main.Color = self.Settings.ESP.BoxColor
-                        else
-                            esp.Box.Main.Color = self.Settings.ESP.BoxColor
-                        end
-                    else
-                        esp.Box.Main.Color = self.Settings.ESP.BoxColor
-                    end
-                end
-            end
-        else
-            -- Clean up ESP for this player if not valid
-            if self.Cache.ESP.Models[player] then
-                local esp = self.Cache.ESP.Models[player]
-                
-                esp.Box.Main.Visible = false
-                esp.Box.Outline.Visible = false
-                esp.Name.Main.Visible = false
-                esp.Name.Outline.Visible = false
-                esp.Distance.Main.Visible = false
-                esp.Distance.Outline.Visible = false
-                esp.HealthBar.Main.Visible = false
-                esp.HealthBar.Outline.Visible = false
-                esp.Tracer.Main.Visible = false
-            end
-        end
-    end
-    
-    -- Clean up ESP for players who left
-    for player, esp in pairs(self.Cache.ESP.Models) do
-        if not table.find(players, player) then
-            pcall(function()
-                esp.Box.Main:Remove()
-                esp.Box.Outline:Remove()
-                esp.Name.Main:Remove()
-                esp.Name.Outline:Remove()
-                esp.Distance.Main:Remove()
-                esp.Distance.Outline:Remove()
-                esp.HealthBar.Main:Remove()
-                esp.HealthBar.Outline:Remove()
-                esp.Tracer.Main:Remove()
-            end)
-            
-            self.Cache.ESP.Models[player] = nil
-        end
-    end
-end
-
--- Aimbot Functions
-function SevereLib:GetClosestPlayer()
-    local closestPlayer = nil
-    local closestDistance = math.huge
-    local closestScreenDistance = math.huge
-    
-    local camPos = self:GetCameraPosition()
-    local mouse = self:GetMouseLocation()
-    
-    for _, player in ipairs(self:GetPlayers()) do
-        local character = self:GetCharacter(player)
-        if not character or not self:IsAlive(character) then
-            continue
-        end
+    local success, result = pcall(function()
+        local char = player.Character
+        if not IsValidCharacter(char) then return false end
         
-        -- Skip if team check is enabled and player is on the same team
-        if self.Settings.Aimbot.TeamCheck and self:IsOnTeam(player, self:GetLocalPlayer()) then
-            continue
-        end
-        
-        -- Find target part
-        local targetPart
-        if self.Settings.Aimbot.TargetPart == "Head" then
-            targetPart = self:GetHead(character)
-        else
-            targetPart = self:GetRootPart(character)
-        end
-        
-        if not targetPart then
-            continue
-        end
-        
-        local targetPos = self:GetPosition(targetPart)
-        local screenPos, onScreen = self:WorldToScreen(targetPos)
-        
-        if onScreen then
-            local distance = self:GetDistance(camPos, targetPos)
-            local screenDistance = math.sqrt((mouse.x - screenPos.x)^2 + (mouse.y - screenPos.y)^2)
-            
-            if screenDistance < self.Settings.Aimbot.FOV then
-                if screenDistance < closestScreenDistance then
-                    closestPlayer = player
-                    closestDistance = distance
-                    closestScreenDistance = screenDistance
-                end
-            end
-        end
-    end
-    
-    return closestPlayer, closestDistance
-end
-
-function SevereLib:AimbotLoop()
-    if not self.Settings.Aimbot.Enabled then return end
-    
-    -- Check if aimbot key is pressed
-    local keyPressed = false
-    pcall(function()
-        keyPressed = isleftpressed() or isrightpressed()
+        local humanoid = char:FindFirstChild("Humanoid")
+        return humanoid and humanoid.Health > 0
     end)
     
-    if not keyPressed then return end
-    
-    local closestPlayer = self:GetClosestPlayer()
-    if not closestPlayer then return end
-    
-    local character = self:GetCharacter(closestPlayer)
-    if not character or not self:IsAlive(character) then return end
-    
-    -- Get target part
-    local targetPart
-    if self.Settings.Aimbot.TargetPart == "Head" then
-        targetPart = self:GetHead(character)
-    else
-        targetPart = self:GetRootPart(character)
-    end
-    
-    if not targetPart then return end
-    
-    -- Get target position
-    local targetPos = self:GetPosition(targetPart)
-    
-    -- Apply prediction if enabled
-    if self.Settings.Aimbot.Prediction then
-        local velocity
-        pcall(function()
-            velocity = getvelocity(targetPart)
-            
-            if velocity then
-                targetPos = {
-                    x = targetPos.x + velocity.x * self.Settings.Aimbot.PredictionAmount,
-                    y = targetPos.y + velocity.y * self.Settings.Aimbot.PredictionAmount,
-                    z = targetPos.z + velocity.z * self.Settings.Aimbot.PredictionAmount
-                }
-            end
-        end)
-    end
-    
-    -- Convert target position to screen position
-    local screenPos, onScreen = self:WorldToScreen(targetPos)
-    if not onScreen then return end
-    
-    -- Get current mouse position
-    local mouse = self:GetMouseLocation()
-    
-    -- Apply smoothing
-    local newX = self:Lerp(mouse.x, screenPos.x, self.Settings.Aimbot.Smoothness)
-    local newY = self:Lerp(mouse.y, screenPos.y, self.Settings.Aimbot.Smoothness)
-    
-    -- Move mouse
-    pcall(function()
-        mousemoveabs(newX, newY)
-    end)
+    return success and result
 end
 
--- Função para aguardar inicialização
-function SevereLib:WaitForGame()
-    local attempts = 0
-    local maxAttempts = 15  -- Aumentei o número de tentativas
-    local delayBetweenAttempts = 2  -- Aumentei o tempo entre tentativas
+local function IsValidTeam(team)
+    if not IsValidInstance(team) then return false end
     
-    while attempts < maxAttempts do
-        local success = pcall(function()
-            -- Verificar se podemos acessar objetos essenciais
-            local camera = self:GetCamera()
-            local players = self:GetGameService("Players")
-            local localPlayer = self:GetLocalPlayer()
+    local success = pcall(function()
+        local _ = team.TeamColor
+    end)
+    
+    return success
+end
+
+-- Drawing utilities
+local function CreateDrawingObject(type, properties)
+    local obj = Drawing.new(type)
+    
+    for prop, value in pairs(properties) do
+        obj[prop] = value
+    end
+    
+    return obj
+end
+
+local function UpdateDrawingObject(obj, properties)
+    if not obj then return end
+    
+    for prop, value in pairs(properties) do
+        obj[prop] = value
+    end
+end
+
+local function RemoveDrawingObject(obj)
+    if obj then
+        obj.Visible = false
+        obj:Remove()
+    end
+end
+
+-- Core ESP functionality
+local function CreateESPForPlayer(player)
+    if not IsValidInstance(player) then return end
+    
+    local espData = {
+        Player = player,
+        Character = nil,
+        Box = CreateDrawingObject("Square", {
+            Visible = false,
+            Color = Color3.fromRGB(unpack(SevereLib.Config.ESP.BoxColor)),
+            Thickness = SevereLib.Config.ESP.BoxThickness,
+            Filled = false,
+            Transparency = 1
+        }),
+        Name = CreateDrawingObject("Text", {
+            Visible = false,
+            Color = Color3.fromRGB(255, 255, 255),
+            Size = SevereLib.Config.ESP.TextSize,
+            Font = SevereLib.Config.ESP.TextFont,
+            Center = true,
+            Outline = true,
+            Transparency = 1
+        }),
+        Distance = CreateDrawingObject("Text", {
+            Visible = false,
+            Color = Color3.fromRGB(255, 255, 255),
+            Size = SevereLib.Config.ESP.TextSize,
+            Font = SevereLib.Config.ESP.TextFont,
+            Center = true,
+            Outline = true,
+            Transparency = 1
+        }),
+        Tracer = CreateDrawingObject("Line", {
+            Visible = false,
+            Color = Color3.fromRGB(255, 255, 255),
+            Thickness = SevereLib.Config.ESP.TracerThickness,
+            Transparency = 1
+        }),
+        HealthBar = CreateDrawingObject("Square", {
+            Visible = false,
+            Color = Color3.fromRGB(0, 255, 0),
+            Thickness = 1,
+            Filled = true,
+            Transparency = 1
+        }),
+        HealthBarOutline = CreateDrawingObject("Square", {
+            Visible = false,
+            Color = Color3.fromRGB(0, 0, 0),
+            Thickness = 1,
+            Filled = false,
+            Transparency = 1
+        }),
+        Corners = {
+            TopLeft = CreateDrawingObject("Line", {
+                Visible = false,
+                Color = Color3.fromRGB(255, 255, 255),
+                Thickness = SevereLib.Config.ESP.BoxThickness,
+                Transparency = 1
+            }),
+            TopRight = CreateDrawingObject("Line", {
+                Visible = false,
+                Color = Color3.fromRGB(255, 255, 255),
+                Thickness = SevereLib.Config.ESP.BoxThickness,
+                Transparency = 1
+            }),
+            BottomLeft = CreateDrawingObject("Line", {
+                Visible = false,
+                Color = Color3.fromRGB(255, 255, 255),
+                Thickness = SevereLib.Config.ESP.BoxThickness,
+                Transparency = 1
+            }),
+            BottomRight = CreateDrawingObject("Line", {
+                Visible = false,
+                Color = Color3.fromRGB(255, 255, 255),
+                Thickness = SevereLib.Config.ESP.BoxThickness,
+                Transparency = 1
+            }),
+        },
+        LastUpdate = os.clock(),
+        IsValid = true
+    }
+    
+    EspObjects[player] = espData
+end
+
+local function RemoveESPForPlayer(player)
+    local espData = EspObjects[player]
+    if not espData then return end
+    
+    RemoveDrawingObject(espData.Box)
+    RemoveDrawingObject(espData.Name)
+    RemoveDrawingObject(espData.Distance)
+    RemoveDrawingObject(espData.Tracer)
+    RemoveDrawingObject(espData.HealthBar)
+    RemoveDrawingObject(espData.HealthBarOutline)
+    
+    RemoveDrawingObject(espData.Corners.TopLeft)
+    RemoveDrawingObject(espData.Corners.TopRight)
+    RemoveDrawingObject(espData.Corners.BottomLeft)
+    RemoveDrawingObject(espData.Corners.BottomRight)
+    
+    EspObjects[player] = nil
+end
+
+local function UpdateESP()
+    if not SevereLib.Config.ESP.Enabled then
+        for player, espData in pairs(EspObjects) do
+            espData.Box.Visible = false
+            espData.Name.Visible = false
+            espData.Distance.Visible = false
+            espData.Tracer.Visible = false
+            espData.HealthBar.Visible = false
+            espData.HealthBarOutline.Visible = false
             
-            if camera and players and localPlayer then
-                return true
+            espData.Corners.TopLeft.Visible = false
+            espData.Corners.TopRight.Visible = false
+            espData.Corners.BottomLeft.Visible = false
+            espData.Corners.BottomRight.Visible = false
+        end
+        return
+    end
+
+    local cameraPos = SafeGetPosition(Camera)
+    local viewportSize = Camera.ViewportSize
+    
+    for player, espData in pairs(EspObjects) do
+        if not IsValidInstance(player) then
+            RemoveESPForPlayer(player)
+            continue
+        end
+        
+        -- Get character and check validity
+        local character = player.Character
+        espData.Character = character
+        
+        if not IsValidCharacter(character) or not IsPlayerAlive(player) then
+            espData.Box.Visible = false
+            espData.Name.Visible = false
+            espData.Distance.Visible = false
+            espData.Tracer.Visible = false
+            espData.HealthBar.Visible = false
+            espData.HealthBarOutline.Visible = false
+            
+            espData.Corners.TopLeft.Visible = false
+            espData.Corners.TopRight.Visible = false
+            espData.Corners.BottomLeft.Visible = false
+            espData.Corners.BottomRight.Visible = false
+            
+            continue
+        end
+        
+        -- Check if the player is on the same team as the local player
+        local teamCheck = true
+        if SevereLib.Config.ESP.TeamCheck and IsValidInstance(LocalPlayer) then
+            local playerTeam = player.Team
+            local localTeam = LocalPlayer.Team
+            
+            if IsValidTeam(playerTeam) and IsValidTeam(localTeam) and playerTeam == localTeam then
+                teamCheck = false
+            end
+        end
+        
+        if not teamCheck and player ~= LocalPlayer then
+            espData.Box.Visible = false
+            espData.Name.Visible = false
+            espData.Distance.Visible = false
+            espData.Tracer.Visible = false
+            espData.HealthBar.Visible = false
+            espData.HealthBarOutline.Visible = false
+            
+            espData.Corners.TopLeft.Visible = false
+            espData.Corners.TopRight.Visible = false
+            espData.Corners.BottomLeft.Visible = false
+            espData.Corners.BottomRight.Visible = false
+            
+            continue
+        end
+        
+        -- Ignore local player for ESP
+        if player == LocalPlayer then
+            espData.Box.Visible = false
+            espData.Name.Visible = false
+            espData.Distance.Visible = false
+            espData.Tracer.Visible = false
+            espData.HealthBar.Visible = false
+            espData.HealthBarOutline.Visible = false
+            
+            espData.Corners.TopLeft.Visible = false
+            espData.Corners.TopRight.Visible = false
+            espData.Corners.BottomLeft.Visible = false
+            espData.Corners.BottomRight.Visible = false
+            
+            continue
+        end
+        
+        -- Get positions for box calculation
+        local rootPart = SafeFindFirstChild(character, "HumanoidRootPart")
+        local head = SafeFindFirstChild(character, "Head")
+        
+        if not IsValidInstance(rootPart) or not IsValidInstance(head) then
+            continue
+        end
+        
+        local rootPos = SafeGetPosition(rootPart)
+        local distance = (rootPos - cameraPos).Magnitude
+        
+        -- Check if the player is within the distance limit
+        if distance > SevereLib.Config.ESP.MaxDistance then
+            espData.Box.Visible = false
+            espData.Name.Visible = false
+            espData.Distance.Visible = false
+            espData.Tracer.Visible = false
+            espData.HealthBar.Visible = false
+            espData.HealthBarOutline.Visible = false
+            
+            espData.Corners.TopLeft.Visible = false
+            espData.Corners.TopRight.Visible = false
+            espData.Corners.BottomLeft.Visible = false
+            espData.Corners.BottomRight.Visible = false
+            
+            continue
+        end
+        
+        -- Calculate 3D positions for the box
+        local topPos = rootPos + Vector3.new(0, 3, 0)
+        local bottomPos = rootPos - Vector3.new(0, 3, 0)
+        
+        -- Convert 3D positions to screen positions
+        local topScreen, topOnScreen = SafeWorldToScreenPoint(topPos)
+        local bottomScreen, bottomOnScreen = SafeWorldToScreenPoint(bottomPos)
+        
+        -- Check if the player is on screen
+        if not (topOnScreen or bottomOnScreen) then
+            espData.Box.Visible = false
+            espData.Name.Visible = false
+            espData.Distance.Visible = false
+            espData.Tracer.Visible = false
+            espData.HealthBar.Visible = false
+            espData.HealthBarOutline.Visible = false
+            
+            espData.Corners.TopLeft.Visible = false
+            espData.Corners.TopRight.Visible = false
+            espData.Corners.BottomLeft.Visible = false
+            espData.Corners.BottomRight.Visible = false
+            
+            continue
+        end
+        
+        -- Calculate box dimensions
+        local height = math.abs(topScreen.Y - bottomScreen.Y)
+        local width = height * 0.6
+        local boxX = topScreen.X - width / 2
+        local boxY = topScreen.Y
+        
+        -- Update box
+        if SevereLib.Config.ESP.BoxEnabled then
+            if SevereLib.Config.ESP.BoxType == "2D" then
+                espData.Box.Visible = true
+                espData.Box.Size = Vector2.new(width, height)
+                espData.Box.Position = Vector2.new(boxX, boxY)
+                
+                espData.Corners.TopLeft.Visible = false
+                espData.Corners.TopRight.Visible = false
+                espData.Corners.BottomLeft.Visible = false
+                espData.Corners.BottomRight.Visible = false
+            elseif SevereLib.Config.ESP.BoxType == "Corners" then
+                espData.Box.Visible = false
+                
+                -- Corner calculations
+                local cornerSize = math.min(width, height) * 0.2
+                
+                -- Top left corner
+                espData.Corners.TopLeft.Visible = true
+                espData.Corners.TopLeft.From = Vector2.new(boxX, boxY)
+                espData.Corners.TopLeft.To = Vector2.new(boxX + cornerSize, boxY)
+                
+                -- Top right corner
+                espData.Corners.TopRight.Visible = true
+                espData.Corners.TopRight.From = Vector2.new(boxX + width, boxY)
+                espData.Corners.TopRight.To = Vector2.new(boxX + width - cornerSize, boxY)
+                
+                -- Bottom left corner
+                espData.Corners.BottomLeft.Visible = true
+                espData.Corners.BottomLeft.From = Vector2.new(boxX, boxY + height)
+                espData.Corners.BottomLeft.To = Vector2.new(boxX + cornerSize, boxY + height)
+                
+                -- Bottom right corner
+                espData.Corners.BottomRight.Visible = true
+                espData.Corners.BottomRight.From = Vector2.new(boxX + width, boxY + height)
+                espData.Corners.BottomRight.To = Vector2.new(boxX + width - cornerSize, boxY + height)
             else
-                error("Essential objects not ready")
+                espData.Box.Visible = false
+                
+                espData.Corners.TopLeft.Visible = false
+                espData.Corners.TopRight.Visible = false
+                espData.Corners.BottomLeft.Visible = false
+                espData.Corners.BottomRight.Visible = false
             end
-        end)
-        
-        if success then
-            self:Success("Game objects initialized successfully")
-            return true
         else
-            attempts = attempts + 1
-            self:Warning("Waiting for game to initialize... Attempt " .. attempts .. "/" .. maxAttempts)
-            wait(delayBetweenAttempts)
-        end
-    end
-    
-    if attempts >= maxAttempts then
-        self:Error("Failed to initialize library - essential objects not found")
-        return false
-    end
-end
-
--- Main Functions
-function SevereLib:Init()
-    self:Print("SevereLib v" .. self._VERSION .. " initialized!")
-    
-    -- Aguardar inicialização do jogo automaticamente
-    spawn(function()
-        if self:WaitForGame() then
-            -- Tentar inicializar quando o jogo estiver pronto
-            self:Start()
-        end
-    end)
-    
-    return self
-end
-
-function SevereLib:Start()
-    if self.Running then return self end
-    
-    self.Running = true
-    self:Print("Starting SevereLib services...")
-    
-    -- Create FOV circle if aimbot is enabled and showFOV is true
-    if self.Settings.Aimbot.Enabled and self.Settings.Aimbot.ShowFOV then
-        self.Cache.FOVCircle = Drawing.new("Circle")
-        self.Cache.FOVCircle.Visible = true
-        self.Cache.FOVCircle.Color = {255, 255, 255}
-        self.Cache.FOVCircle.Thickness = 1
-        self.Cache.FOVCircle.NumSides = 60
-        self.Cache.FOVCircle.Radius = self.Settings.Aimbot.FOV
-        self.Cache.FOVCircle.Filled = false
-        self.Cache.FOVCircle.Transparency = 0.7
-    end
-    
-    -- Main loop
-    spawn(function()
-        while self.Running do
-            -- Update ESP
-            pcall(function() 
-                self:UpdateESP()
-            end)
+            espData.Box.Visible = false
             
-            -- Update Aimbot
-            pcall(function()
-                self:AimbotLoop()
-            end)
+            espData.Corners.TopLeft.Visible = false
+            espData.Corners.TopRight.Visible = false
+            espData.Corners.BottomLeft.Visible = false
+            espData.Corners.BottomRight.Visible = false
+        end
+        
+        -- Update name
+        if SevereLib.Config.ESP.ShowName then
+            espData.Name.Visible = true
+            espData.Name.Text = player.Name
+            espData.Name.Position = Vector2.new(boxX + width / 2, boxY - 20)
             
-            -- Update FOV circle position
-            if self.Cache.FOVCircle then
-                pcall(function()
-                    local mouse = self:GetMouseLocation()
-                    self.Cache.FOVCircle.Position = Vector2.new(mouse.x, mouse.y)
-                    self.Cache.FOVCircle.Visible = self.Settings.Aimbot.ShowFOV and self.Settings.Aimbot.Enabled
-                    self.Cache.FOVCircle.Radius = self.Settings.Aimbot.FOV
-                end)
+            -- Set color based on team
+            local nameColor = Color3.fromRGB(255, 255, 255)
+            if IsValidTeam(player.Team) then
+                nameColor = player.TeamColor.Color
             end
             
-            wait(self.Settings.ESP.RefreshRate)
+            espData.Name.Color = nameColor
+        else
+            espData.Name.Visible = false
         end
+        
+        -- Update distance
+        if SevereLib.Config.ESP.ShowDistance then
+            espData.Distance.Visible = true
+            espData.Distance.Text = math.floor(distance) .. "m"
+            espData.Distance.Position = Vector2.new(boxX + width / 2, boxY + height + 5)
+        else
+            espData.Distance.Visible = false
+        end
+        
+        -- Update tracer
+        if SevereLib.Config.ESP.TracerEnabled then
+            espData.Tracer.Visible = true
+            
+            local tracerOrigin = Vector2.new(viewportSize.X / 2, viewportSize.Y)
+            if SevereLib.Config.ESP.TracerOrigin == "Center" then
+                tracerOrigin = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+            elseif SevereLib.Config.ESP.TracerOrigin == "Mouse" then
+                tracerOrigin = UserInputService:GetMouseLocation()
+            end
+            
+            espData.Tracer.From = tracerOrigin
+            espData.Tracer.To = Vector2.new(boxX + width / 2, boxY + height)
+        else
+            espData.Tracer.Visible = false
+        end
+        
+        -- Update health bar
+        if SevereLib.Config.ESP.ShowHealth then
+            local humanoid = SafeGetHumanoid(character)
+            if humanoid then
+                local health, maxHealth = SafeGetHealth(humanoid)
+                local healthPercent = math.clamp(health / maxHealth, 0, 1)
+                
+                espData.HealthBar.Visible = true
+                espData.HealthBarOutline.Visible = true
+                
+                local barWidth = 4
+                local barHeight = height
+                local barX = boxX - barWidth * 2
+                
+                espData.HealthBarOutline.Size = Vector2.new(barWidth, barHeight)
+                espData.HealthBarOutline.Position = Vector2.new(barX, boxY)
+                
+                espData.HealthBar.Size = Vector2.new(barWidth, barHeight * healthPercent)
+                espData.HealthBar.Position = Vector2.new(barX, boxY + barHeight * (1 - healthPercent))
+                
+                -- Set color based on health
+                local r = math.floor(255 * (1 - healthPercent))
+                local g = math.floor(255 * healthPercent)
+                espData.HealthBar.Color = Color3.fromRGB(r, g, 0)
+            else
+                espData.HealthBar.Visible = false
+                espData.HealthBarOutline.Visible = false
+            end
+        else
+            espData.HealthBar.Visible = false
+            espData.HealthBarOutline.Visible = false
+        end
+        
+        espData.LastUpdate = os.clock()
+    end
+end
+
+-- Initialization functions
+local function InitializeServices()
+    Services.RunService = SafeGetService("RunService")
+    Services.UserInputService = SafeGetService("UserInputService")
+    Services.Players = SafeGetService("Players")
+    Services.Workspace = SafeGetService("Workspace")
+    
+    -- Store references to commonly used services
+    RunService = Services.RunService
+    UserInputService = Services.UserInputService
+    Players = Services.Players
+    Workspace = Services.Workspace
+    
+    -- Initialize camera and local player
+    Camera = Workspace.CurrentCamera
+    LocalPlayer = Players.LocalPlayer
+    
+    if not Camera then
+        LogError("Failed to get camera")
+    end
+    
+    if not LocalPlayer then
+        LogError("Failed to get local player")
+    end
+end
+
+local function SetupConnections()
+    -- Player connections
+    Players.PlayerAdded:Connect(function(player)
+        CreateESPForPlayer(player)
     end)
     
-    self:Success("SevereLib services started!")
+    Players.PlayerRemoving:Connect(function(player)
+        RemoveESPForPlayer(player)
+    end)
     
-    return self
+    -- Camera connection
+    if Workspace then
+        Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+            Camera = Workspace.CurrentCamera
+        end)
+    end
+    
+    -- Initialize ESP for all players
+    for _, player in ipairs(Players:GetPlayers()) do
+        CreateESPForPlayer(player)
+    end
+    
+    -- Main update loop
+    RunService.RenderStepped:Connect(function(deltaTime)
+        -- Update FPS counter
+        DebugInfo.FrameCount = DebugInfo.FrameCount + 1
+        
+        local currentTime = os.clock()
+        if currentTime - DebugInfo.LastFPSUpdate >= 1 then
+            DebugInfo.LastFPS = DebugInfo.FrameCount
+            DebugInfo.FrameCount = 0
+            DebugInfo.LastFPSUpdate = currentTime
+        end
+        
+        -- Update ESP
+        UpdateESP()
+        
+        -- Update Aimbot
+        -- UpdateAimbot() -- Not implemented yet
+    end)
 end
 
-function SevereLib:Stop()
-    if not self.Running then return self end
+-- Public API functions
+function SevereLib.Initialize()
+    LogInfo("Initializing SevereLib...")
     
-    self.Running = false
-    self:Print("Stopping SevereLib services...")
+    -- Initialize services and connections
+    InitializeServices()
+    SetupConnections()
     
-    -- Clean up all ESP objects
-    for player, esp in pairs(self.Cache.ESP.Models) do
-        pcall(function()
-            esp.Box.Main:Remove()
-            esp.Box.Outline:Remove()
-            esp.Name.Main:Remove()
-            esp.Name.Outline:Remove()
-            esp.Distance.Main:Remove()
-            esp.Distance.Outline:Remove()
-            esp.HealthBar.Main:Remove()
-            esp.HealthBar.Outline:Remove()
-            esp.Tracer.Main:Remove()
-        end)
-    end
+    -- Create Aimbot FOV circle
+    AimbotData.FOVCircle = CreateDrawingObject("Circle", {
+        Visible = SevereLib.Config.Aimbot.ShowFOV,
+        Color = Color3.fromRGB(unpack(SevereLib.Config.Aimbot.FOVColor)),
+        Thickness = SevereLib.Config.Aimbot.FOVThickness,
+        NumSides = 36,
+        Radius = SevereLib.Config.Aimbot.FOV,
+        Filled = false,
+        Transparency = 1
+    })
     
-    -- Clean up FOV circle
-    if self.Cache.FOVCircle then
-        pcall(function()
-            self.Cache.FOVCircle:Remove()
-        end)
-        self.Cache.FOVCircle = nil
-    end
-    
-    -- Clean up console
-    self:ClearConsole()
-    
-    if self.Console.Background then
-        pcall(function()
-            self.Console.Background:Remove()
-        end)
-    end
-    
-    if self.Console.Header then
-        pcall(function()
-            self.Console.Header:Remove()
-        end)
-    end
-    
-    self.Cache.ESP.Models = {}
-    self.Console.Visible = false
-    
-    self:Success("SevereLib services stopped!")
-    
-    return self
+    LogInfo("SevereLib initialized successfully!")
+    return true
 end
 
-function SevereLib:Toggle()
-    if self.Running then
-        return self:Stop()
+function SevereLib.Uninitialize()
+    LogInfo("Uninitializing SevereLib...")
+    
+    -- Remove all ESP objects
+    for player, _ in pairs(EspObjects) do
+        RemoveESPForPlayer(player)
+    end
+    
+    -- Remove aimbot objects
+    if AimbotData.FOVCircle then
+        RemoveDrawingObject(AimbotData.FOVCircle)
+    end
+    
+    LogInfo("SevereLib uninitialized successfully!")
+    
+    -- Clear references
+    EspObjects = {}
+    AimbotData = {
+        Target = nil,
+        FOVCircle = nil,
+    }
+    
+    return true
+end
+
+function SevereLib.ToggleESP(enabled)
+    if enabled ~= nil then
+        SevereLib.Config.ESP.Enabled = enabled
     else
-        return self:Start()
+        SevereLib.Config.ESP.Enabled = not SevereLib.Config.ESP.Enabled
+    end
+    
+    return SevereLib.Config.ESP.Enabled
+end
+
+function SevereLib.ToggleAimbot(enabled)
+    if enabled ~= nil then
+        SevereLib.Config.Aimbot.Enabled = enabled
+    else
+        SevereLib.Config.Aimbot.Enabled = not SevereLib.Config.Aimbot.Enabled
+    end
+    
+    return SevereLib.Config.Aimbot.Enabled
+end
+
+function SevereLib.GetDebugInfo()
+    return {
+        FPS = DebugInfo.LastFPS,
+        RunTime = os.time() - DebugInfo.StartTime,
+        ErrorCount = DebugInfo.ErrorCount,
+        WarningCount = DebugInfo.WarningCount,
+        ESPObjectCount = #EspObjects,
+        ConfigSettings = SevereLib.Config
+    }
+end
+
+function SevereLib.IsValid(obj)
+    return IsValidInstance(obj)
+end
+
+function SevereLib.SafeGetPosition(obj)
+    return SafeGetPosition(obj)
+end
+
+function SevereLib.SafeGetChildren(parent)
+    return SafeGetChildren(parent)
+end
+
+function SevereLib.SafeFindFirstChild(parent, childName)
+    return SafeFindFirstChild(parent, childName)
+end
+
+function SevereLib.UpdateConfig(newConfig)
+    -- Deep merge the configs
+    for category, settings in pairs(newConfig) do
+        if SevereLib.Config[category] then
+            for setting, value in pairs(settings) do
+                SevereLib.Config[category][setting] = value
+            end
+        end
     end
 end
 
 -- Return the library
-return SevereLib:Init()
+return SevereLib
