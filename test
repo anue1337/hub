@@ -1,0 +1,898 @@
+--// Severe Global Library (SGL) //--
+
+--// Presets
+--// Severe documentation mentions 'Game' as a predefined global userdata.
+local SevereGame = _G.Game
+local Workspace = nil
+local Players = nil
+local UserInputService = nil -- For mouse interactions, if needed for UI elements
+local LocalPlayer = nil -- Userdata for the local player
+local LocalPlayerCharacter = nil -- Userdata for the local player's character
+local LocalPlayerHRP = nil -- Userdata for the local player's HumanoidRootPart
+
+if SevereGame then
+    Workspace = findfirstchild(SevereGame, "Workspace") or findservice(SevereGame, "Workspace")
+    Players = findservice(SevereGame, "Players")
+    UserInputService = findservice(SevereGame, "UserInputService")
+    LocalPlayer = getlocalplayer()
+    if LocalPlayer then
+        LocalPlayerCharacter = getcharacter(LocalPlayer)
+        if LocalPlayerCharacter then
+            LocalPlayerHRP = findfirstchild(LocalPlayerCharacter, "HumanoidRootPart") or getprimarypart(LocalPlayerCharacter)
+        end
+    end
+else
+    -- Minimal fallbacks or warnings if SevereGame is not available at script execution start
+    -- This might happen if the script runs too early.
+    warn("[SGL] SevereGame global not found at init. Some features may not work.")
+end
+
+local Screen = { x = 1920, y = 1080 } -- Default values
+local screen_dims_tuple = getscreendimensions()
+if screen_dims_tuple and screen_dims_tuple.x and screen_dims_tuple.y then
+    Screen.x = screen_dims_tuple.x
+    Screen.y = screen_dims_tuple.y
+else
+    warn("[SGL] Could not get screen dimensions. Using default.")
+end
+
+--// Initiating Library
+if _G.sgl == nil then
+    _G.sgl = {
+        --// Console Vars
+        Location = {100, 150}, -- Dynamic
+        Size = {Screen.x / 2.95, Screen.y / 1.21}, -- Static
+        FontColor = {255,255,255}, -- Static + [Changeable]
+        MainColor = {25,25,25}, -- Static + [Changeable]
+        BackgroundColor = {15,15,15}, -- Static + [Changeable]
+        AccentColor = {255,100,255}, -- Static + [Changeable]
+        OutlineColor = {40,40,40}, -- Static + [Changeable]
+        Black = {0,0,0}, -- Static
+
+        ErrorColor = {255,100,100},
+
+        WinMouseOffset = nil,
+
+        StoredLogs = {},
+        DrawingObjects = { -- For managing persistent drawing objects (like console UI)
+            Console = {}
+        },
+
+        Open = true,
+        Hovering = false,
+
+        --// Storing older functions and stuff :3
+        OldLoadstring = loadstring,
+
+        OldPrint = print,
+        OldWarn = warn, -- Severe has warn()
+        OldError = error, -- Standard Lua error()
+
+        --// Sleep
+        Threads = {},
+        ThreadCount = 0, -- Used for indexed sleep calls
+
+        --// Dragging (for console)
+        Dragging = false,
+
+        --// Character Stuff (saved for optimization)
+        -- PlayerFolder = nil; -- This was game-specific in dxl, might adapt later if a common pattern emerges
+
+        --// Rainbow
+        CurrentRainbowColor = {255,255,255},
+        RainbowHue = 0,
+    }
+end
+
+--// Update screen dimensions dynamically if possible (e.g., in a render loop)
+--// For now, it's set at init. If the game window resizes, this won't update unless called again.
+function _G.sgl.UpdateScreenDimensions()
+    local new_dims = getscreendimensions()
+    if new_dims and new_dims.x and new_dims.y then
+        Screen.x = new_dims.x
+        Screen.y = new_dims.y
+        _G.sgl.Size = {Screen.x / 2.95, Screen.y / 1.21} -- Update console size too
+    end
+end
+
+--// Rainbow Tick (ported from dxl)
+--// This should be called periodically, e.g., in a renderstepped or task.spawn loop
+function _G.sgl.RainbowTick()
+    local sgl = _G.sgl
+    if sgl.RainbowHue > 1530 then
+        sgl.RainbowHue = 0  
+    else
+        sgl.RainbowHue = sgl.RainbowHue + 3 -- Speed of rainbow
+    end
+
+    if sgl.RainbowHue <= 255 then
+        sgl.CurrentRainbowColor = {255, sgl.RainbowHue, 0}
+    elseif sgl.RainbowHue <= 510 then
+        sgl.CurrentRainbowColor = {510 - sgl.RainbowHue, 255, 0}
+    elseif sgl.RainbowHue <= 765 then
+        sgl.CurrentRainbowColor = {0, 255, sgl.RainbowHue - 510}
+    elseif sgl.RainbowHue <= 1020 then
+        sgl.CurrentRainbowColor = {0, 1020 - sgl.RainbowHue, 255}
+    elseif sgl.RainbowHue <= 1275 then
+        sgl.CurrentRainbowColor = {sgl.RainbowHue - 1020, 0, 255}
+    elseif sgl.RainbowHue <= 1530 then
+        sgl.CurrentRainbowColor = {255, 0, 1530 - sgl.RainbowHue}
+    end
+end
+
+
+--// Indexed Sleep function (adapted from dxl)
+--// Severe has wait(n), this provides indexed waits for more complex sequences.
+function _G.sgl.sleep(duration, index)
+    local sgl = _G.sgl
+    sgl.ThreadCount = sgl.ThreadCount + 1
+    local current_thread_id = sgl.ThreadCount -- Unique ID for this sleep call instance if not indexed
+
+    assert(type(duration) == "number" and duration >= 0, "[SGL Error] sleep: First Argument needs to be a number >= 0!")
+
+    if duration == 0 then
+        if index then sgl.Threads[index] = nil else sgl.Threads[current_thread_id] = nil end
+        return true 
+    end
+
+    local current_time_seconds = tick() -- Severe's tick() or os.time() if available and preferred
+
+    local thread_key = index or current_thread_id
+
+    if sgl.Threads[thread_key] == nil then
+        local start_time = current_time_seconds
+        if index then -- Check if other sleeps with same index are active to chain them
+            local largest_end_time_for_index = current_time_seconds
+            for k, th_data in pairs(sgl.Threads) do
+                if th_data.Index == index and th_data.EndTime > largest_end_time_for_index then
+                    largest_end_time_for_index = th_data.EndTime
+                end
+            end
+            start_time = largest_end_time_for_index -- Chain after the last one with this index
+        end
+        
+        sgl.Threads[thread_key] = {
+            EndTime = start_time + duration;
+            Index = index; -- Store index if provided
+        }
+        return false -- Sleep initiated
+    else
+        if current_time_seconds >= sgl.Threads[thread_key].EndTime then
+            sgl.Threads[thread_key] = nil
+            return true -- Sleep finished
+        else
+            return false -- Still sleeping
+        end
+    end
+end
+
+--// Not sure if each screen is a different size (dx9.size) so I'm using this to use % instead of Pixels to click / move to screen coords
+--// This function from dxl converts coordinates from a reference resolution (e.g., 1920x1017) to the current screen resolution.
+function _G.sgl.GetCoords(coords_on_ref_screen, ref_screen_width, ref_screen_height)
+    ref_screen_width = ref_screen_width or 1920
+    ref_screen_height = ref_screen_height or 1080
+    
+    assert(type(coords_on_ref_screen) == "table" and #coords_on_ref_screen == 2, "[SGL Error] GetCoords: First Argument needs to be a table {x, y}!")
+
+    local percent_x = coords_on_ref_screen[1] / ref_screen_width
+    local percent_y = coords_on_ref_screen[2] / ref_screen_height
+
+    return {Screen.x * percent_x, Screen.y * percent_y} 
+end
+
+--// Check if OS mouse is within a 2D screen area {x1, y1, x2, y2}
+function _G.sgl.isMouseInArea(area)
+    assert(type(area) == "table" and #area == 4, "[SGL Error] isMouseInArea: Argument needs to be a table {x1, y1, x2, y2}!")
+    
+    local mouse_pos = getmouseposition() -- Severe's function for OS mouse position {x, y}
+    if not mouse_pos then return false end
+
+    if mouse_pos.x > area[1] and mouse_pos.y > area[2] and mouse_pos.x < area[3] and mouse_pos.y < area[4] then
+        return true
+    else
+        return false
+    end
+end
+
+--// Calculate distance between two 3D points or game objects
+--// v_or_obj1, v_or_obj2 can be {x,y,z} tables or userdata (Parts, Models with PrimaryPart)
+function _G.sgl.GetDistance(v_or_obj1, v_or_obj2)
+    local pos1_vec, pos2_vec
+
+    local function get_position_from_input(input)
+        if type(input) == "table" and input.x ~= nil and input.y ~= nil and input.z ~= nil then
+            return input -- Already a {x,y,z} table
+        elseif type(input) == "table" and #input == 3 then
+             return {x=input[1], y=input[2], z=input[3]} -- {n,n,n} array
+        elseif type(input) == "userdata" then
+            local pos = getposition(input) -- Severe's getposition
+            if pos then return pos end -- Expected {x,y,z}
+            -- Try to get primary part if it's a model
+            local primary_part = getprimarypart(input)
+            if primary_part then
+                pos = getposition(primary_part)
+                if pos then return pos end
+            end
+            _G.sgl.error("[SGL Error] GetDistance: Could not get position from userdata input.")
+            return nil
+        else
+            _G.sgl.error("[SGL Error] GetDistance: Invalid input type. Expected {x,y,z} table or userdata.")
+            return nil
+        end
+    end
+
+    pos1_vec = get_position_from_input(v_or_obj1)
+    pos2_vec = get_position_from_input(v_or_obj2)
+
+    if not pos1_vec or not pos2_vec then
+        return math.huge -- Indicate error or invalid distance
+    end
+
+    local dx = pos1_vec.x - pos2_vec.x
+    local dy = pos1_vec.y - pos2_vec.y
+    local dz = pos1_vec.z - pos2_vec.z
+    
+    return math.sqrt(dx*dx + dy*dy + dz*dz)
+end
+
+--// Get Distance From Local Player's Character HRP to a 3D point or game object
+function _G.sgl.GetDistanceFromPlayer(target_v_or_obj)
+    if not LocalPlayerHRP then
+        -- Try to re-fetch if it was nil initially
+        if LocalPlayer and not LocalPlayerCharacter then LocalPlayerCharacter = getcharacter(LocalPlayer) end
+        if LocalPlayerCharacter and not LocalPlayerHRP then
+             LocalPlayerHRP = findfirstchild(LocalPlayerCharacter, "HumanoidRootPart") or getprimarypart(LocalPlayerCharacter)
+        end
+        if not LocalPlayerHRP then
+            _G.sgl.error("[SGL Error] GetDistanceFromPlayer: LocalPlayerHRP not available.")
+            return math.huge
+        end
+    end
+    return _G.sgl.GetDistance(LocalPlayerHRP, target_v_or_obj)
+end
+
+
+--// Placeholder for the custom print_table function (from dxl)
+local function print_table_recursive(node, depth, cache, output_parts)
+    -- Implementation based on dxl's print_table, adapted for Severe if needed
+    -- This is a complex function, will add it fully if requested or in a subsequent step.
+    -- For now, a simple tostring for tables.
+    if type(node) == "table" then
+        table.insert(output_parts, "{")
+        local first = true
+        for k, v in pairs(node) do
+            if not first then table.insert(output_parts, ", ") end
+            table.insert(output_parts, tostring(k) .. "=")
+            print_table_recursive(v, depth + 1, cache, output_parts)
+            first = false
+        end
+        table.insert(output_parts, "}")
+    else
+        table.insert(output_parts, tostring(node))
+    end
+end
+
+local function sgl_print_table(tbl)
+    local output_parts = {}
+    print_table_recursive(tbl, 1, {}, output_parts)
+    return table.concat(output_parts)
+end
+
+
+--// SGL internal error (will be used by hooked functions too)
+--// This will log to StoredLogs for the custom console
+function _G.sgl.error(...)
+    local sgl = _G.sgl
+    local arg = {...}
+    local temp = ""
+    for i,v in ipairs(arg) do
+        if type(v) == "table" then
+            temp = temp .. sgl_print_table(v) .. " "
+        else
+            temp = temp .. tostring(v) .. " "
+        end
+    end
+    
+    -- Add to stored logs (for custom console)
+    local lines = {}
+    for line in string.gmatch(temp, "([^\n]+)") do
+        table.insert(lines, line)
+    end
+
+    if #lines == 0 and temp ~= "" and temp ~= " " then -- Handle cases where temp might be just spaces or empty
+       table.insert(lines, temp)
+    end
+
+    for _, line_content in ipairs(lines) do
+        if #sgl.StoredLogs >= 45 then -- Max log lines for console
+            table.remove(sgl.StoredLogs, 1)
+        end
+        table.insert(sgl.StoredLogs, "ERROR_TAG" .. line_content) -- Prepend error tag
+    end
+
+    -- Also call original error or warn
+    if sgl.OldError then
+        -- sgl.OldError(temp) -- Calling original error stops script execution.
+        -- Instead, let's use warn for non-fatal SGL errors that are logged.
+        if sgl.OldWarn then sgl.OldWarn("[SGL Internal Error] " .. temp) end
+    end
+end
+
+--// SGL internal print (logs to StoredLogs for custom console)
+function _G.sgl.print(...)
+    local sgl = _G.sgl
+    local arg = {...}
+    local temp = ""
+    for i,v in ipairs(arg) do
+        if type(v) == "table" then
+            temp = temp .. sgl_print_table(v) .. " "
+        else
+            temp = temp .. tostring(v) .. " "
+        end
+    end
+
+    local lines = {}
+    for line in string.gmatch(temp, "([^\n]+)") do
+        table.insert(lines, line)
+    end
+     if #lines == 0 and temp ~= "" and temp ~= " " then
+       table.insert(lines, temp)
+    end
+
+    for _, line_content in ipairs(lines) do
+        if #sgl.StoredLogs >= 45 then
+            table.remove(sgl.StoredLogs, 1)
+        end
+        table.insert(sgl.StoredLogs, line_content)
+    end
+
+    -- Also call original print
+    if sgl.OldPrint then
+        sgl.OldPrint(...)
+    end
+end
+
+--// Override global print and error/warn if desired
+-- _G.print = _G.sgl.print
+-- _G.warn = function(...) _G.sgl.print("[WARN]", ...); if _G.sgl.OldWarn then _G.sgl.OldWarn(...) end end
+-- _G.error = function(...) _G.sgl.error(...); if _G.sgl.OldError then _G.sgl.OldError(...) end end -- This might be too intrusive
+
+
+--// Example of hooking a Severe function (e.g., findfirstchild)
+local original_findfirstchild = findfirstchild
+if original_findfirstchild then
+    findfirstchild = function(instance, childName)
+        if type(instance) ~= "userdata" and type(instance) ~= "table" then -- game is a table in rlua
+            _G.sgl.error("[SGL Hook] findfirstchild: Arg #1 (instance) expected userdata or table, got " .. type(instance) .. debug.traceback())
+            -- return nil -- Or call original if we want it to handle its own error
+        end
+        if type(childName) ~= "string" then
+            _G.sgl.error("[SGL Hook] findfirstchild: Arg #2 (childName) expected string, got " .. type(childName) .. debug.traceback())
+            -- return nil
+        end
+        return original_findfirstchild(instance, childName)
+    end
+else
+    _G.sgl.print("[SGL] 'findfirstchild' not found globally to hook.")
+end
+
+
+--[[
+--// TODO: Custom Console Rendering Function (sgl.ShowConsole)
+--// This will use Severe's Drawing API (Drawing.new("Square"), Drawing.new("Text"))
+function _G.sgl.ShowConsole()
+    local sgl = _G.sgl
+    if not sgl.Open then return end -- Only draw if open (or draw a small tab if closed)
+
+    -- Clear previous console drawings if managed this way
+    for _, obj in pairs(sgl.DrawingObjects.Console) do
+        if obj.Remove then obj:Remove() end -- Assuming Remove method exists
+    end
+    sgl.DrawingObjects.Console = {} -- Reset for new frame
+
+    -- Mouse handling for dragging and closing (simplified)
+    -- ...
+
+    -- Draw console background, border, title bar
+    -- ... using Drawing.new("Square"), Drawing.new("Text") ...
+    -- Example:
+    -- local bg = Drawing.new("Square")
+    -- bg.Position = {sgl.Location[1], sgl.Location[2]}
+    -- bg.Size = {sgl.Size[1], sgl.Size[2]}
+    -- bg.Color = sgl.BackgroundColor
+    -- bg.Filled = true
+    -- bg.Visible = true
+    -- table.insert(sgl.DrawingObjects.Console, bg)
+
+    -- Draw logs
+    local y_offset = sgl.Location[2] + 25 -- Start Y for text
+    for i, log_entry in ipairs(sgl.StoredLogs) do
+        local text_color = sgl.FontColor
+        local text_content = log_entry
+        if string.sub(log_entry, 1, 9) == "ERROR_TAG" then
+            text_color = sgl.ErrorColor
+            text_content = string.sub(log_entry, 10)
+        end
+        
+        local log_text_obj = Drawing.new("Text")
+        log_text_obj.Position = {sgl.Location[1] + 10, y_offset + (i-1) * 18}
+        log_text_obj.Text = text_content
+        log_text_obj.Color = text_color
+        log_text_obj.Size = 14 -- Font size
+        log_text_obj.Visible = true
+        -- table.insert(sgl.DrawingObjects.Console, log_text_obj) -- Add to managed objects
+    end
+end
+-- Remember to call sgl.ShowConsole() in a render loop, and sgl.RainbowTick()
+]]
+
+--// ========= ESP Functions =========
+
+--// Draw a 3D box given two corner Vector3s (min and max points of the box)
+--// Uses Severe's Drawing.new("Line") and worldtoscreenpoint()
+function _G.sgl.Box3d(pos_min_vec3, pos_max_vec3, box_color, thickness, parent_drawing_array)
+    assert(type(pos_min_vec3) == "table" and pos_min_vec3.x, "[SGL Error] Box3d: Arg #1 (pos_min_vec3) needs to be a Vector3 table {x,y,z}!")
+    assert(type(pos_max_vec3) == "table" and pos_max_vec3.x, "[SGL Error] Box3d: Arg #2 (pos_max_vec3) needs to be a Vector3 table {x,y,z}!")
+    assert(type(box_color) == "table" and #box_color == 3, "[SGL Error] Box3d: Arg #3 (box_color) needs to be an RGB table {r,g,b}!")
+    thickness = thickness or 1
+
+    local p = {
+        {x = pos_min_vec3.x, y = pos_min_vec3.y, z = pos_min_vec3.z}, -- 0
+        {x = pos_max_vec3.x, y = pos_min_vec3.y, z = pos_min_vec3.z}, -- 1
+        {x = pos_max_vec3.x, y = pos_max_vec3.y, z = pos_min_vec3.z}, -- 2
+        {x = pos_min_vec3.x, y = pos_max_vec3.y, z = pos_min_vec3.z}, -- 3
+        {x = pos_min_vec3.x, y = pos_min_vec3.y, z = pos_max_vec3.z}, -- 4
+        {x = pos_max_vec3.x, y = pos_min_vec3.y, z = pos_max_vec3.z}, -- 5
+        {x = pos_max_vec3.x, y = pos_max_vec3.y, z = pos_max_vec3.z}, -- 6
+        {x = pos_min_vec3.x, y = pos_max_vec3.y, z = pos_max_vec3.z}  -- 7
+    }
+
+    local lines_to_draw = {
+        {p[1],p[2]}, {p[2],p[3]}, {p[3],p[4]}, {p[4],p[1]}, -- Bottom face
+        {p[5],p[6]}, {p[6],p[7]}, {p[7],p[8]}, {p[8],p[5]}, -- Top face
+        {p[1],p[5]}, {p[2],p[6]}, {p[3],p[7]}, {p[4],p[8]}  -- Connecting sides
+    }
+
+    local active_lines = parent_drawing_array or {}
+
+    for _, pair_vec3 in ipairs(lines_to_draw) do
+        local screen_p1_tuple = worldtoscreenpoint(pair_vec3[1])
+        local screen_p2_tuple = worldtoscreenpoint(pair_vec3[2])
+
+        if screen_p1_tuple and screen_p1_tuple.x and screen_p2_tuple and screen_p2_tuple.x then -- Check if on screen implicitly by worldtoscreenpoint success
+            local line = _G.sgl.internal_CreateDrawing("Line")
+            if line then
+                line.From = {screen_p1_tuple.x, screen_p1_tuple.y}
+                line.To = {screen_p2_tuple.x, screen_p2_tuple.y}
+                line.Color = box_color
+                line.Thickness = thickness
+                line.Visible = true
+                if parent_drawing_array then table.insert(active_lines, line) end
+            end
+        end
+    end
+    return active_lines
+end
+
+--// Draw a 2D box on screen using four 3D world points defining the corners of a plane
+--// (e.g., for character ESP where you calculate the 4 extreme points in 3D)
+function _G.sgl.Box2d(points_vec3_array, box_color, thickness, parent_drawing_array)
+    assert(type(points_vec3_array) == "table" and #points_vec3_array == 4, "[SGL Error] Box2d: Arg #1 (points_vec3_array) needs to be a table of 4 Vector3s!")
+    assert(type(box_color) == "table" and #box_color == 3, "[SGL Error] Box2d: Arg #2 (box_color) needs to be an RGB table {r,g,b}!")
+    thickness = thickness or 1
+
+    local screen_points = {}
+    for i=1, 4 do
+        local sp = worldtoscreenpoint(points_vec3_array[i])
+        if not (sp and sp.x) then return {} end -- If any point is off-screen, can't draw full box
+        screen_points[i] = {sp.x, sp.y}
+    end
+
+    local active_lines = parent_drawing_array or {}
+
+    local lines_to_draw_indices = {{1,2}, {2,4}, {4,3}, {3,1}} -- TL-TR, TR-BR, BR-BL, BL-TL (assuming points are TL, TR, BL, BR)
+
+    for _, idx_pair in ipairs(lines_to_draw_indices) do
+        local line = _G.sgl.internal_CreateDrawing("Line")
+        if line then
+            line.From = screen_points[idx_pair[1]]
+            line.To = screen_points[idx_pair[2]]
+            line.Color = box_color
+            line.Thickness = thickness
+            line.Visible = true
+            if parent_drawing_array then table.insert(active_lines, line) end
+        end
+    end
+    return active_lines
+end
+
+--// Main BoxESP function
+--// Params: { Target = userdata (Character Model), Color = {r,g,b}, Healthbar = bool, Distance = bool, Nametag = bool, Tracer = bool, TracerType = num (1-4), BoxType = num (1-3) }
+function _G.sgl.BoxESP(params)
+    local sgl = _G.sgl
+    params = params or {}
+    local drawings = {}
+
+    local target_char = params.Target
+    local box_color = params.Color or {255,255,255}
+    local show_healthbar = params.Healthbar or false
+    local show_distance = params.Distance or false
+    local show_nametag = params.Nametag or false
+    local show_tracer = params.Tracer or false
+    local tracer_type = params.TracerType or 1 -- 1:near-bottom, 2:bottom, 3:top, 4:mouse
+    local box_type = params.BoxType or 1     -- 1:corners, 2:2d box, 3:3d box
+
+    if not (target_char and getname(target_char)) then 
+        -- sgl.error("[SGL BoxESP] Invalid or missing Target userdata.")
+        return {}
+    end
+
+    local humanoid = findfirstchild(target_char, "Humanoid")
+    local hrp = findfirstchild(target_char, "HumanoidRootPart") or getprimarypart(target_char)
+    local head = findfirstchild(target_char, "Head")
+
+    if not (humanoid and hrp and head) then
+        -- sgl.error("[SGL BoxESP] Target " .. getname(target_char) .. " missing Humanoid, HRP, or Head.")
+        return {}
+    end
+
+    local hrp_pos_vec3 = getposition(hrp)
+    if not (hrp_pos_vec3 and hrp_pos_vec3.x) then return {} end
+
+    -- Calculate box dimensions based on HRP and Head positions
+    local head_pos_vec3 = getposition(head)
+    if not (head_pos_vec3 and head_pos_vec3.x) then return {} end
+
+    -- Approximate character height and width for ESP box
+    -- More accurate would be to get model extents or use specific body part sizes
+    local model_height_approx = math.abs(head_pos_vec3.y - hrp_pos_vec3.y) + 2 -- Rough estimate, head usually above HRP
+    local model_width_approx = 2 -- Default average width
+    -- RigType might inform this better, or use actual part sizes
+
+    local top_center_3d = {x = hrp_pos_vec3.x, y = head_pos_vec3.y + 1, z = hrp_pos_vec3.z} -- Top of head approx
+    local bottom_center_3d = {x = hrp_pos_vec3.x, y = hrp_pos_vec3.y - (model_height_approx - 1), z = hrp_pos_vec3.z} -- Feet approx
+
+    local top_screen_tuple = worldtoscreenpoint(top_center_3d)
+    local bottom_screen_tuple = worldtoscreenpoint(bottom_center_3d)
+
+    if not (top_screen_tuple and top_screen_tuple.x and bottom_screen_tuple and bottom_screen_tuple.x) then
+        return {} -- Target not sufficiently on screen
+    end
+
+    local height_2d = math.abs(top_screen_tuple.y - bottom_screen_tuple.y)
+    local width_2d = height_2d / 2 -- Common aspect ratio for ESP boxes
+
+    local box_top_y = top_screen_tuple.y
+    local box_bottom_y = bottom_screen_tuple.y
+    local box_left_x = top_screen_tuple.x - (width_2d / 2)
+    local box_right_x = top_screen_tuple.x + (width_2d / 2)
+
+    -- Adjust if bottom is higher than top (player upside down or weird angle)
+    if box_bottom_y < box_top_y then
+        box_top_y, box_bottom_y = box_bottom_y, box_top_y
+    end
+
+    --// Draw Box
+    if box_type == 1 then -- Corners
+        local corner_len_h = height_2d / 4
+        local corner_len_w = width_2d / 4
+        -- TL
+        table.insert(drawings, sgl.DrawLine(box_left_x, box_top_y, box_left_x + corner_len_w, box_top_y, box_color, 1))
+        table.insert(drawings, sgl.DrawLine(box_left_x, box_top_y, box_left_x, box_top_y + corner_len_h, box_color, 1))
+        -- TR
+        table.insert(drawings, sgl.DrawLine(box_right_x, box_top_y, box_right_x - corner_len_w, box_top_y, box_color, 1))
+        table.insert(drawings, sgl.DrawLine(box_right_x, box_top_y, box_right_x, box_top_y + corner_len_h, box_color, 1))
+        -- BL
+        table.insert(drawings, sgl.DrawLine(box_left_x, box_bottom_y, box_left_x + corner_len_w, box_bottom_y, box_color, 1))
+        table.insert(drawings, sgl.DrawLine(box_left_x, box_bottom_y, box_left_x, box_bottom_y - corner_len_h, box_color, 1))
+        -- BR
+        table.insert(drawings, sgl.DrawLine(box_right_x, box_bottom_y, box_right_x - corner_len_w, box_bottom_y, box_color, 1))
+        table.insert(drawings, sgl.DrawLine(box_right_x, box_bottom_y, box_right_x, box_bottom_y - corner_len_h, box_color, 1))
+
+    elseif box_type == 2 then -- 2D Box (simple rect)
+        table.insert(drawings, sgl.DrawRect(box_left_x, box_top_y, width_2d, height_2d, box_color, 1))
+
+    elseif box_type == 3 then -- 3D Box
+        -- Define the 8 corners of the 3D box around the character
+        local w = model_width_approx / 2
+        local h_top = head_pos_vec3.y - hrp_pos_vec3.y + 0.5 -- how much head is above HRP + a bit more
+        local h_bottom = 0.5 -- how much feet are below HRP (assuming HRP is near center mass y)
+        
+        local min_pos = { x = hrp_pos_vec3.x - w, y = hrp_pos_vec3.y - h_bottom - model_height_approx/2 , z = hrp_pos_vec3.z - w }
+        local max_pos = { x = hrp_pos_vec3.x + w, y = hrp_pos_vec3.y + h_top - model_height_approx/2, z = hrp_pos_vec3.z + w }
+        
+        -- A more accurate 3D box would use GetExtentsSize if available, or sum part sizes.
+        -- For simplicity, using HRP and an estimated size.
+        local size_vec = getsize(hrp) -- Get size of HRP as a fallback for overall dimensions
+        local sx, sy, sz = model_width_approx, model_height_approx, model_width_approx
+        if size_vec and size_vec.x then sx, sy, sz = size_vec.x, size_vec.y, size_vec.z end
+        
+        local char_cframe = getcframe(hrp) -- Use HRP's CFrame for orientation
+        if not (char_cframe and char_cframe.position) then return drawings end
+
+        -- Define points relative to HRP center, then transform by HRP CFrame
+        -- This is more complex; for now, using axis-aligned box based on head and HRP for simplicity:
+        local box_center_y = (head_pos_vec3.y + (hrp_pos_vec3.y - 2.5)) / 2 -- Midpoint assuming feet are ~2.5 below HRP
+        local box_half_height = (head_pos_vec3.y - (hrp_pos_vec3.y - 2.5)) / 2
+        local box_half_width = width_2d / (height_2d / box_half_height) / 2 -- Try to maintain 2D aspect ratio for width
+        box_half_width = math.max(box_half_width, 0.5) -- ensure some depth
+
+        local p_min = { x = hrp_pos_vec3.x - box_half_width, y = box_center_y - box_half_height, z = hrp_pos_vec3.z - box_half_width }
+        local p_max = { x = hrp_pos_vec3.x + box_half_width, y = box_center_y + box_half_height, z = hrp_pos_vec3.z + box_half_width }
+
+        local b3d_lines = sgl.Box3d(p_min, p_max, box_color, 1)
+        for _,l in ipairs(b3d_lines) do table.insert(drawings, l) end
+    end
+
+    --// Healthbar
+    if show_healthbar then
+        local health = gethealth(humanoid)
+        local max_health = getmaxhealth(humanoid)
+        if health and max_health and max_health > 0 then
+            local bar_width = 4
+            local bar_x = box_left_x - bar_width - 2
+            local health_percent = math.max(0, math.min(1, health / max_health))
+            local filled_height = height_2d * health_percent
+
+            table.insert(drawings, sgl.DrawFilledRect(bar_x, box_top_y, bar_width, height_2d, {30,30,30}, drawings)) -- BG
+            table.insert(drawings, sgl.DrawFilledRect(bar_x, box_bottom_y - filled_height, bar_width, filled_height, {255 - (255 * health_percent), 255 * health_percent, 0}, drawings)) -- Fill
+            table.insert(drawings, sgl.DrawRect(bar_x, box_top_y, bar_width, height_2d, box_color, 1, drawings)) -- Border
+        end
+    end
+
+    local text_y_offset = box_top_y - 16 -- Start for text above the box
+
+    --// Nametag
+    if show_nametag then
+        local name = getname(target_char)
+        if name then
+            local name_w = sgl.CalcTextWidth(name, 14)
+            table.insert(drawings, sgl.DrawText(name, box_left_x + (width_2d/2) - (name_w/2), text_y_offset, 14, box_color))
+            text_y_offset = text_y_offset - 16
+        end
+    end
+
+    --// Distance
+    if show_distance then
+        local dist = sgl.GetDistanceFromPlayer(hrp)
+        if dist and dist ~= math.huge then
+            local dist_str = string.format("[%dm]", math.floor(dist))
+            local dist_w = sgl.CalcTextWidth(dist_str, 12)
+            table.insert(drawings, sgl.DrawText(dist_str, box_left_x + (width_2d/2) - (dist_w/2), text_y_offset, 12, box_color))
+        end
+    end
+
+    --// Tracer
+    if show_tracer then
+        local tracer_start_x, tracer_start_y
+        if tracer_type == 1 then -- near-bottom screen center
+            tracer_start_x = Screen.x / 2
+            tracer_start_y = Screen.y * 0.9
+        elseif tracer_type == 2 then -- bottom screen center
+            tracer_start_x = Screen.x / 2
+            tracer_start_y = Screen.y -1
+        elseif tracer_type == 3 then -- top screen center
+            tracer_start_x = Screen.x / 2
+            tracer_start_y = 1
+        else -- mouse position
+            local mouse_pos = getmouseposition()
+            if mouse_pos then 
+                tracer_start_x = mouse_pos.x
+                tracer_start_y = mouse_pos.y
+            else -- Fallback if mouse pos not available
+                tracer_start_x = Screen.x / 2
+                tracer_start_y = Screen.y * 0.9 
+            end
+        end
+        -- Target tracer to middle of bottom of the 2D box
+        local tracer_end_x = box_left_x + (width_2d / 2)
+        local tracer_end_y = box_bottom_y
+        table.insert(drawings, sgl.DrawLine(tracer_start_x, tracer_start_y, tracer_end_x, tracer_end_y, box_color, 1))
+    end
+
+    -- Filter out nil drawings that might have been added if creation failed
+    local final_drawings = {}
+    for _,d in ipairs(drawings) do 
+        if d then table.insert(final_drawings, d) end
+    end
+
+    return final_drawings -- Return table of drawing objects created for this ESP target
+end
+
+--// Example usage for BoxESP (to be called in a render loop for each player)
+-- spawn(function()
+--    local esp_drawings = {}
+--    while wait() do
+--        -- Clear previous ESP drawings
+--        for _, obj_list in pairs(esp_drawings) do
+--            for _, obj in ipairs(obj_list) do
+--                _G.sgl.internal_RemoveDrawing(obj)
+--            end
+--        end
+--        esp_drawings = {}
+
+--        local players_service = findservice(SevereGame, "Players")
+--        if players_service then
+--            local all_players = getchildren(players_service)
+--            for _, player_obj in ipairs(all_players) do
+--                if player_obj ~= LocalPlayer then -- Don't ESP self
+--                    local char = getcharacter(player_obj)
+--                    if char then
+--                        local player_key = getname(player_obj)
+--                        esp_drawings[player_key] = _G.sgl.BoxESP({
+--                            Target = char,
+--                            Color = _G.sgl.CurrentRainbowColor, -- Use rainbow color or a fixed one
+--                            BoxType = 1, -- 1=corners, 2=2D, 3=3D
+--                            Healthbar = true,
+--                            Nametag = true,
+--                            Distance = true,
+--                            Tracer = true,
+--                            TracerType = 1
+--                        })
+--                    end
+--                end
+--            end
+--        end
+--    end
+-- end)
+
+
+_G.sgl.print("[SGL] Severe Global Library Loaded. Screen:", Screen.x, "x", Screen.y)
+if LocalPlayer and getname then _G.sgl.print("[SGL] LocalPlayer:", getname(LocalPlayer) or "Unknown") end
+
+-- Example usage of sleep (non-blocking, call in a loop):
+-- spawn(function()
+--     local step = 1
+--     while true do
+--         if step == 1 and _G.sgl.sleep(2, "mysequence") then _G.sgl.print("Step 1 done after 2s"); step = 2; end
+--         if step == 2 and _G.sgl.sleep(3, "mysequence") then _G.sgl.print("Step 2 done after 3s"); step = 1; end -- Loop sequence
+--         wait() -- Yield this thread
+--     end
+-- end)
+
+-- Example for RainbowTick
+-- spawn(function()
+--    while true do
+--        _G.sgl.RainbowTick()
+--        -- Example: Draw something with _G.sgl.CurrentRainbowColor
+--        wait(0.01) 
+--    end
+-- end)
+
+-- Example for console (needs a render loop)
+-- getrenderstepped():Connect(function() -- if severe has renderstepped signal
+--    _G.sgl.ShowConsole()
+-- end)
+
+--// ========= Instance/Player Utilities =========
+
+--// Get all descendants of an instance
+function _G.sgl.GetDescendants(instance)
+    if not instance then 
+        _G.sgl.error("[SGL GetDescendants] Instance is nil.")
+        return {}
+    end
+    local descendants = {}
+    local function find_recursive(parent)
+        local children = getchildren(parent)
+        if children then
+            for _, child in ipairs(children) do
+                table.insert(descendants, child)
+                find_recursive(child) -- Recurse
+            end
+        end
+    end
+    find_recursive(instance)
+    return descendants
+end
+
+--// Get descendants of a specific class name
+function _G.sgl.GetDescendantsOfClass(instance, target_className)
+    if not instance then 
+        _G.sgl.error("[SGL GetDescendantsOfClass] Instance is nil.")
+        return {}
+    end
+    if type(target_className) ~= "string" then
+        _G.sgl.error("[SGL GetDescendantsOfClass] target_className must be a string.")
+        return {}
+    end
+
+    local class_descendants = {}
+    local all_descendants = _G.sgl.GetDescendants(instance)
+    for _, descendant in ipairs(all_descendants) do
+        local cn = getclassname(descendant) -- Severe API
+        if cn == target_className then
+            table.insert(class_descendants, descendant)
+        end
+    end
+    return class_descendants
+end
+
+--// Valid part classes for GetClosestPartToPlayer
+local valid_part_classes_for_closest = {
+    Part = true, MeshPart = true, WedgePart = true, CornerWedgePart = true, TrussPart = true, Seat = true, VehicleSeat = true
+    -- Note: Accessories are Models, their children would be checked if an Accessory is passed in.
+}
+
+--// Get the closest part of a model (or any instance with parts) to the LocalPlayer
+function _G.sgl.GetClosestPartToPlayer(target_model_instance)
+    if not target_model_instance then
+        _G.sgl.error("[SGL GetClosestPartToPlayer] target_model_instance is nil.")
+        return nil
+    end
+    if not LocalPlayerHRP then
+        _G.sgl.error("[SGL GetClosestPartToPlayer] LocalPlayerHRP is not available.")
+        return nil
+    end
+
+    local closest_part_found = nil
+    local min_distance_sq = math.huge -- Using squared distance to avoid sqrt until the end
+
+    local parts_to_check = _G.sgl.GetDescendants(target_model_instance)
+    -- Also add the instance itself if it might be a part (e.g. if a single part is passed)
+    if valid_part_classes_for_closest[getclassname(target_model_instance) or ""] then
+        table.insert(parts_to_check, target_model_instance)
+    end
+
+    for _, part in ipairs(parts_to_check) do
+        local class_name = getclassname(part)
+        if valid_part_classes_for_closest[class_name or ""] then
+            local part_pos_vec3 = getposition(part)
+            if part_pos_vec3 and part_pos_vec3.x then
+                local hrp_pos_vec3 = getposition(LocalPlayerHRP) -- Re-fetch in case it moved, though LocalPlayerHRP is top-level global
+                if hrp_pos_vec3 and hrp_pos_vec3.x then
+                    local dx = part_pos_vec3.x - hrp_pos_vec3.x
+                    local dy = part_pos_vec3.y - hrp_pos_vec3.y
+                    local dz = part_pos_vec3.z - hrp_pos_vec3.z
+                    local dist_sq = dx*dx + dy*dy + dz*dz
+                    if dist_sq < min_distance_sq then
+                        min_distance_sq = dist_sq
+                        closest_part_found = part
+                    end
+                end
+            end
+        end
+    end
+    return closest_part_found
+end
+
+--// Get an instance by traversing a path of child names (e.g. Game, "Players", "LocalPlayer")
+function _G.sgl.GetInstance(...)
+    local args = {...}
+    if #args == 0 then return nil end
+    
+    local current_instance = args[1]
+    if not current_instance then return nil end
+
+    for i = 2, #args do
+        if type(args[i]) ~= "string" then
+            _G.sgl.error("[SGL GetInstance] Path elements must be strings after the initial instance.")
+            return nil
+        end
+        current_instance = findfirstchild(current_instance, args[i])
+        if not current_instance then 
+            -- _G.sgl.print("[SGL GetInstance] Could not find '" .. args[i] .. "' in path.")
+            return nil 
+        end
+    end
+    return current_instance
+end
+
+--// Get Local Player Name
+function _G.sgl.GetLocalPlayerName()
+    if LocalPlayer and getname then
+        return getname(LocalPlayer)
+    end
+    return "UnknownPlayer"
+end
+
+--// Get Player by name
+function _G.sgl.GetPlayer(player_name)
+    if Players and type(player_name) == "string" then
+        return findfirstchild(Players, player_name)
+    end
+    if type(player_name) ~= "string" then _G.sgl.error("[SGL GetPlayer] player_name must be a string.") end
+    return nil
+end
+
+return _G.sgl -- Return the library table if used as a module via loadstring or require 
