@@ -280,19 +280,8 @@ function svl.BoxESP(params)
     -- Tentar encontrar o HumanoidRootPart
     local torso = findfirstchild(target, "HumanoidRootPart")
     
-    -- Fornecer informações adicionais para debug
     if not torso then 
-        warn("[SVL Error] BoxESP: Cannot find HumanoidRootPart in target! Target name: " .. tostring(getname(target)))
-        
-        -- Imprimir filhos do target para debug
-        local children = getchildren(target)
-        if children then
-            warn("Children of target:")
-            for _, child in ipairs(children) do
-                warn(" - " .. tostring(getname(child)))
-            end
-        end
-        
+        warn("[SVL Error] BoxESP: Cannot find HumanoidRootPart in target!")
         return 
     end
     
