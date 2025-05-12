@@ -269,17 +269,26 @@ function svl.BoxESP(params)
     local tracer = params.Tracer or false
     local tracertype = params.TracerType or 1 --// 1 = near-bottom, 2 = bottom, 3 = top, 4 = mouse
     local box_type = params.BoxType or 1 --// 1 = corners, 2 = 2d box, 3 = 3d box
-
-    -- Verificação adaptada para aceitar userdata ou número
-    if type(target) ~= "number" and type(target) ~= "userdata" and type(target) ~= "table" then
-        warn("[SVL Error] BoxESP: Target Argument needs to be a valid instance! Tipo recebido: " .. type(target))
+    
+    if not target then
+        warn("[SVL Error] BoxESP: Target is nil!")
         return
     end
     
     assert(type(box_color) == "table" and #box_color == 3, "[SVL Error] BoxESP: Color Argument needs to be a table with 3 RGB values!")
     
-    local torso = findfirstchild(target, "HumanoidRootPart")
-    if not torso then return end
+    -- Tentar encontrar o HumanoidRootPart diretamente
+    local torso
+    if getclassname and getclassname(target) == "HumanoidRootPart" then
+        torso = target
+    else
+        torso = findfirstchild(target, "HumanoidRootPart")
+    end
+    
+    if not torso then 
+        warn("[SVL Error] BoxESP: Cannot find HumanoidRootPart in target!")
+        return 
+    end
     
     local rootPos = getposition(torso)
     
