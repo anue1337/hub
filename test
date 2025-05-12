@@ -1584,7 +1584,13 @@ function SevereLib:UpdateESP()
     if #orderedESP > 10 then
         table.sort(orderedESP, function(a, b)
             if type(a) == "table" and type(b) == "table" then
-                return a.priority < b.priority
+                -- Check if priority values exist before comparing them
+                if a.priority and b.priority then
+                    return a.priority < b.priority
+                else
+                    -- If either priority is nil, use a fallback comparison
+                    return (a.priority or 9999) < (b.priority or 9999)
+                end
             elseif type(a) == "table" then
                 return true
             elseif type(b) == "table" then
