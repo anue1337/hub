@@ -1316,3 +1316,6 @@ function svl.SafeConcat(...)
     end
     return result
 end
+
+-- Retornar a biblioteca para uso via loadstring
+return svl
