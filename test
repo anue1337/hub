@@ -270,7 +270,12 @@ function svl.BoxESP(params)
     local tracertype = params.TracerType or 1 --// 1 = near-bottom, 2 = bottom, 3 = top, 4 = mouse
     local box_type = params.BoxType or 1 --// 1 = corners, 2 = 2d box, 3 = 3d box
 
-    assert(type(target) == "number" and getchildren(target), "[SVL Error] BoxESP: Target Argument needs to be a valid instance!")
+    -- Verificação corrigida: não chama getchildren() na validação
+    if type(target) ~= "number" then
+        warn("[SVL Error] BoxESP: Target Argument needs to be a valid instance!")
+        return
+    end
+    
     assert(type(box_color) == "table" and #box_color == 3, "[SVL Error] BoxESP: Color Argument needs to be a table with 3 RGB values!")
     
     local torso = findfirstchild(target, "HumanoidRootPart")
@@ -628,10 +633,21 @@ end
 
 --// Funções utilitárias
 function svl.GetDescendants(instance)
-    assert(type(instance) == "number" and getchildren(instance), "[SVL Error] GetDescendants: First Argument needs to be a valid instance!")
+    -- Verificação corrigida: não chama getchildren() na validação
+    if type(instance) ~= "number" then
+        warn("[SVL Error] GetDescendants: First Argument needs to be a valid instance!")
+        return {}
+    end
     
     local children = {}
-    for _, child in ipairs(getchildren(instance)) do
+    local instance_children = getchildren(instance)
+    
+    -- Verificar se instance_children não é nil antes de proceder
+    if not instance_children then
+        return children
+    end
+    
+    for _, child in ipairs(instance_children) do
         table.insert(children, child)
         local descendants = svl.GetDescendants(child)
         for _, descendant in ipairs(descendants) do
