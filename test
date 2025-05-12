@@ -272,7 +272,7 @@ function svl.BoxESP(params)
 
     -- Verificação corrigida: não chama getchildren() na validação
     if type(target) ~= "number" then
-        warn("[SVL Error] BoxESP: Target Argument needs to be a valid instance!")
+        warn("[SVL Error] BoxESP: Target Argument needs to be a valid instance! Tipo recebido: " .. type(target))
         return
     end
     
