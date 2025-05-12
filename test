@@ -261,12 +261,24 @@ end
 --// Funções Básicas
 function svl.GetCoords(wts)
     assert(type(wts) == "table" and #wts == 2, "[SVL Error] GetCoords: First Argument needs to be a table with 2 values!")
-    return {(Screen.x / (1920 / wts[1])), (Screen.y / (1017 / wts[2]))}
+    
+    local screen = getscreendimensions()
+    if not screen then
+        -- Caso a função getscreendimensions retorne nil, usamos valores padrão
+        screen = {x = 1920, y = 1080}
+    end
+    
+    return {(screen.x / (1920 / wts[1])), (screen.y / (1017 / wts[2]))}
 end
 
 function svl.isMouseInArea(area)
     assert(type(area) == "table" and #area == 4, "[SVL Error] isMouseInArea: First Argument needs to be a table with 4 values!")
+    
     local mouse = getmouseposition()
+    if not mouse then
+        return false
+    end
+    
     if mouse.x > area[1] and mouse.y > area[2] and mouse.x < area[3] and mouse.y < area[4] then
         return true
     else
@@ -287,10 +299,15 @@ function svl.GetDistance(v1, v2)
             pos1 = {x = v1[1], y = v1[2], z = v1[3]}
         end
     elseif type(v1) == "number" then
-        pos1 = getposition(v1)
+        local pos = getposition(v1)
+        if not pos then
+            svl.error("[SVL Error] GetDistance: Could not get position from first argument!")
+            return 0
+        end
+        pos1 = pos
     else
         error("[SVL Error] GetDistance: First Argument needs to be a table or number!")
-        return
+        return 0
     end
     
     -- Processar v2
@@ -302,10 +319,15 @@ function svl.GetDistance(v1, v2)
             pos2 = {x = v2[1], y = v2[2], z = v2[3]}
         end
     elseif type(v2) == "number" then
-        pos2 = getposition(v2)
+        local pos = getposition(v2)
+        if not pos then
+            svl.error("[SVL Error] GetDistance: Could not get position from second argument!")
+            return 0
+        end
+        pos2 = pos
     else
         error("[SVL Error] GetDistance: Second Argument needs to be a table or number!")
-        return
+        return 0
     end
 
     local a = (pos1.x-pos2.x)*(pos1.x-pos2.x)
@@ -316,13 +338,15 @@ function svl.GetDistance(v1, v2)
 end
 
 function svl.GetDistanceFromPlayer(v)
-    local localChar = getcharacter(getlocalplayer())
+    local localChar = svl.GetLocalCharacter()
     if not localChar then return 9999 end
     
     local part = findfirstchild(localChar, "HumanoidRootPart")
     if not part then return 9999 end
     
     local playerPos = getposition(part)
+    if not playerPos then return 9999 end
+    
     return svl.GetDistance(v, playerPos)
 end
 
@@ -380,7 +404,17 @@ end
 
 --// Função auxiliar para criar linhas
 function createLine(point1, point2, color, thickness)
+    if not Drawing then
+        svl.error("[SVL Error] createLine: Drawing library não disponível!")
+        return nil
+    end
+    
     local line = Drawing.new("Line")
+    if not line then 
+        svl.error("[SVL Error] createLine: Falha ao criar objeto Line!")
+        return nil
+    end
+    
     line.From = {point1[1], point1[2]}
     line.To = {point2[1], point2[2]}
     line.Color = color
@@ -394,6 +428,12 @@ function svl.Box3d(pos1, pos2, box_color, thickness)
     assert(type(pos1) == "table" and #pos1 == 3, "[SVL Error] Box3d: First Argument needs to be a table with 3 position values!")
     assert(type(pos2) == "table" and #pos2 == 3, "[SVL Error] Box3d: Second Argument needs to be a table with 3 position values!")
     assert(type(box_color) == "table" and #box_color == 3, "[SVL Error] Box3d: Third Argument needs to be a table with 3 RGB values!")
+    
+    -- Verificar se a biblioteca Drawing está disponível
+    if not Drawing then
+        svl.error("[SVL Error] Box3d: Drawing library não disponível!")
+        return
+    end
     
     local size = {
         pos1[1] - pos2[1],
@@ -488,6 +528,10 @@ function svl.BoxESP(params)
     end
     
     local rootPos = getposition(torso)
+    if not rootPos then
+        svl.error("[SVL Error] BoxESP: Não foi possível obter a posição do alvo!")
+        return
+    end
     
     -- Definir limites da caixa
     local HeadPosY = rootPos.y + 2.5
@@ -541,7 +585,18 @@ function svl.BoxESP(params)
         table.insert(elements, createLine({Bottom.x - width, Bottom.y}, {Bottom.x - width, Bottom.y + corner_size}, box_color, thickness))
         
     elseif box_type == 2 then -- caixa 2d
+        -- Verificar se Drawing está disponível
+        if not Drawing then
+            svl.error("[SVL Error] BoxESP: Drawing library não disponível!")
+            return
+        end
+        
         local box = Drawing.new("Square")
+        if not box then
+            svl.error("[SVL Error] BoxESP: Não foi possível criar objeto Square!")
+            return
+        end
+        
         box.Position = {Bottom.x - width, Top.y}
         box.Size = {width * 2, Bottom.y - Top.y}
         box.Color = box_color
@@ -571,11 +626,22 @@ function svl.BoxESP(params)
             local hp = gethealth(humanoid)
             local maxhp = getmaxhealth(humanoid)
             
+            -- Verificar se os valores de HP são válidos
+            if not hp or not maxhp or maxhp <= 0 then
+                svl.print("[SVL Warning] BoxESP: Valores de HP inválidos, barra de vida não adicionada.")
+                return elements
+            end
+            
             local tl = {Top.x + width - 5, Top.y + 1}
             local br = {Top.x + width - 1, Bottom.y - 1}
             
+            -- Criar objetos Drawing para a barra de vida
+            if not Drawing then return elements end
+            
             -- Fundo preto
             local hbg = Drawing.new("Square")
+            if not hbg then return elements end
+            
             hbg.Position = {tl[1] - 1, tl[2] - 1}
             hbg.Size = {br[1] - tl[1] + 2, br[2] - tl[2] + 2}
             hbg.Color = box_color
@@ -585,6 +651,8 @@ function svl.BoxESP(params)
             
             -- Fundo interno preto
             local hbgInner = Drawing.new("Square")
+            if not hbgInner then return elements end
+            
             hbgInner.Position = {tl[1], tl[2]}
             hbgInner.Size = {br[1] - tl[1], br[2] - tl[2]}
             hbgInner.Color = {0, 0, 0}
@@ -593,12 +661,18 @@ function svl.BoxESP(params)
             table.insert(elements, hbgInner)
             
             -- Barra de vida
-            local addon = (height + 2) / (maxhp/math.max(0, math.min(maxhp, hp)))
+            local hpRatio = math.max(0, math.min(1, hp / maxhp))
+            local addon = (height + 2) * hpRatio
+            
             local hbFill = Drawing.new("Square")
+            if not hbFill then return elements end
+            
             hbFill.Position = {tl[1] + 1, br[2] - addon}
             hbFill.Size = {br[1] - tl[1] - 2, addon + 1}
             -- Cor dinâmica baseada na vida (vermelho->amarelo->verde)
-            hbFill.Color = {255 - 255 / (maxhp / hp), 255 / (maxhp / hp), 0}
+            local green = math.floor(255 * hpRatio)
+            local red = math.floor(255 * (1 - hpRatio))
+            hbFill.Color = {red, green, 0}
             hbFill.Filled = true
             hbFill.Visible = true
             table.insert(elements, hbFill)
@@ -610,7 +684,11 @@ function svl.BoxESP(params)
     -- Distância (opcional)
     if distance then
         local dist = tostring(svl.GetDistanceFromPlayer(rootPos))
+        if not Drawing then return elements end
+        
         local text = Drawing.new("Text")
+        if not text then return elements end
+        
         text.Text = dist .. "m"
         text.Position = {Bottom.x - (dist:len() * 4), Bottom.y + 5}
         text.Color = box_color
@@ -622,8 +700,12 @@ function svl.BoxESP(params)
     
     -- Nametag (opcional)
     if nametag then
-        local name = getname(target)
+        local name = getname(target) or "Unknown"
+        if not Drawing then return elements end
+        
         local text = Drawing.new("Text")
+        if not text then return elements end
+        
         text.Text = name
         text.Position = {Top.x - (name:len() * 2), Top.y - 20}
         text.Color = box_color
@@ -637,6 +719,9 @@ function svl.BoxESP(params)
     if tracer then
         local loc
         local screen = getscreendimensions()
+        if not screen then
+            screen = {x = 1920, y = 1080}
+        end
         
         if tracertype == 1 then
             loc = {screen.x / 2, screen.y / 1.1}
@@ -646,10 +731,17 @@ function svl.BoxESP(params)
             loc = {screen.x / 2, 1}
         elseif tracertype == 4 then
             local mouse = getmouseposition()
+            if not mouse then
+                mouse = {x = screen.x / 2, y = screen.y / 2}
+            end
             loc = {mouse.x, mouse.y}
         end
         
+        if not Drawing then return elements end
+        
         local line = Drawing.new("Line")
+        if not line then return elements end
+        
         line.From = {loc[1], loc[2]}
         line.To = {Top.x + width + (((Bottom.x - width) - (Top.x + width)) / 2), Bottom.y}
         line.Color = box_color
@@ -663,7 +755,9 @@ end
 
 --// Função para console
 function svl.ShowConsole()
-    local mouse = getmouseposition()
+    -- Evitar erros se getmouseposition retornar nil
+    local mouse = getmouseposition() or {x = 0, y = 0}
+    
     -- Garantir que Version nunca seja nil
     local version_str = tostring(svl.Version or "2.0")
     local console_title = "SevereLib Console v" .. version_str .. " | Mouse: " .. mouse.x .. ", " .. mouse.y
@@ -959,7 +1053,7 @@ end
 function svl.GetDescendants(instance)
     -- Verificação corrigida: não chama getchildren() na validação
     if type(instance) ~= "number" then
-        warn("[SVL Error] GetDescendants: First Argument needs to be a valid instance!")
+        svl.error("[SVL Error] GetDescendants: First Argument needs to be a valid instance!")
         return {}
     end
     
@@ -983,11 +1077,21 @@ function svl.GetDescendants(instance)
 end
 
 function svl.GetLocalPlayerName()
-    return getname(getlocalplayer())
+    local localplayer = getlocalplayer()
+    if not localplayer then
+        svl.error("[SVL Error] GetLocalPlayerName: LocalPlayer not found!")
+        return "Unknown"
+    end
+    return getname(localplayer) or "Unknown"
 end
 
 function svl.GetLocalCharacter()
-    return getcharacter(getlocalplayer())
+    local localplayer = getlocalplayer()
+    if not localplayer then
+        svl.error("[SVL Error] GetLocalCharacter: LocalPlayer not found!")
+        return nil
+    end
+    return getcharacter(localplayer)
 end
 
 --// Funções utilitárias adicionais
@@ -1040,20 +1144,36 @@ end
 
 --// Função para obter o jogador mais próximo
 function svl.GetClosestPlayer()
-    local players = getchildren(findfirstchildofclass(Game, "Players"))
+    local Game = Game or {}
+    local Players = findfirstchildofclass(Game, "Players")
+    if not Players then
+        svl.error("[SVL Error] GetClosestPlayer: Players service not found!")
+        return nil, math.huge
+    end
+    
+    local players = getchildren(Players)
+    if not players then
+        svl.error("[SVL Error] GetClosestPlayer: Could not get players list!")
+        return nil, math.huge
+    end
+    
     local closest_player = nil
     local closest_distance = math.huge
+    local localplayer = getlocalplayer()
     
     for _, player in ipairs(players) do
-        if player ~= getlocalplayer() then
+        if player ~= localplayer then
             local character = getcharacter(player)
             if character then
                 local humanoidRootPart = findfirstchild(character, "HumanoidRootPart")
                 if humanoidRootPart then
-                    local distance = svl.GetDistanceFromPlayer(getposition(humanoidRootPart))
-                    if distance < closest_distance then
-                        closest_distance = distance
-                        closest_player = player
+                    local position = getposition(humanoidRootPart)
+                    if position then
+                        local distance = svl.GetDistanceFromPlayer(position)
+                        if distance < closest_distance then
+                            closest_distance = distance
+                            closest_player = player
+                        end
                     end
                 end
             end
