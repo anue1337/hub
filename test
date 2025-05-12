@@ -1,9 +1,9 @@
---// RobloxLib //--
+--// SevereLib //--
 
 --// Presets para facilitar o uso
 local Game = Game or {}
-local Workspace = Game:FindService("Workspace")
-local Players = Game:FindService("Players")
+local Workspace = findfirstchildofclass(Game, "Workspace")
+local Players = findfirstchildofclass(Game, "Players")
 local LocalPlayer = getlocalplayer()
 local Mouse = getmouseposition()
 
@@ -13,8 +13,8 @@ local Screen = {
 }
 
 --// Iniciando a biblioteca
-if _G.rbl == nil then
-    _G.rbl = {
+if _G.svl == nil then
+    _G.svl = {
         --// Console Vars
         Location = {1000, 150}, -- Dinâmico
         Size = {Screen.x / 2.95, Screen.y / 1.21}, -- Estático
@@ -41,36 +41,36 @@ if _G.rbl == nil then
 end
 
 --// Rainbow Tick
-function rbl_updateRainbow()
-    if rbl.RainbowHue > 1530 then
-        rbl.RainbowHue = 0  
+function svl_updateRainbow()
+    if svl.RainbowHue > 1530 then
+        svl.RainbowHue = 0  
     else
-        rbl.RainbowHue = rbl.RainbowHue + 3
+        svl.RainbowHue = svl.RainbowHue + 3
     end
 
-    if rbl.RainbowHue <= 255 then
-        rbl.CurrentRainbowColor = {255, rbl.RainbowHue, 0}
-    elseif rbl.RainbowHue <= 510 then
-        rbl.CurrentRainbowColor = {510 - rbl.RainbowHue, 255, 0}
-    elseif rbl.RainbowHue <= 765 then
-        rbl.CurrentRainbowColor = {0, 255, rbl.RainbowHue - 510}
-    elseif rbl.RainbowHue <= 1020 then
-        rbl.CurrentRainbowColor = {0, 1020 - rbl.RainbowHue, 255}
-    elseif rbl.RainbowHue <= 1275 then
-        rbl.CurrentRainbowColor = {rbl.RainbowHue - 1020, 0, 255}
-    elseif rbl.RainbowHue <= 1530 then
-        rbl.CurrentRainbowColor = {255, 0, 1530 - rbl.RainbowHue}
+    if svl.RainbowHue <= 255 then
+        svl.CurrentRainbowColor = {255, svl.RainbowHue, 0}
+    elseif svl.RainbowHue <= 510 then
+        svl.CurrentRainbowColor = {510 - svl.RainbowHue, 255, 0}
+    elseif svl.RainbowHue <= 765 then
+        svl.CurrentRainbowColor = {0, 255, svl.RainbowHue - 510}
+    elseif svl.RainbowHue <= 1020 then
+        svl.CurrentRainbowColor = {0, 1020 - svl.RainbowHue, 255}
+    elseif svl.RainbowHue <= 1275 then
+        svl.CurrentRainbowColor = {svl.RainbowHue - 1020, 0, 255}
+    elseif svl.RainbowHue <= 1530 then
+        svl.CurrentRainbowColor = {255, 0, 1530 - svl.RainbowHue}
     end
 end
 
 --// Funções Básicas
-function rbl.GetCoords(wts)
-    assert(type(wts) == "table" and #wts == 2, "[RBL Error] GetCoords: First Argument needs to be a table with 2 values!")
+function svl.GetCoords(wts)
+    assert(type(wts) == "table" and #wts == 2, "[SVL Error] GetCoords: First Argument needs to be a table with 2 values!")
     return {(Screen.x / (1920 / wts[1])), (Screen.y / (1017 / wts[2]))}
 end
 
-function rbl.isMouseInArea(area)
-    assert(type(area) == "table" and #area == 4, "[RBL Error] isMouseInArea: First Argument needs to be a table with 4 values!")
+function svl.isMouseInArea(area)
+    assert(type(area) == "table" and #area == 4, "[SVL Error] isMouseInArea: First Argument needs to be a table with 4 values!")
     local mouse = getmouseposition()
     if mouse.x > area[1] and mouse.y > area[2] and mouse.x < area[3] and mouse.y < area[4] then
         return true
@@ -79,7 +79,7 @@ function rbl.isMouseInArea(area)
     end
 end
 
-function rbl.GetDistance(v1, v2)
+function svl.GetDistance(v1, v2)
     local pos1 = {}
     local pos2 = {}
     
@@ -88,13 +88,13 @@ function rbl.GetDistance(v1, v2)
         if v1['x'] ~= nil and v1['y'] ~= nil and v1['z'] ~= nil then
             pos1 = v1
         else
-            assert(type(v1) == "table" and #v1 == 3, "[RBL Error] GetDistance: First Argument needs to be a table with 3 values!")
+            assert(type(v1) == "table" and #v1 == 3, "[SVL Error] GetDistance: First Argument needs to be a table with 3 values!")
             pos1 = {x = v1[1], y = v1[2], z = v1[3]}
         end
     elseif type(v1) == "number" then
         pos1 = getposition(v1)
     else
-        error("[RBL Error] GetDistance: First Argument needs to be a table or number!")
+        error("[SVL Error] GetDistance: First Argument needs to be a table or number!")
         return
     end
     
@@ -103,13 +103,13 @@ function rbl.GetDistance(v1, v2)
         if v2['x'] ~= nil and v2['y'] ~= nil and v2['z'] ~= nil then
             pos2 = v2
         else
-            assert(type(v2) == "table" and #v2 == 3, "[RBL Error] GetDistance: Second Argument needs to be a table with 3 values!")
+            assert(type(v2) == "table" and #v2 == 3, "[SVL Error] GetDistance: Second Argument needs to be a table with 3 values!")
             pos2 = {x = v2[1], y = v2[2], z = v2[3]}
         end
     elseif type(v2) == "number" then
         pos2 = getposition(v2)
     else
-        error("[RBL Error] GetDistance: Second Argument needs to be a table or number!")
+        error("[SVL Error] GetDistance: Second Argument needs to be a table or number!")
         return
     end
 
@@ -120,7 +120,7 @@ function rbl.GetDistance(v1, v2)
     return math.floor(math.sqrt(a+b+c)+0.5)
 end
 
-function rbl.GetDistanceFromPlayer(v)
+function svl.GetDistanceFromPlayer(v)
     local localChar = getcharacter(getlocalplayer())
     if not localChar then return 9999 end
     
@@ -128,14 +128,14 @@ function rbl.GetDistanceFromPlayer(v)
     if not part then return 9999 end
     
     local playerPos = getposition(part)
-    return rbl.GetDistance(v, playerPos)
+    return svl.GetDistance(v, playerPos)
 end
 
 --// Drawing Functions
-function rbl.HealthBar(params)
+function svl.HealthBar(params)
     -- Validação de parâmetros
-    assert(params.TargetPosition, "[RBL Error] HealthBar: TargetPosition required!")
-    assert(params.HP, "[RBL Error] HealthBar: HP required!")
+    assert(params.TargetPosition, "[SVL Error] HealthBar: TargetPosition required!")
+    assert(params.HP, "[SVL Error] HealthBar: HP required!")
     
     -- Ajustar parâmetros default
     local size = params.Size or {120, 5}
@@ -153,7 +153,7 @@ function rbl.HealthBar(params)
     elseif params.TargetPosition[1] and params.TargetPosition[2] and params.TargetPosition[3] then
         pos = {params.TargetPosition[1], params.TargetPosition[2], params.TargetPosition[3]}
     else
-        error("[RBL Error] HealthBar: TargetPosition needs to contain 3 number values!")
+        error("[SVL Error] HealthBar: TargetPosition needs to contain 3 number values!")
         return
     end
 
@@ -183,11 +183,22 @@ function rbl.HealthBar(params)
     return {background, healthFill} -- Retornar os objetos para que possam ser removidos depois
 end
 
+-- Função auxiliar para criar linhas
+function createLine(point1, point2, color)
+    local line = Drawing.new("Line")
+    line.From = {point1[1], point1[2]}
+    line.To = {point2[1], point2[2]}
+    line.Color = color
+    line.Thickness = 1
+    line.Visible = true
+    return line
+end
+
 --// Box3D Function
-function rbl.Box3d(pos1, pos2, box_color)
-    assert(type(pos1) == "table" and #pos1 == 3, "[RBL Error] Box3d: First Argument needs to be a table with 3 position values!")
-    assert(type(pos2) == "table" and #pos2 == 3, "[RBL Error] Box3d: Second Argument needs to be a table with 3 position values!")
-    assert(type(box_color) == "table" and #box_color == 3, "[RBL Error] Box3d: Third Argument needs to be a table with 3 RGB values!")
+function svl.Box3d(pos1, pos2, box_color)
+    assert(type(pos1) == "table" and #pos1 == 3, "[SVL Error] Box3d: First Argument needs to be a table with 3 position values!")
+    assert(type(pos2) == "table" and #pos2 == 3, "[SVL Error] Box3d: Second Argument needs to be a table with 3 position values!")
+    assert(type(box_color) == "table" and #box_color == 3, "[SVL Error] Box3d: Third Argument needs to be a table with 3 RGB values!")
     
     local size = {
         pos1[1] - pos2[1],
@@ -248,19 +259,8 @@ function rbl.Box3d(pos1, pos2, box_color)
     return lines -- Retornar as linhas para que possam ser removidas depois
 end
 
--- Função auxiliar para criar linhas
-function createLine(point1, point2, color)
-    local line = Drawing.new("Line")
-    line.From = {point1[1], point1[2]}
-    line.To = {point2[1], point2[2]}
-    line.Color = color
-    line.Thickness = 1
-    line.Visible = true
-    return line
-end
-
 --// BoxESP Function
-function rbl.BoxESP(params)
+function svl.BoxESP(params)
     local target = params.Target or nil
     local box_color = params.Color or {255,255,255}
     local healthbar = params.Healthbar or false
@@ -270,8 +270,8 @@ function rbl.BoxESP(params)
     local tracertype = params.TracerType or 1 --// 1 = near-bottom, 2 = bottom, 3 = top, 4 = mouse
     local box_type = params.BoxType or 1 --// 1 = corners, 2 = 2d box, 3 = 3d box
 
-    assert(type(target) == "number" and getchildren(target), "[RBL Error] BoxESP: Target Argument needs to be a valid instance!")
-    assert(type(box_color) == "table" and #box_color == 3, "[RBL Error] BoxESP: Color Argument needs to be a table with 3 RGB values!")
+    assert(type(target) == "number" and getchildren(target), "[SVL Error] BoxESP: Target Argument needs to be a valid instance!")
+    assert(type(box_color) == "table" and #box_color == 3, "[SVL Error] BoxESP: Color Argument needs to be a table with 3 RGB values!")
     
     local torso = findfirstchild(target, "HumanoidRootPart")
     if not torso then return end
@@ -320,7 +320,7 @@ function rbl.BoxESP(params)
         table.insert(elements, box)
         
     elseif box_type == 3 then -- caixa 3d
-        local boxElements = rbl.Box3d(
+        local boxElements = svl.Box3d(
             {rootPos.x - 2, HeadPosY, rootPos.z - 2},
             {rootPos.x + 2, LegPosY, rootPos.z + 2},
             box_color
@@ -374,7 +374,7 @@ function rbl.BoxESP(params)
     
     -- Distância (opcional)
     if distance then
-        local dist = tostring(rbl.GetDistanceFromPlayer(rootPos))
+        local dist = tostring(svl.GetDistanceFromPlayer(rootPos))
         local text = Drawing.new("Text")
         text.Text = dist
         text.Position = {Bottom.x - (dist:len() * 4), Bottom.y + 5}
@@ -427,97 +427,97 @@ function rbl.BoxESP(params)
 end
 
 --// Função para console
-function rbl.ShowConsole()
+function svl.ShowConsole()
     local mouse = getmouseposition()
     
-    if rbl.isMouseInArea({rbl.Location[1] + rbl.Size[1] - 27, rbl.Location[2] + 3, rbl.Location[1] + rbl.Size[1] - 5, rbl.Location[2] + 19}) then
+    if svl.isMouseInArea({svl.Location[1] + svl.Size[1] - 27, svl.Location[2] + 3, svl.Location[1] + svl.Size[1] - 5, svl.Location[2] + 19}) then
         if isleftclicked() then
-            rbl.Open = not rbl.Open
+            svl.Open = not svl.Open
         end
-        rbl.Hovering = true
+        svl.Hovering = true
     else
-        rbl.Hovering = false
+        svl.Hovering = false
     end
 
     -- Lógica de arrastar
     if isleftpressed() then
-        if rbl.Dragging or rbl.isMouseInArea({rbl.Location[1] - 5, rbl.Location[2] - 10, rbl.Location[1] + rbl.Size[1] + 5, rbl.Location[2] + 30}) then
-            if not rbl.Dragging then rbl.Dragging = true end 
+        if svl.Dragging or svl.isMouseInArea({svl.Location[1] - 5, svl.Location[2] - 10, svl.Location[1] + svl.Size[1] + 5, svl.Location[2] + 30}) then
+            if not svl.Dragging then svl.Dragging = true end 
 
-            if rbl.WinMouseOffset == nil then
-                rbl.WinMouseOffset = {mouse.x - rbl.Location[1], mouse.y - rbl.Location[2]}
+            if svl.WinMouseOffset == nil then
+                svl.WinMouseOffset = {mouse.x - svl.Location[1], mouse.y - svl.Location[2]}
             end
-            rbl.Location = {mouse.x - rbl.WinMouseOffset[1], mouse.y - rbl.WinMouseOffset[2]}
+            svl.Location = {mouse.x - svl.WinMouseOffset[1], mouse.y - svl.WinMouseOffset[2]}
         end
     else
-        rbl.Dragging = false
-        rbl.WinMouseOffset = nil
+        svl.Dragging = false
+        svl.WinMouseOffset = nil
     end
     
     -- Interface do console
     local consoleElements = {}
     
-    if rbl.Open then
+    if svl.Open then
         -- Criar elementos do console via Drawing API
         local outline = Drawing.new("Square")
-        outline.Position = {rbl.Location[1] - 1, rbl.Location[2] - 1}
-        outline.Size = {rbl.Size[1] + 2, rbl.Size[2] + 2}
-        outline.Color = rbl.Black
+        outline.Position = {svl.Location[1] - 1, svl.Location[2] - 1}
+        outline.Size = {svl.Size[1] + 2, svl.Size[2] + 2}
+        outline.Color = svl.Black
         outline.Filled = true
         outline.Visible = true
         table.insert(consoleElements, outline)
         
         local accent = Drawing.new("Square")
-        accent.Position = {rbl.Location[1], rbl.Location[2]}
-        accent.Size = {rbl.Size[1], rbl.Size[2]}
-        accent.Color = rbl.AccentColor
+        accent.Position = {svl.Location[1], svl.Location[2]}
+        accent.Size = {svl.Size[1], svl.Size[2]}
+        accent.Color = svl.AccentColor
         accent.Filled = true
         accent.Visible = true
         table.insert(consoleElements, accent)
         
         local mainOuter = Drawing.new("Square")
-        mainOuter.Position = {rbl.Location[1] + 1, rbl.Location[2] + 1}
-        mainOuter.Size = {rbl.Size[1] - 2, rbl.Size[2] - 2}
-        mainOuter.Color = rbl.MainColor
+        mainOuter.Position = {svl.Location[1] + 1, svl.Location[2] + 1}
+        mainOuter.Size = {svl.Size[1] - 2, svl.Size[2] - 2}
+        mainOuter.Color = svl.MainColor
         mainOuter.Filled = true
         mainOuter.Visible = true
         table.insert(consoleElements, mainOuter)
         
         local mainInner = Drawing.new("Square")
-        mainInner.Position = {rbl.Location[1] + 5, rbl.Location[2] + 20}
-        mainInner.Size = {rbl.Size[1] - 10, rbl.Size[2] - 25}
-        mainInner.Color = rbl.BackgroundColor
+        mainInner.Position = {svl.Location[1] + 5, svl.Location[2] + 20}
+        mainInner.Size = {svl.Size[1] - 10, svl.Size[2] - 25}
+        mainInner.Color = svl.BackgroundColor
         mainInner.Filled = true
         mainInner.Visible = true
         table.insert(consoleElements, mainInner)
         
         local mainInnerOutline = Drawing.new("Square")
-        mainInnerOutline.Position = {rbl.Location[1] + 5, rbl.Location[2] + 20}
-        mainInnerOutline.Size = {rbl.Size[1] - 10, rbl.Size[2] - 25}
-        mainInnerOutline.Color = rbl.OutlineColor
+        mainInnerOutline.Position = {svl.Location[1] + 5, svl.Location[2] + 20}
+        mainInnerOutline.Size = {svl.Size[1] - 10, svl.Size[2] - 25}
+        mainInnerOutline.Color = svl.OutlineColor
         mainInnerOutline.Filled = false
         mainInnerOutline.Visible = true
         table.insert(consoleElements, mainInnerOutline)
         
         local title = Drawing.new("Text")
-        title.Text = "RobloxLib Console | Mouse: " .. mouse.x .. ", " .. mouse.y
-        title.Position = {rbl.Location[1], rbl.Location[2]}
-        title.Color = rbl.FontColor
+        title.Text = "SevereLib Console | Mouse: " .. mouse.x .. ", " .. mouse.y
+        title.Position = {svl.Location[1], svl.Location[2]}
+        title.Color = svl.FontColor
         title.Size = 13
         title.Visible = true
         table.insert(consoleElements, title)
         
         -- Mostrar logs
-        for i, v in pairs(rbl.StoredLogs) do
+        for i, v in pairs(svl.StoredLogs) do
             local logText = Drawing.new("Text")
             if string.sub(v, 1, 9) == "ERROR_TAG" then
-                logText.Color = rbl.ErrorColor
+                logText.Color = svl.ErrorColor
                 logText.Text = string.sub(v, 10, -1)
             else
-                logText.Color = rbl.FontColor
+                logText.Color = svl.FontColor
                 logText.Text = v
             end
-            logText.Position = {rbl.Location[1] + 10, rbl.Location[2] + 25 + (i-1)*18}
+            logText.Position = {svl.Location[1] + 10, svl.Location[2] + 25 + (i-1)*18}
             logText.Size = 13
             logText.Visible = true
             table.insert(consoleElements, logText)
@@ -525,33 +525,33 @@ function rbl.ShowConsole()
     else
         -- Versão minimizada do console
         local minimizedOutline = Drawing.new("Square")
-        minimizedOutline.Position = {rbl.Location[1] + 300, rbl.Location[2] - 1}
-        minimizedOutline.Size = {rbl.Size[1] - 300 + 1, 23}
-        minimizedOutline.Color = rbl.Black
+        minimizedOutline.Position = {svl.Location[1] + 300, svl.Location[2] - 1}
+        minimizedOutline.Size = {svl.Size[1] - 300 + 1, 23}
+        minimizedOutline.Color = svl.Black
         minimizedOutline.Filled = true
         minimizedOutline.Visible = true
         table.insert(consoleElements, minimizedOutline)
         
         local minimizedAccent = Drawing.new("Square")
-        minimizedAccent.Position = {rbl.Location[1] + 301, rbl.Location[2]}
-        minimizedAccent.Size = {rbl.Size[1] - 301 - 1, 22}
-        minimizedAccent.Color = rbl.AccentColor
+        minimizedAccent.Position = {svl.Location[1] + 301, svl.Location[2]}
+        minimizedAccent.Size = {svl.Size[1] - 301 - 1, 22}
+        minimizedAccent.Color = svl.AccentColor
         minimizedAccent.Filled = true
         minimizedAccent.Visible = true
         table.insert(consoleElements, minimizedAccent)
         
         local minimizedMain = Drawing.new("Square")
-        minimizedMain.Position = {rbl.Location[1] + 302, rbl.Location[2] + 1}
-        minimizedMain.Size = {rbl.Size[1] - 303, 20}
-        minimizedMain.Color = rbl.MainColor
+        minimizedMain.Position = {svl.Location[1] + 302, svl.Location[2] + 1}
+        minimizedMain.Size = {svl.Size[1] - 303, 20}
+        minimizedMain.Color = svl.MainColor
         minimizedMain.Filled = true
         minimizedMain.Visible = true
         table.insert(consoleElements, minimizedMain)
         
         local minimizedTitle = Drawing.new("Text")
-        minimizedTitle.Text = "RobloxLib Console"
-        minimizedTitle.Position = {rbl.Location[1] + 305, rbl.Location[2] + 2}
-        minimizedTitle.Color = rbl.FontColor
+        minimizedTitle.Text = "SevereLib Console"
+        minimizedTitle.Position = {svl.Location[1] + 305, svl.Location[2] + 2}
+        minimizedTitle.Color = svl.FontColor
         minimizedTitle.Size = 13
         minimizedTitle.Visible = true
         table.insert(consoleElements, minimizedTitle)
@@ -559,37 +559,37 @@ function rbl.ShowConsole()
     
     -- Botão de toggle
     local toggleBg = Drawing.new("Square")
-    if rbl.Hovering then
-        toggleBg.Color = rbl.AccentColor
+    if svl.Hovering then
+        toggleBg.Color = svl.AccentColor
     else
-        toggleBg.Color = rbl.Black
+        toggleBg.Color = svl.Black
     end
-    toggleBg.Position = {rbl.Location[1] + rbl.Size[1] - 27, rbl.Location[2] + 3}
+    toggleBg.Position = {svl.Location[1] + svl.Size[1] - 27, svl.Location[2] + 3}
     toggleBg.Size = {22, 16}
     toggleBg.Filled = true
     toggleBg.Visible = true
     table.insert(consoleElements, toggleBg)
     
     local toggleInner = Drawing.new("Square")
-    toggleInner.Position = {rbl.Location[1] + rbl.Size[1] - 26, rbl.Location[2] + 4}
+    toggleInner.Position = {svl.Location[1] + svl.Size[1] - 26, svl.Location[2] + 4}
     toggleInner.Size = {20, 14}
-    toggleInner.Color = rbl.OutlineColor
+    toggleInner.Color = svl.OutlineColor
     toggleInner.Filled = true
     toggleInner.Visible = true
     table.insert(consoleElements, toggleInner)
     
     local toggleMain = Drawing.new("Square")
-    toggleMain.Position = {rbl.Location[1] + rbl.Size[1] - 25, rbl.Location[2] + 5}
+    toggleMain.Position = {svl.Location[1] + svl.Size[1] - 25, svl.Location[2] + 5}
     toggleMain.Size = {18, 12}
-    toggleMain.Color = rbl.MainColor
+    toggleMain.Color = svl.MainColor
     toggleMain.Filled = true
     toggleMain.Visible = true
     table.insert(consoleElements, toggleMain)
     
     local toggleText = Drawing.new("Text")
     toggleText.Text = "_"
-    toggleText.Position = {rbl.Location[1] + rbl.Size[1] - 20, rbl.Location[2] + 1}
-    toggleText.Color = rbl.FontColor
+    toggleText.Position = {svl.Location[1] + svl.Size[1] - 20, svl.Location[2] + 1}
+    toggleText.Color = svl.FontColor
     toggleText.Size = 13
     toggleText.Visible = true
     table.insert(consoleElements, toggleText)
@@ -598,40 +598,42 @@ function rbl.ShowConsole()
 end
 
 --// Funções de log
-function rbl.print(...)
+function svl.print(...)
     local message = ""
     for i, v in pairs({...}) do
         message = message .. tostring(v) .. " "
     end
     
-    if #rbl.StoredLogs >= 45 then
-        table.remove(rbl.StoredLogs, 1)
+    if #svl.StoredLogs >= 45 then
+        table.remove(svl.StoredLogs, 1)
     end
     
-    table.insert(rbl.StoredLogs, message)
+    table.insert(svl.StoredLogs, message)
+    print(message) -- Também usar o print nativo
 end
 
-function rbl.error(...)
+function svl.error(...)
     local message = ""
     for i, v in pairs({...}) do
         message = message .. tostring(v) .. " "
     end
     
-    if #rbl.StoredLogs >= 45 then
-        table.remove(rbl.StoredLogs, 1)
+    if #svl.StoredLogs >= 45 then
+        table.remove(svl.StoredLogs, 1)
     end
     
-    table.insert(rbl.StoredLogs, "ERROR_TAG" .. message)
+    table.insert(svl.StoredLogs, "ERROR_TAG" .. message)
+    warn(message) -- Usar o warn nativo
 end
 
 --// Funções utilitárias
-function rbl.GetDescendants(instance)
-    assert(type(instance) == "number" and getchildren(instance), "[RBL Error] GetDescendants: First Argument needs to be a valid instance!")
+function svl.GetDescendants(instance)
+    assert(type(instance) == "number" and getchildren(instance), "[SVL Error] GetDescendants: First Argument needs to be a valid instance!")
     
     local children = {}
     for _, child in ipairs(getchildren(instance)) do
         table.insert(children, child)
-        local descendants = rbl.GetDescendants(child)
+        local descendants = svl.GetDescendants(child)
         for _, descendant in ipairs(descendants) do
             table.insert(children, descendant)
         end
@@ -640,22 +642,22 @@ function rbl.GetDescendants(instance)
     return children
 end
 
-function rbl.GetLocalPlayerName()
+function svl.GetLocalPlayerName()
     return getname(getlocalplayer())
 end
 
-function rbl.GetLocalCharacter()
+function svl.GetLocalCharacter()
     return getcharacter(getlocalplayer())
 end
 
 -- Exportar a biblioteca
-_G.rbl = rbl
-print("RobloxLib iniciada com sucesso!")
+_G.svl = svl
+print("SevereLib iniciada com sucesso!")
 
 -- Atualização da cor do arco-íris (a ser chamada em um loop)
 spawn(function()
     while true do
-        rbl_updateRainbow()
+        svl_updateRainbow()
         wait(0.03)
     end
 end)
