@@ -1,1691 +1,512 @@
---[[
-    Severe Helper Library (SevereLib)
-    Criado para facilitar o desenvolvimento de scripts com funções úteis e otimizadas
-    Foco em estabilidade e performance para sistemas ESP
-]]
+--// SevereLib - Performance-optimized utility library
+--// Main focus: ESP functionality, stability and performance
 
-local SevereLib = {}
-
--- Cache para evitar chamadas repetidas
-SevereLib.Cache = {
-            LocalPlayer = nil,
-            Camera = nil,
-    ESPObjects = {},
-    DrawingObjects = {},
-    PlayerCache = {}, -- Cache para rastrear jogadores e seus objetos ESP
-    LastCheck = 0, -- Tempo da última verificação de limpeza
-    DeadPlayers = {}, -- Cache de jogadores mortos para rápida limpeza
-    PlayerCharacters = {} -- Mapeia jogadores para seus personagens para verificar mudanças
-}
-
--- Configurações
-SevereLib.Settings = {
-    UpdateRate = 1/60, -- Taxa de atualização padrão para o ESP
-    MaxESPDistance = 1000, -- Distância máxima para renderizar ESP
-    DefaultESPColor = {255, 255, 255},
-    DefaultTracerColor = {255, 0, 0},
-    DefaultBoxColor = {0, 255, 0},
-    DefaultTextColor = {255, 255, 255},
-    DefaultCircleColor = {255, 255, 0},
-    DefaultTextSize = 13,
-    DefaultFont = 2, -- Plex
-    DefaultCircleRadius = 3,
-    DefaultBoxThickness = 1,
-    DefaultTracerThickness = 1,
-    DefaultTextOutlined = true,
-    CleanupInterval = 1, -- Intervalo em segundos para verificar e limpar objetos ESP inválidos (reduzido)
-    PlayerCheckInterval = 0.5, -- Intervalo para verificar novos jogadores (reduzido)
-    DeadCheckInterval = 0.2 -- Intervalo para verificar jogadores mortos (novo)
-}
-
--- Utilitários matemáticos
-SevereLib.Math = {
-    floor = math.floor,
-    ceil = math.ceil,
-    sqrt = math.sqrt,
-    abs = math.abs,
-    clamp = function(x, min, max)
-        return x < min and min or (x > max and max or x)
-    end
-}
-
--- Utilitários de cores
-SevereLib.Color = {
-    RGB = function(r, g, b)
-        return {
-            r = SevereLib.Math.clamp(r, 0, 255),
-            g = SevereLib.Math.clamp(g, 0, 255),
-            b = SevereLib.Math.clamp(b, 0, 255)
-        }
-    end,
-    
-    Rainbow = function(speed)
-        speed = speed or 1
-        local time = tick() * speed
-        local r = SevereLib.Math.abs(math.sin(time) * 255)
-        local g = SevereLib.Math.abs(math.sin(time + 2) * 255)
-        local b = SevereLib.Math.abs(math.sin(time + 4) * 255)
-        return {r, g, b}
-    end,
-    
-    Lerp = function(c1, c2, t)
-        return {
-            SevereLib.Math.floor(c1[1] + (c2[1] - c1[1]) * t),
-            SevereLib.Math.floor(c1[2] + (c2[2] - c1[2]) * t),
-            SevereLib.Math.floor(c1[3] + (c2[3] - c1[3]) * t)
-        }
-    end
-}
-
--- Funções de auxiliares
-SevereLib.Util = {
-    -- Verifica se um objeto é descendente de outro
-    IsDescendantOf = function(instance, ancestor)
-        return isdescendantof(instance, ancestor)
-    end,
-    
-    -- Pega todos os filhos de uma instância com uma determinada classe
-    GetChildrenOfClass = function(parent, className)
-        local results = {}
-        for _, child in pairs(getchildren(parent)) do
-            if getclassname(child) == className then
-                table.insert(results, child)
-            end
-        end
-        return results
-    end,
-    
-    -- Pega todos os descendentes de uma instância
-    GetDescendants = function(instance)
-        local descendants = {}
-        local function addDescendants(parent)
-            local children = getchildren(parent)
-            for _, child in pairs(children) do
-                table.insert(descendants, child)
-                addDescendants(child)
-            end
-        end
-        addDescendants(instance)
-        return descendants
-    end,
-    
-    -- Pega todos os descendentes de uma instância com uma determinada classe
-    GetDescendantsOfClass = function(instance, className)
-        local results = {}
-        local descendants = SevereLib.Util.GetDescendants(instance)
-        for _, descendant in pairs(descendants) do
-            if getclassname(descendant) == className then
-                table.insert(results, descendant)
-            end
-        end
-        return results
-    end,
-    
-    -- Obtém a distância entre dois vetores
-    GetDistance = function(v1, v2)
-        local dx, dy, dz
-        
-        if type(v1) == "table" and v1.x and v1.y and v1.z then
-            if type(v2) == "table" and v2.x and v2.y and v2.z then
-                dx, dy, dz = v1.x - v2.x, v1.y - v2.y, v1.z - v2.z
-            else
-                return 0
-            end
-        elseif type(v1) == "number" and type(v2) == "number" then
-            local pos1 = getposition(v1)
-            local pos2 = getposition(v2)
-            if pos1 and pos2 then
-                dx, dy, dz = pos1.x - pos2.x, pos1.y - pos2.y, pos1.z - pos2.z
-            else
-                return 0
-            end
-        else
-            return 0
-        end
-        
-        return SevereLib.Math.sqrt(dx * dx + dy * dy + dz * dz)
-    end,
-    
-    -- Obtém a distância do jogador local até um vetor ou instância
-    GetDistanceFromPlayer = function(instance)
-        local player = SevereLib.Player.GetLocalPlayer()
-        local character = getcharacter(player)
-        if not character then return 999999 end
-        
-        local humanoidRootPart = findfirstchild(character, "HumanoidRootPart")
-        if not humanoidRootPart then return 999999 end
-        
-        local instancePos
-        if type(instance) == "table" and instance.x and instance.y and instance.z then
-            instancePos = instance
-        elseif type(instance) == "number" then
-            instancePos = getposition(instance)
-        else
-            return 999999
-        end
-        
-        return SevereLib.Util.GetDistance(getposition(humanoidRootPart), instancePos)
-    end,
-    
-    -- Verifica se o mouse está em uma determinada área da tela
-    IsMouseInArea = function(x1, y1, x2, y2)
-        local mouse = getmouseposition()
-        return mouse.x >= x1 and mouse.x <= x2 and mouse.y >= y1 and mouse.y <= y2
-    end,
-    
-    -- Conversão de valor para string formatada
-    FormatNumber = function(number)
-        if number >= 1000 then
-            return string.format("%.1fk", number / 1000)
-        else
-            return tostring(number)
-        end
-    end,
-    
-    -- Verifica se um player ainda existe no jogo
-    IsPlayerValid = function(player)
-        local playersService = findservice(Game, "Players")
-        for _, p in pairs(getchildren(playersService)) do
-            if p == player then
-                return true
-            end
-        end
-        return false
-    end,
-    
-    -- Verifica se um jogador está vivo
-    IsPlayerAlive = function(player)
-        local character = getcharacter(player)
-        if not character then 
-            return false 
-        end
-        
-        local humanoid = findfirstchild(character, "Humanoid")
-        if not humanoid then 
-            return false 
-        end
-        
-        local health = gethealth(humanoid)
-        return health > 0
-    end,
-    
-    -- Verifica se um objeto ainda existe no jogo
-    IsInstanceValid = function(instance)
-        if not instance then return false end
-        
-        local success, result = pcall(function()
-            local parent = getparent(instance)
-            return parent ~= nil
-        end)
-        
-        return success and result
-    end,
-    
-    -- Verifica se o personagem de um jogador mudou
-    HasCharacterChanged = function(player)
-        local oldCharacter = SevereLib.Cache.PlayerCharacters[player]
-        local newCharacter = getcharacter(player)
-        
-        if oldCharacter ~= newCharacter then
-            SevereLib.Cache.PlayerCharacters[player] = newCharacter
-            return true
-        end
-        
-        return false
-    end
-}
-
--- Funções relacionadas ao jogador
-SevereLib.Player = {
-    -- Obtém o jogador local
-    GetLocalPlayer = function()
-        if SevereLib.Cache.LocalPlayer then
-            return SevereLib.Cache.LocalPlayer
-        end
-        
-        local player = getlocalplayer()
-        SevereLib.Cache.LocalPlayer = player
-        return player
-    end,
-    
-    -- Obtém o personagem do jogador local
-    GetLocalCharacter = function()
-        local player = SevereLib.Player.GetLocalPlayer()
-        return getcharacter(player)
-    end,
-    
-    -- Obtém a posição do jogador local
-    GetLocalPosition = function()
-        local character = SevereLib.Player.GetLocalCharacter()
-        if not character then return nil end
-        
-        local rootPart = findfirstchild(character, "HumanoidRootPart")
-        if not rootPart then return nil end
-        
-        return getposition(rootPart)
-    end,
-    
-    -- Obtém a saúde do jogador local
-    GetLocalHealth = function()
-        local character = SevereLib.Player.GetLocalCharacter()
-        if not character then return 0, 0 end
-        
-        local humanoid = findfirstchild(character, "Humanoid")
-        if not humanoid then return 0, 0 end
-        
-        return gethealth(humanoid), getmaxhealth(humanoid)
-    end,
-    
-    -- Obtém a câmera 
-    GetCamera = function()
-        if SevereLib.Cache.Camera then
-            return SevereLib.Cache.Camera
-        end
-        
-        local workspace = findservice(Game, "Workspace")
-        local camera = findfirstchild(workspace, "Camera")
-        SevereLib.Cache.Camera = camera
-        return camera
-    end,
-    
-    -- Obtém a posição da câmera
-    GetCameraPosition = function()
-        local camera = SevereLib.Player.GetCamera()
-        if not camera then return nil end
-        
-        return getposition(camera)
-    end,
-    
-    -- Obtém todos os jogadores não-locais
-    GetAllPlayers = function()
-        local players = {}
-        local playersService = findservice(Game, "Players")
-        local localPlayer = SevereLib.Player.GetLocalPlayer()
-        local localPlayerName = getname(localPlayer)
-        
-        for _, player in pairs(getchildren(playersService)) do
-            if getname(player) ~= localPlayerName then
-                table.insert(players, player)
-            end
-        end
-        
-        return players
-    end
-}
-
--- Funções relacionadas ao ESP
-SevereLib.ESP = {
-    Running = false,
-    Objects = {},
-    PlayerObjects = {}, -- Mapeia players para seus objetos ESP
-    LastPlayerCheck = 0, -- Último tempo que checamos por novos jogadores
-    LastDeadCheck = 0, -- Último tempo que checamos por jogadores mortos
-    
-    -- Cria um novo objeto de desenho
-    CreateDrawingObject = function(type, properties)
-        local obj = Drawing.new(type)
-        if properties then
-            for prop, value in pairs(properties) do
-                obj[prop] = value
-            end
-        end
-        table.insert(SevereLib.Cache.DrawingObjects, obj)
-        return obj
-    end,
-    
-    -- Remove um objeto de desenho
-    RemoveDrawingObject = function(obj)
-        if obj then
-            obj.Visible = false
-            pcall(function() obj:Remove() end)
-            for i, v in pairs(SevereLib.Cache.DrawingObjects) do
-                if v == obj then
-                    table.remove(SevereLib.Cache.DrawingObjects, i)
-                    break
-                end
-            end
-        end
-    end,
-    
-    -- Cria um novo objeto ESP
-    CreateESPObject = function(instance, config)
-        config = config or {}
-        
-        local espObject = {
-            Instance = instance,
-            Name = config.Name or getname(instance),
-            Color = config.Color or SevereLib.Settings.DefaultESPColor,
-            MaxDistance = config.MaxDistance or SevereLib.Settings.MaxESPDistance,
-            ShowDistance = config.ShowDistance == nil and true or config.ShowDistance,
-            ShowName = config.ShowName == nil and true or config.ShowName,
-            ShowBox = config.ShowBox == nil and false or config.ShowBox,
-            ShowTracer = config.ShowTracer == nil and false or config.ShowTracer,
-            ShowHealthBar = config.ShowHealthBar == nil and false or config.ShowHealthBar,
-            TextSize = config.TextSize or SevereLib.Settings.DefaultTextSize,
-            Font = config.Font or SevereLib.Settings.DefaultFont,
-            CircleRadius = config.CircleRadius or SevereLib.Settings.DefaultCircleRadius,
-            BoxThickness = config.BoxThickness or SevereLib.Settings.DefaultBoxThickness,
-            TracerThickness = config.TracerThickness or SevereLib.Settings.DefaultTracerThickness,
-            TextOutlined = config.TextOutlined == nil and true or config.TextOutlined,
-            Enabled = config.Enabled == nil and true or config.Enabled,
-            Player = config.Player, -- Referência ao jogador (se este ESP for de um jogador)
-            LastUpdated = tick(), -- Tempo da última atualização
-            
-            -- Configurações ImprovedBoxes
-            UseImprovedBoxes = config.UseImprovedBoxes == nil and false or config.UseImprovedBoxes,
-            BoxType = config.BoxType or SevereLib.ImprovedBoxes.BoxTypes.CORNERS,
-            BoxFilled = config.BoxFilled == nil and false or config.BoxFilled,
-            BoxTransparency = config.BoxTransparency or 1,
-            BoxFillTransparency = config.BoxFillTransparency or 0.3,
-            CornerSize = config.CornerSize or 0.3,
-            ImprovedBoxObjects = nil, -- Será preenchido com objetos da caixa melhorada
-            
-            -- Objetos de desenho
-            Text = SevereLib.ESP.CreateDrawingObject("Text", {
-                Text = "",
-                Size = config.TextSize or SevereLib.Settings.DefaultTextSize,
-                Center = true,
-                Outline = config.TextOutlined == nil and true or config.TextOutlined,
-                Color = config.Color or SevereLib.Settings.DefaultTextColor,
-                Visible = false
-            }),
-            
-            Circle = SevereLib.ESP.CreateDrawingObject("Circle", {
-                Radius = config.CircleRadius or SevereLib.Settings.DefaultCircleRadius,
-                NumSides = 12,
-                Filled = true,
-                Color = config.Color or SevereLib.Settings.DefaultCircleColor,
-                Transparency = 0.8,
-                Visible = false
-            }),
-            
-            Box = nil,
-            Tracer = nil,
-            HealthBar = nil,
-            
-            -- Funções do objeto
-            Update = function(self)
-                if not self.Enabled or not self.Instance then
-                    self:Hide()
-                    return false -- Retornar false indica que a atualização falhou
-                end
-                
-                -- Se este for um ESP de jogador, verificar se o jogador está morto
-                if self.Player then
-                    if not SevereLib.Util.IsPlayerValid(self.Player) then
-                        self:Hide()
-                        return false -- Jogador não existe mais
-                    end
-                    
-                    -- Verificar se o jogador está morto
-                    if not SevereLib.Util.IsPlayerAlive(self.Player) then
-                        self:Hide()
-                        SevereLib.Cache.DeadPlayers[self.Player] = true
-                        return false -- Jogador está morto
-                    end
-                    
-                    -- Verificar se o personagem do jogador mudou
-                    if SevereLib.Util.HasCharacterChanged(self.Player) then
-                        self:Hide()
-                        return false -- O personagem mudou
-                    end
-                end
-                
-                -- Verificar se a instância ainda é válida
-                if not SevereLib.Util.IsInstanceValid(self.Instance) then
-                    self:Hide()
-                    return false -- Instância não é mais válida
-                end
-                
-                local camera = SevereLib.Player.GetCamera()
-                if not camera then
-                    self:Hide()
-                    return false
-                end
-                
-                local cameraPos = SevereLib.Player.GetCameraPosition()
-                if not cameraPos then
-                    self:Hide()
-                    return false
-                end
-                
-                local instancePos = getposition(self.Instance)
-                if not instancePos then
-                    self:Hide()
-                    return false
-                end
-                
-                self.LastUpdated = tick() -- Atualizar o timestamp
-                
-                local distance = SevereLib.Util.GetDistance(cameraPos, instancePos)
-                if distance > self.MaxDistance then
-                    self:Hide()
-                    return true -- A instância é válida, só está fora de alcance
-                end
-                
-                local screenPos, onScreen = worldtoscreenpoint({instancePos.x, instancePos.y, instancePos.z})
-                if not onScreen then
-                    self:Hide()
-                    return true -- A instância é válida, só está fora da tela
-                end
-                
-                -- Atualiza texto
-                if self.ShowName or self.ShowDistance then
-                    local text = ""
-                    if self.ShowName then
-                        text = self.Name
-                    end
-                    
-                    if self.ShowDistance then
-                        text = text .. (self.ShowName and " [" or "") .. SevereLib.Math.floor(distance) .. "m" .. (self.ShowName and "]" or "")
-                    end
-                    
-                    self.Text.Text = text
-                    self.Text.Position = {screenPos.x, screenPos.y + 20}
-                    self.Text.Visible = true
-                else
-                    self.Text.Visible = false
-                end
-                
-                -- Atualiza círculo
-                self.Circle.Position = {screenPos.x, screenPos.y}
-                self.Circle.Visible = true
-                
-                -- Atualiza traçador
-                if self.ShowTracer then
-                    if not self.Tracer then
-                        self.Tracer = SevereLib.ESP.CreateDrawingObject("Line", {
-                            Thickness = self.TracerThickness,
-                            Color = self.Color,
-                            Visible = false
-                        })
-                    end
-                    
-                    local screenSize = getscreendimensions()
-                    self.Tracer.From = {screenSize.x / 2, screenSize.y}
-                    self.Tracer.To = {screenPos.x, screenPos.y}
-                    self.Tracer.Visible = true
-                elseif self.Tracer then
-                    self.Tracer.Visible = false
-                end
-                
-                -- Atualiza caixa (simplificado - apenas esqueleto da caixa 2D)
-                if self.ShowBox then
-                    if not self.Box then
-                        self.Box = SevereLib.ESP.CreateDrawingObject("Square", {
-                            Thickness = self.BoxThickness,
-                            Color = self.Color,
-                            Filled = false,
-                            Visible = false
-                        })
-                    end
-                    
-                    -- Verificar se ImprovedBoxes está sendo usado
-                    if self.UseImprovedBoxes then
-                        -- Limpar caixa padrão se ainda existir
-                        if self.Box then
-                            self.Box.Visible = false
-                        end
-                        
-                        -- Limpar boxes anteriores
-                        if self.ImprovedBoxObjects then
-                            for _, obj in pairs(self.ImprovedBoxObjects) do
-                                obj.Visible = false
-                            end
-                        end
-                        
-                        -- Configurar parâmetros para a caixa melhorada
-                        local boxParams = {
-                            BoxType = self.BoxType or SevereLib.ImprovedBoxes.BoxTypes.CORNERS,
-                            Color = self.Color,
-                            Thickness = self.BoxThickness,
-                            Filled = self.BoxFilled or false,
-                            Transparency = self.BoxTransparency or 1,
-                            FillTransparency = self.BoxFillTransparency or 0.3,
-                            HealthBar = self.ShowHealthBar,
-                            NameDisplay = self.ShowName,
-                            DistanceDisplay = self.ShowDistance,
-                            Tracer = self.ShowTracer,
-                            Player = self.Player
-                        }
-                        
-                        -- Desenhar e armazenar objetos
-                        self.ImprovedBoxObjects = SevereLib.ImprovedBoxes.DrawBoxESP(self.Instance, boxParams)
-                    else
-                        -- Método antigo de caixa (mantido para compatibilidade)
-                        -- Tamanho da caixa baseado na distância
-                        local size = 50 * (1 / (distance * 0.05))
-                        size = SevereLib.Math.clamp(size, 10, 100)
-                        
-                        self.Box.Size = {size, size * 1.5}
-                        self.Box.Position = {screenPos.x - (size / 2), screenPos.y - (size * 1.5 / 2)}
-                        self.Box.Visible = true
-                    end
-                elseif self.Box then
-                    self.Box.Visible = false
-                end
-                
-                -- Remover objetos da caixa melhorada se não estiver mostrando caixa
-                if not self.ShowBox and self.ImprovedBoxObjects then
-                    for _, obj in pairs(self.ImprovedBoxObjects) do
-                        obj.Visible = false
-                    end
-                    self.ImprovedBoxObjects = nil
-                end
-                
-                -- Verifica e atualiza a barra de saúde, se necessário
-                if self.ShowHealthBar and self.Player then
-                    local character = getcharacter(self.Player)
-                    if character then
-                        local humanoid = findfirstchild(character, "Humanoid")
-                        if humanoid then
-                            local health = gethealth(humanoid)
-                            local maxHealth = getmaxhealth(humanoid)
-                            
-                            -- Criar a barra de saúde se não existir
-                            if not self.HealthBar then
-                                self.HealthBar = SevereLib.ESP.CreateDrawingObject("Square", {
-                                    Thickness = 1,
-                                    Filled = true,
-                                    Visible = false
-                                })
-                            end
-                            
-                            -- Atualizar a barra de saúde
-                            local healthRatio = health / maxHealth
-                            local barColor = {
-                                (1 - healthRatio) * 255,
-                                healthRatio * 255,
-                                0
-                            }
-                            
-                            local barWidth = 5
-                            local barHeight = size * 1.5
-                            local xPos = screenPos.x + (size / 2) + 5
-                            
-                            self.HealthBar.Size = {barWidth, barHeight * healthRatio}
-                            self.HealthBar.Position = {xPos, screenPos.y - (size * 1.5 / 2) + (barHeight * (1 - healthRatio))}
-                            self.HealthBar.Color = barColor
-                            self.HealthBar.Visible = true
-                        elseif self.HealthBar then
-                            self.HealthBar.Visible = false
-                        end
-                    elseif self.HealthBar then
-                        self.HealthBar.Visible = false
-                    end
-                elseif self.HealthBar then
-                    self.HealthBar.Visible = false
-                end
-                
-                return true -- Atualização bem-sucedida
-            end,
-            
-            Hide = function(self)
-                if self.Text then self.Text.Visible = false end
-                if self.Circle then self.Circle.Visible = false end
-                if self.Tracer then self.Tracer.Visible = false end
-                if self.Box then self.Box.Visible = false end
-                if self.HealthBar then self.HealthBar.Visible = false end
-                
-                -- Ocultar objetos ImprovedBoxes
-                if self.ImprovedBoxObjects then
-                    for _, obj in pairs(self.ImprovedBoxObjects) do
-                        obj.Visible = false
-                    end
-                end
-            end,
-            
-            Remove = function(self)
-                pcall(function()
-                    if self.Text then SevereLib.ESP.RemoveDrawingObject(self.Text) end
-                    if self.Circle then SevereLib.ESP.RemoveDrawingObject(self.Circle) end
-                    if self.Tracer then SevereLib.ESP.RemoveDrawingObject(self.Tracer) end
-                    if self.Box then SevereLib.ESP.RemoveDrawingObject(self.Box) end
-                    if self.HealthBar then SevereLib.ESP.RemoveDrawingObject(self.HealthBar) end
-                    
-                    -- Remover objetos ImprovedBoxes
-                    if self.ImprovedBoxObjects then
-                        for _, obj in pairs(self.ImprovedBoxObjects) do
-                            obj.Visible = false
-                        end
-                        self.ImprovedBoxObjects = nil
-                    end
-                end)
-                
-                -- Remover da lista de objetos
-                for i, obj in pairs(SevereLib.ESP.Objects) do
-                    if obj == self then
-                        table.remove(SevereLib.ESP.Objects, i)
-                        break
-                    end
-                end
-                
-                -- Remover do mapeamento de jogadores
-                if self.Player then
-                    SevereLib.ESP.PlayerObjects[self.Player] = nil
-                end
-            end
-        }
-        
-        table.insert(SevereLib.ESP.Objects, espObject)
-        
-        -- Se for um ESP de jogador, armazenar no mapeamento
-        if config.Player then
-            SevereLib.ESP.PlayerObjects[config.Player] = espObject
-            SevereLib.Cache.PlayerCharacters[config.Player] = getcharacter(config.Player)
-        end
-        
-        return espObject
-    end,
-    
-    -- Adiciona um objeto ESP
-    Add = function(instance, config)
-        return SevereLib.ESP.CreateESPObject(instance, config)
-    end,
-    
-    -- Remove um objeto ESP
-    Remove = function(instance)
-        for i, obj in pairs(SevereLib.ESP.Objects) do
-            if obj.Instance == instance then
-                obj:Remove()
-                break
-            end
-        end
-    end,
-    
-    -- Remove um objeto ESP para um jogador específico
-    RemovePlayer = function(player)
-        local espObject = SevereLib.ESP.PlayerObjects[player]
-        if espObject then
-            espObject:Remove()
-            SevereLib.ESP.PlayerObjects[player] = nil
-            SevereLib.Cache.DeadPlayers[player] = nil
-            SevereLib.Cache.PlayerCharacters[player] = nil
-        end
-    end,
-    
-    -- Limpa todos os objetos ESP
-    Clear = function()
-        for _, obj in pairs(SevereLib.ESP.Objects) do
-            obj:Remove()
-        end
-        SevereLib.ESP.Objects = {}
-        SevereLib.ESP.PlayerObjects = {}
-        SevereLib.Cache.DeadPlayers = {}
-        SevereLib.Cache.PlayerCharacters = {}
-    end,
-    
-    -- Verifica e limpa objetos ESP inválidos
-    CleanupInvalid = function()
-        local currentTime = tick()
-        
-        -- Verificar a cada X segundos
-        if currentTime - SevereLib.Cache.LastCheck < SevereLib.Settings.CleanupInterval then
-            return
-        end
-        
-        SevereLib.Cache.LastCheck = currentTime
-        
-        -- Lista de objetos a remover
-        local toRemove = {}
-        local deadCount = 0
-        
-        for i, obj in pairs(SevereLib.ESP.Objects) do
-            -- Verifica se a instância ainda é válida ou já foi limpa
-            if not obj.Instance or not SevereLib.Util.IsInstanceValid(obj.Instance) then
-                table.insert(toRemove, obj)
-            end
-            
-            -- Verifica se o objeto não foi atualizado há muito tempo
-            if currentTime - obj.LastUpdated > 5 then
-                table.insert(toRemove, obj)
-            end
-        end
-        
-        -- Remover objetos inválidos
-        for _, obj in pairs(toRemove) do
-            obj:Remove()
-        end
-        
-        -- Se algum objeto foi removido, fazer log
-        if #toRemove > 0 then
-            print("SevereLib: Removidos " .. #toRemove .. " objetos ESP inválidos")
-        end
-    end,
-    
-    -- Verifica jogadores mortos
-    CheckDeadPlayers = function()
-        local currentTime = tick()
-        
-        -- Verificar a cada X segundos
-        if currentTime - SevereLib.ESP.LastDeadCheck < SevereLib.Settings.DeadCheckInterval then
-            return
-        end
-        
-        SevereLib.ESP.LastDeadCheck = currentTime
-        
-        -- Limpar jogadores mortos do cache que não existem mais
-        for player, _ in pairs(SevereLib.Cache.DeadPlayers) do
-            if not SevereLib.Util.IsPlayerValid(player) then
-                SevereLib.ESP.RemovePlayer(player)
-                SevereLib.Cache.DeadPlayers[player] = nil
-            else
-                -- Verificar se o jogador respawnou
-                if SevereLib.Util.IsPlayerAlive(player) then
-                    SevereLib.Cache.DeadPlayers[player] = nil
-                    
-                    -- Recriar o ESP para o jogador
-                    if SevereLib.ESP.PlayerObjects[player] then
-                        SevereLib.ESP.RemovePlayer(player)
-                    end
-                    
-                    SevereLib.ESP.SetupPlayerESP(findservice(Game, "Players"), {})
-                end
-            end
-        end
-        
-        -- Verificar jogadores vivos que morreram
-        for player, espObj in pairs(SevereLib.ESP.PlayerObjects) do
-            if not SevereLib.Util.IsPlayerAlive(player) then
-                espObj:Hide()
-                SevereLib.Cache.DeadPlayers[player] = true
-            end
-        end
-    end,
-    
-    -- Verifica novos jogadores
-    CheckNewPlayers = function()
-        local currentTime = tick()
-        
-        -- Verificar a cada X segundos
-        if currentTime - SevereLib.ESP.LastPlayerCheck < SevereLib.Settings.PlayerCheckInterval then
-            return
-        end
-        
-        SevereLib.ESP.LastPlayerCheck = currentTime
-        
-        local playersService = findservice(Game, "Players")
-        local localPlayer = SevereLib.Player.GetLocalPlayer()
-        
-        -- Verificar jogadores novos
-        for _, player in pairs(getchildren(playersService)) do
-            if player ~= localPlayer and not SevereLib.ESP.PlayerObjects[player] and not SevereLib.Cache.DeadPlayers[player] then
-                -- Tentar configurar ESP para este jogador
-                pcall(function()
-                    SevereLib.ESP.SetupForPlayer(player)
-                end)
-            end
-        end
-    end,
-    
-    -- Configurar ESP para um jogador específico
-    SetupForPlayer = function(player, config)
-        config = config or {}
-        
-        -- Não configurar para jogadores mortos ou já com ESP
-        if SevereLib.Cache.DeadPlayers[player] or SevereLib.ESP.PlayerObjects[player] then
-            return
-        end
-        
-        local character = getcharacter(player)
-        if not character then return end
-        
-        -- Verificar se o jogador está vivo
-        if not SevereLib.Util.IsPlayerAlive(player) then
-            SevereLib.Cache.DeadPlayers[player] = true
-            return
-        end
-        
-        local rootPart = findfirstchild(character, "HumanoidRootPart")
-        if not rootPart then return end
-        
-        local playerName = getname(player)
-        local displayName = getdisplayname and getdisplayname(player) or playerName
-        
-        -- Obter cor da equipe se disponível
-        local teamColor = {255, 255, 255}
-        local team = getteam and getteam(player) or nil
-        
-        if team then
-            local teamColorObj = getteamcolour and getteamcolour(team) or nil
-            if teamColorObj then
-                teamColor = {teamColorObj.r * 255, teamColorObj.g * 255, teamColorObj.b * 255}
-            end
-        end
-        
-        -- Adicionar ESP ao jogador
-        local espObject = SevereLib.ESP.Add(rootPart, {
-            Name = displayName,
-            ShowBox = config.ShowBox == nil and true or config.ShowBox,
-            ShowTracer = config.ShowTracer == nil and true or config.ShowTracer,
-            ShowHealthBar = config.ShowHealthBar == nil and true or config.ShowHealthBar,
-            MaxDistance = config.MaxDistance or 1000,
-            Color = config.Color or teamColor,
-            Player = player -- Referência ao jogador para rastreamento
-        })
-        
-        return espObject
-    end,
-    
-    -- Inicia o loop de renderização do ESP
-    Start = function()
-        if SevereLib.ESP.Running then return end
-        
-        SevereLib.ESP.Running = true
-        
-        spawn(function()
-            while SevereLib.ESP.Running do
-                -- Verificar novos jogadores
-                pcall(function()
-                    SevereLib.ESP.CheckNewPlayers()
-                end)
-                
-                -- Verificar jogadores mortos
-                pcall(function()
-                    SevereLib.ESP.CheckDeadPlayers()
-                end)
-                
-                -- Atualizar objetos ESP existentes
-                for _, obj in pairs(SevereLib.ESP.Objects) do
-                    pcall(function()
-                        obj:Update()
-                    end)
-                end
-                
-                -- Limpar objetos inválidos periodicamente
-                pcall(function()
-                    SevereLib.ESP.CleanupInvalid()
-                end)
-                
-                -- Limpar recursos do ImprovedBoxes periodicamente
-                pcall(function()
-                    if SevereLib.ImprovedBoxes then
-                        SevereLib.ImprovedBoxes.Cleanup()
-                    end
-                end)
-                
-                wait(SevereLib.Settings.UpdateRate)
-            end
-        end)
-    end,
-    
-    -- Para o loop de renderização do ESP
-    Stop = function()
-        SevereLib.ESP.Running = false
-        for _, obj in pairs(SevereLib.ESP.Objects) do
-            obj:Hide()
-        end
-    end,
-    
-    -- Configura o ESP para jogadores
-    SetupPlayerESP = function(playerFolder, config)
-        config = config or {}
-        
-        -- Configurar ESP para todos os jogadores atuais
-        for _, player in pairs(getchildren(playerFolder)) do
-            local localPlayer = SevereLib.Player.GetLocalPlayer()
-            if player ~= localPlayer then
-                pcall(function()
-                    SevereLib.ESP.SetupForPlayer(player, config)
-                end)
-            end
-        end
-    end,
-    
-    -- Atualiza o ESP para um jogador específico
-    UpdatePlayerESP = function(player, config)
-        local espObject = SevereLib.ESP.PlayerObjects[player]
-        
-        if espObject then
-            -- Atualizar propriedades existentes
-            if config.Color then espObject.Color = config.Color end
-            if config.ShowBox ~= nil then espObject.ShowBox = config.ShowBox end
-            if config.ShowTracer ~= nil then espObject.ShowTracer = config.ShowTracer end
-            if config.ShowDistance ~= nil then espObject.ShowDistance = config.ShowDistance end
-            if config.MaxDistance then espObject.MaxDistance = config.MaxDistance end
-            if config.Name then espObject.Name = config.Name end
-            
-            -- Atualizar propriedades dos objetos de desenho
-            if config.Color then
-                espObject.Text.Color = config.Color
-                espObject.Circle.Color = config.Color
-                if espObject.Box then espObject.Box.Color = config.Color end
-                if espObject.Tracer then espObject.Tracer.Color = config.Color end
-            end
-            
-            if config.TextSize then
-                espObject.TextSize = config.TextSize
-                espObject.Text.Size = config.TextSize
-            end
-            
-            -- Atualizar configurações de ImprovedBoxes
-            if config.UseImprovedBoxes ~= nil then espObject.UseImprovedBoxes = config.UseImprovedBoxes end
-            if config.BoxType then espObject.BoxType = config.BoxType end
-            if config.BoxFilled ~= nil then espObject.BoxFilled = config.BoxFilled end
-            if config.BoxTransparency then espObject.BoxTransparency = config.BoxTransparency end
-            if config.BoxFillTransparency then espObject.BoxFillTransparency = config.BoxFillTransparency end
-            if config.CornerSize then espObject.CornerSize = config.CornerSize end
-        end
-    end,
-    
-    -- Configura o ImprovedBoxes para um objeto ESP existente
-    SetImprovedBoxes = function(espObject, config)
-        if not espObject then return end
-        
-        config = config or {}
-        
-        -- Ativar ImprovedBoxes
-        espObject.UseImprovedBoxes = true
-        
-        -- Configurar o tipo de caixa
-        if config.BoxType then
-            espObject.BoxType = config.BoxType
-        else
-            espObject.BoxType = SevereLib.ImprovedBoxes.BoxTypes.CORNERS
-        end
-        
-        -- Outras configurações
-        if config.BoxFilled ~= nil then espObject.BoxFilled = config.BoxFilled end
-        if config.BoxTransparency then espObject.BoxTransparency = config.BoxTransparency end
-        if config.BoxFillTransparency then espObject.BoxFillTransparency = config.BoxFillTransparency end
-        if config.CornerSize then espObject.CornerSize = config.CornerSize end
-        
-        return espObject
-    end,
-    
-    -- Aplica ImprovedBoxes a todos os ESPs de jogadores
-    SetImprovedBoxesForAllPlayers = function(config)
-        for player, espObject in pairs(SevereLib.ESP.PlayerObjects) do
-            SevereLib.ESP.SetImprovedBoxes(espObject, config)
-        end
-    end
-}
-
--- ImprovedBoxes - Funções melhoradas para caixas ESP
-SevereLib.ImprovedBoxes = {
-    -- Constantes e configurações
-    Config = {
-        DefaultCornerSize = 0.3, -- Tamanho dos cantos como proporção da caixa (0.3 = 30%)
-        DefaultBoxThickness = 1,
-        DefaultBoxColor = {255, 255, 255},
-        DefaultBoxTransparency = 1,
-        DefaultBoxFilled = false,
-        DefaultFilledTransparency = 0.3,
-        CircleSegments = 16, -- Número de segmentos para caixas arredondadas
-        AdaptiveDistance = true, -- Mudar tipo de caixa com base na distância
-        AdaptiveThreshold = 100, -- Distância para mudar de caixa 3D para 2D
-        MaxCachedBoxes = 500, -- Limite para cache de caixas
+local SevereLib = {
+    -- Cache for frequently used values
+    Cache = {
+        Screen = {x = 0, y = 0},
+        Game = Game,
+        Workspace = nil,
+        LocalPlayer = nil,
+        Camera = nil,
+        Mouse = nil
     },
-    
-    -- Tipos de caixas
-    BoxTypes = {
-        CORNERS = 1,        -- Desenha apenas os cantos da caixa (padrão)
-        BOX_2D = 2,         -- Caixa 2D completa
-        BOX_3D = 3,         -- Caixa 3D completa
-        ROUNDED = 4,        -- Caixa com cantos arredondados
-        ADAPTIVE = 5,       -- Muda automaticamente com base na distância
-        CORNERS_ADVANCED = 6, -- Cantos com animação de tamanho/cor
+    -- ESP Settings
+    ESP = {
+        Enabled = true,
+        MaxDistance = 1000,
+        FontSize = 13,
+        FontType = 2, -- Default to Plex
+        ShowDistance = true,
+        ShowHealth = true,
+        ShowName = true,
+        BoxType = 1, -- 1 = Corners, 2 = 2D Box, 3 = 3D Box
+        BoxThickness = 1,
+        BoxColors = {
+            Default = {255, 255, 255},
+            Team = {0, 255, 0},
+            Enemy = {255, 0, 0},
+            Neutral = {255, 255, 0}
+        },
+        TracerEnabled = false,
+        TracerOrigin = 1, -- 1 = Bottom Center, 2 = Mouse Position
+        TracerThickness = 1
     },
-    
-    -- Cache para reutilização de objetos de desenho
-    ObjectCache = {
-        Lines = {},
-        Squares = {},
-        Circles = {},
-        Texts = {},
-        Usage = {} -- Rastreia último uso para limpeza
-    },
-    
-    -- Módulo para gerenciar objetos de desenho
-    DrawingManager = {
-        -- Cria ou reutiliza um objeto de desenho
-        GetObject = function(type, properties)
-            local cache = SevereLib.ImprovedBoxes.ObjectCache[type.."s"] or {}
-            local obj
-            
-            -- Procurar no cache por objeto não usado
-            for i, cachedObj in ipairs(cache) do
-                if not SevereLib.ImprovedBoxes.ObjectCache.Usage[cachedObj] then
-                    obj = cachedObj
-                    break
-                end
-            end
-            
-            -- Criar novo objeto se não encontrou no cache
-            if not obj then
-                obj = Drawing.new(type)
-                table.insert(cache, obj)
-                SevereLib.ImprovedBoxes.ObjectCache[type.."s"] = cache
-                table.insert(SevereLib.Cache.DrawingObjects, obj) -- Adicionar ao cache global
-            end
-            
-            -- Definir propriedades
-            for prop, value in pairs(properties) do
-                obj[prop] = value
-            end
-            
-            -- Marcar como usado
-            SevereLib.ImprovedBoxes.ObjectCache.Usage[obj] = tick()
-            
-            return obj
-        end,
-        
-        -- Libera objetos não utilizados após um período
-        CleanupUnused = function(timeout)
-            timeout = timeout or 30 -- Default: 30 segundos
-            local currentTime = tick()
-            
-            for obj, lastUseTime in pairs(SevereLib.ImprovedBoxes.ObjectCache.Usage) do
-                if currentTime - lastUseTime > timeout then
-                    pcall(function()
-                        obj.Visible = false
-                        SevereLib.ImprovedBoxes.ObjectCache.Usage[obj] = nil
-                    end)
-                end
-            end
-        end,
-        
-        -- Oculta todos os objetos
-        HideAll = function()
-            for type, objects in pairs(SevereLib.ImprovedBoxes.ObjectCache) do
-                if type ~= "Usage" then
-                    for _, obj in ipairs(objects) do
-                        pcall(function()
-                            obj.Visible = false
-                        end)
-                    end
-                end
-            end
-        end
-    },
-    
-    -- Funções de desenho
-    DrawCorners = function(corners, color, thickness, cornerSize)
-        color = color or SevereLib.ImprovedBoxes.Config.DefaultBoxColor
-        thickness = thickness or SevereLib.ImprovedBoxes.Config.DefaultBoxThickness
-        cornerSize = cornerSize or SevereLib.ImprovedBoxes.Config.DefaultCornerSize
-        
-        local lines = {}
-        
-        -- Para cada canto, desenhar duas linhas
-        for i, corner in pairs(corners) do
-            local nextCorner
-            local prevCorner
-            
-            if i == 1 then -- TopLeft
-                nextCorner = corners[2] -- TopRight
-                prevCorner = corners[3] -- BottomLeft
-            elseif i == 2 then -- TopRight
-                nextCorner = corners[4] -- BottomRight
-                prevCorner = corners[1] -- TopLeft
-            elseif i == 3 then -- BottomLeft
-                nextCorner = corners[1] -- TopLeft
-                prevCorner = corners[4] -- BottomRight
-            else -- BottomRight
-                nextCorner = corners[3] -- BottomLeft
-                prevCorner = corners[2] -- TopRight
-            end
-            
-            -- Calcular pontos de linha com base no tamanho do canto
-            local dirX = (nextCorner[1] - corner[1])
-            local dirY = (nextCorner[2] - corner[2])
-            local lenX = math.abs(dirX)
-            local lenY = math.abs(dirY)
-            
-            local endpointX = corner[1] + dirX * cornerSize
-            local endpointY = corner[2] + dirY * cornerSize
-            
-            -- Linha horizontal
-            local hLine = SevereLib.ImprovedBoxes.DrawingManager.GetObject("Line", {
-                From = {corner[1], corner[2]},
-                To = {endpointX, corner[2]},
-                Color = color,
-                Thickness = thickness,
-                Visible = true
-            })
-            table.insert(lines, hLine)
-            
-            -- Linha vertical
-            local vLine = SevereLib.ImprovedBoxes.DrawingManager.GetObject("Line", {
-                From = {corner[1], corner[2]},
-                To = {corner[1], endpointY},
-                Color = color,
-                Thickness = thickness,
-                Visible = true
-            })
-            table.insert(lines, vLine)
-        end
-        
-        return lines
-    end,
-    
-    DrawBox2D = function(corners, color, thickness, filled, transparency)
-        color = color or SevereLib.ImprovedBoxes.Config.DefaultBoxColor
-        thickness = thickness or SevereLib.ImprovedBoxes.Config.DefaultBoxThickness
-        filled = filled or SevereLib.ImprovedBoxes.Config.DefaultBoxFilled
-        transparency = transparency or SevereLib.ImprovedBoxes.Config.DefaultFilledTransparency
-        
-        local objects = {}
-        
-        -- Se filled, desenhar um square preenchido primeiro
-        if filled then
-            local size = {
-                corners[2][1] - corners[1][1],
-                corners[3][2] - corners[1][2]
-            }
-            
-            local fillSquare = SevereLib.ImprovedBoxes.DrawingManager.GetObject("Square", {
-                Position = {corners[1][1], corners[1][2]},
-                Size = size,
-                Color = color,
-                Transparency = transparency,
-                Filled = true,
-                Visible = true
-            })
-            table.insert(objects, fillSquare)
-        end
-        
-        -- Desenhar as linhas da caixa
-        local lines = {
-            -- Top line
-            SevereLib.ImprovedBoxes.DrawingManager.GetObject("Line", {
-                From = {corners[1][1], corners[1][2]},
-                To = {corners[2][1], corners[2][2]},
-                Color = color,
-                Thickness = thickness,
-                Visible = true
-            }),
-            -- Right line
-            SevereLib.ImprovedBoxes.DrawingManager.GetObject("Line", {
-                From = {corners[2][1], corners[2][2]},
-                To = {corners[4][1], corners[4][2]},
-                Color = color,
-                Thickness = thickness,
-                Visible = true
-            }),
-            -- Bottom line
-            SevereLib.ImprovedBoxes.DrawingManager.GetObject("Line", {
-                From = {corners[4][1], corners[4][2]},
-                To = {corners[3][1], corners[3][2]},
-                Color = color,
-                Thickness = thickness,
-                Visible = true
-            }),
-            -- Left line
-            SevereLib.ImprovedBoxes.DrawingManager.GetObject("Line", {
-                From = {corners[3][1], corners[3][2]},
-                To = {corners[1][1], corners[1][2]},
-                Color = color,
-                Thickness = thickness,
-                Visible = true
-            })
-        }
-        
-        for _, line in ipairs(lines) do
-            table.insert(objects, line)
-        end
-        
-        return objects
-    end,
-    
-    DrawBox3D = function(center, size, rotation, color, thickness)
-        color = color or SevereLib.ImprovedBoxes.Config.DefaultBoxColor
-        thickness = thickness or SevereLib.ImprovedBoxes.Config.DefaultBoxThickness
-        
-        local objects = {}
-        
-        -- Criar os 8 pontos da caixa 3D
-        local halfW = size[1] / 2
-        local halfH = size[2] / 2
-        local halfD = size[3] / 2
-        
-        local points = {
-            {center[1] - halfW, center[2] - halfH, center[3] - halfD}, -- 1: Bottom-Back-Left
-            {center[1] + halfW, center[2] - halfH, center[3] - halfD}, -- 2: Bottom-Back-Right
-            {center[1] + halfW, center[2] + halfH, center[3] - halfD}, -- 3: Top-Back-Right
-            {center[1] - halfW, center[2] + halfH, center[3] - halfD}, -- 4: Top-Back-Left
-            {center[1] - halfW, center[2] - halfH, center[3] + halfD}, -- 5: Bottom-Front-Left
-            {center[1] + halfW, center[2] - halfH, center[3] + halfD}, -- 6: Bottom-Front-Right
-            {center[1] + halfW, center[2] + halfH, center[3] + halfD}, -- 7: Top-Front-Right
-            {center[1] - halfW, center[2] + halfH, center[3] + halfD}  -- 8: Top-Front-Left
-        }
-        
-        -- Projetar pontos 3D para 2D
-        local points2D = {}
-        local onScreen = true
-        
-        for i, point in ipairs(points) do
-            local screen, visible = worldtoscreenpoint(point)
-            if not visible then
-                onScreen = false
-                break
-            end
-            points2D[i] = {screen.x, screen.y}
-        end
-        
-        -- Se algum ponto estiver fora da tela, não desenhar
-        if not onScreen then
-            return {}
-        end
-        
-        -- Desenhar as 12 linhas da caixa 3D
-        local edges = {
-            -- Face traseira
-            {1, 2}, {2, 3}, {3, 4}, {4, 1},
-            -- Face frontal
-            {5, 6}, {6, 7}, {7, 8}, {8, 5},
-            -- Conectores
-            {1, 5}, {2, 6}, {3, 7}, {4, 8}
-        }
-        
-        for _, edge in ipairs(edges) do
-            local from = points2D[edge[1]]
-            local to = points2D[edge[2]]
-            
-            local line = SevereLib.ImprovedBoxes.DrawingManager.GetObject("Line", {
-                From = from,
-                To = to,
-                Color = color,
-                Thickness = thickness,
-                Visible = true
-            })
-            
-            table.insert(objects, line)
-        end
-        
-        return objects
-    end,
-    
-    -- Função principal para criar uma caixa ESP com várias opções
-    DrawBoxESP = function(target, params)
-        -- Mesclar parâmetros com defaults
-        params = params or {}
-        local boxType = params.BoxType or SevereLib.ImprovedBoxes.BoxTypes.CORNERS
-        local boxColor = params.Color or SevereLib.ImprovedBoxes.Config.DefaultBoxColor
-        local thickness = params.Thickness or SevereLib.ImprovedBoxes.Config.DefaultBoxThickness
-        local filled = params.Filled or SevereLib.ImprovedBoxes.Config.DefaultBoxFilled
-        local transparency = params.Transparency or 1
-        local fillTransparency = params.FillTransparency or SevereLib.ImprovedBoxes.Config.DefaultFilledTransparency
-        local healthBar = params.HealthBar or false
-        local healthBarOffset = params.HealthBarOffset or {5, 0}
-        local nameDisplay = params.NameDisplay or false
-        local distanceDisplay = params.DistanceDisplay or false
-        local tracer = params.Tracer or false
-        local tracerOrigin = params.TracerOrigin or "bottom" -- "bottom", "top", "mouse"
-        local cornerSize = params.CornerSize or SevereLib.ImprovedBoxes.Config.DefaultCornerSize
-        
-        -- Obter posição do alvo
-        local rootPart = target
-        if type(target) == "number" and not getposition then
-            -- Se target for um ponteiro/instância, mas getposition não existir
-            return {}
-        end
-        
-        local rootPos
-        if type(target) == "number" and getposition then
-            rootPos = getposition(target)
-            if not rootPos then
-                return {}
-            end
-        elseif type(target) == "table" and target.x and target.y and target.z then
-            rootPos = target
-        elseif type(target) == "table" and #target == 3 then
-            rootPos = {x = target[1], y = target[2], z = target[3]}
-        else
-            return {}
-        end
-        
-        -- Adaptação baseada na distância (se habilitada)
-        local playerPos = {0, 0, 0}
-        if SevereLib.ImprovedBoxes.Config.AdaptiveDistance and boxType == SevereLib.ImprovedBoxes.BoxTypes.ADAPTIVE then
-            -- Obter posição do jogador local
-            local localPlayer = getlocalplayer and getlocalplayer()
-            if localPlayer then
-                local character = getcharacter and getcharacter(localPlayer)
-                if character then
-                    local localRoot = findfirstchild and findfirstchild(character, "HumanoidRootPart")
-                    if localRoot then
-                        local pos = getposition(localRoot)
-                        if pos then
-                            playerPos = {pos.x, pos.y, pos.z}
-                        end
-                    end
-                end
-            end
-            
-            -- Calcular distância
-            local distance = SevereLib.Math.sqrt(
-                (playerPos[1] - rootPos.x)^2 + 
-                (playerPos[2] - rootPos.y)^2 + 
-                (playerPos[3] - rootPos.z)^2
-            )
-            
-            -- Escolher tipo de caixa com base na distância
-            if distance < SevereLib.ImprovedBoxes.Config.AdaptiveThreshold then
-                boxType = SevereLib.ImprovedBoxes.BoxTypes.BOX_3D
-            else
-                boxType = SevereLib.ImprovedBoxes.BoxTypes.CORNERS
-            end
-        end
-        
-        -- Retorno dos objetos de desenho
-        local espObjects = {}
-        
-        -- Calcular cantos da caixa 2D baseados na posição do alvo
-        local boxHeight = params.BoxHeight or 5 -- Altura padrão
-        local boxWidth = params.BoxWidth or 3   -- Largura padrão
-        
-        -- Se for um humanoid com HumanoidRootPart, fazer cálculos melhores
-        if type(target) == "number" and findfirstchild and getparent then
-            local parent = getparent(target)
-            if parent then
-                -- Verificar se é um personagem com humanoid
-                local humanoid = findfirstchild(parent, "Humanoid")
-                if humanoid then
-                    -- Usar o tamanho real do humanoid
-                    local humanoidHeight = 5
-                    if gethealth then -- Se for um humanoid real
-                        boxHeight = humanoidHeight
-                        boxWidth = humanoidHeight / 2
-                    end
-                    
-                    -- Verificar cabeça para melhor dimensionamento
-                    local head = findfirstchild(parent, "Head")
-                    if head then
-                        local headPos = getposition(head)
-                        if headPos then
-                            -- Ajustar altura com base na cabeça
-                            boxHeight = math.abs(headPos.y - rootPos.y) * 2
-                            boxWidth = boxHeight / 2
-                        end
-                    end
-                end
-            end
-        end
-        
-        -- Posições 3D dos cantos
-        local topY = rootPos.y + (boxHeight / 2)
-        local bottomY = rootPos.y - (boxHeight / 2)
-        local leftX = rootPos.x - (boxWidth / 2)
-        local rightX = rootPos.x + (boxWidth / 2)
-        local frontZ = rootPos.z + (boxWidth / 2)
-        local backZ = rootPos.z - (boxWidth / 2)
-        
-        -- Projetar para 2D
-        local tl, tlOnScreen = worldtoscreenpoint({leftX, topY, backZ})
-        local tr, trOnScreen = worldtoscreenpoint({rightX, topY, backZ})
-        local bl, blOnScreen = worldtoscreenpoint({leftX, bottomY, backZ})
-        local br, brOnScreen = worldtoscreenpoint({rightX, bottomY, backZ})
-        
-        -- Verificar se todos os pontos estão na tela
-        if not (tlOnScreen and trOnScreen and blOnScreen and brOnScreen) then
-            return {}
-        end
-        
-        -- Array de cantos 2D
-        local corners = {
-            {tl.x, tl.y}, -- TopLeft
-            {tr.x, tr.y}, -- TopRight
-            {bl.x, bl.y}, -- BottomLeft
-            {br.x, br.y}  -- BottomRight
-        }
-        
-        -- Desenhar com base no tipo de caixa
-        if boxType == SevereLib.ImprovedBoxes.BoxTypes.CORNERS or boxType == SevereLib.ImprovedBoxes.BoxTypes.CORNERS_ADVANCED then
-            local cornerLines = SevereLib.ImprovedBoxes.DrawCorners(corners, boxColor, thickness, cornerSize)
-            for _, line in ipairs(cornerLines) do
-                table.insert(espObjects, line)
-            end
-        elseif boxType == SevereLib.ImprovedBoxes.BoxTypes.BOX_2D or boxType == SevereLib.ImprovedBoxes.BoxTypes.ROUNDED then
-            local boxObjects = SevereLib.ImprovedBoxes.DrawBox2D(corners, boxColor, thickness, filled, fillTransparency)
-            for _, obj in ipairs(boxObjects) do
-                table.insert(espObjects, obj)
-            end
-            
-            -- Para caixas arredondadas, adicionar círculos nos cantos
-            if boxType == SevereLib.ImprovedBoxes.BoxTypes.ROUNDED then
-                local radius = thickness * 2
-                
-                for _, corner in ipairs(corners) do
-                    local circle = SevereLib.ImprovedBoxes.DrawingManager.GetObject("Circle", {
-                        Position = corner,
-                        Radius = radius,
-                        Color = boxColor,
-                        NumSides = SevereLib.ImprovedBoxes.Config.CircleSegments,
-                        Filled = true,
-                        Visible = true
-                    })
-                    table.insert(espObjects, circle)
-                end
-            end
-        elseif boxType == SevereLib.ImprovedBoxes.BoxTypes.BOX_3D then
-            -- Para caixa 3D, precisamos de 8 pontos totais
-            local box3DObjects = SevereLib.ImprovedBoxes.DrawBox3D(
-                {rootPos.x, rootPos.y, rootPos.z},
-                {boxWidth, boxHeight, boxWidth},
-                nil, -- rotação
-                boxColor,
-                thickness
-            )
-            
-            for _, obj in ipairs(box3DObjects) do
-                table.insert(espObjects, obj)
-            end
-        end
-        
-        -- Adicionar barra de vida se solicitado
-        if healthBar and type(target) == "number" and findfirstchild and getparent and gethealth then
-            local parent = getparent(target)
-            if parent then
-                local humanoid = findfirstchild(parent, "Humanoid")
-                if humanoid then
-                    local health = gethealth(humanoid)
-                    local maxHealth = getmaxhealth(humanoid)
-                    
-                    if health and maxHealth and maxHealth > 0 then
-                        -- Posição e tamanho da barra de saúde
-                        local barHeight = math.abs(corners[3][2] - corners[1][2])
-                        local barWidth = 4
-                        local barX = corners[2][1] + healthBarOffset[1]
-                        local barY = corners[1][2]
-                        
-                        -- Fundo da barra (preto)
-                        local barBg = SevereLib.ImprovedBoxes.DrawingManager.GetObject("Square", {
-                            Position = {barX, barY},
-                            Size = {barWidth, barHeight},
-                            Color = {0, 0, 0},
-                            Filled = true,
-                            Visible = true
-                        })
-                        table.insert(espObjects, barBg)
-                        
-                        -- Barra de vida colorida
-                        local healthRatio = health / maxHealth
-                        local healthBarHeight = barHeight * healthRatio
-                        local healthColor = {
-                            math.floor((1 - healthRatio) * 255),
-                            math.floor(healthRatio * 255),
-                            0
-                        }
-                        
-                        local healthFill = SevereLib.ImprovedBoxes.DrawingManager.GetObject("Square", {
-                            Position = {barX, barY + barHeight - healthBarHeight},
-                            Size = {barWidth, healthBarHeight},
-                            Color = healthColor,
-                            Filled = true,
-                            Visible = true
-                        })
-                        table.insert(espObjects, healthFill)
-                    end
-                end
-            end
-        end
-        
-        -- Adicionar nome se solicitado
-        if nameDisplay and type(target) == "number" and getname then
-            local name = "Unknown"
-            
-            -- Tenta pegar o nome do jogador se for um personagem
-            if getparent then
-                local parent = getparent(target)
-                if parent then
-                    name = getname(parent)
-                    
-                    -- Tenta pegar o nome do jogador se for um personagem
-                    if findfirstchild and getclassname then
-                        local parentType = getclassname(parent)
-                        if parentType == "Model" then
-                            -- Verificar se o parent é de um jogador
-                            local players = findservice and findservice(Game, "Players")
-                            if players then
-                                for _, player in ipairs(getchildren(players)) do
-                                    local character = getcharacter and getcharacter(player)
-                                    if character == parent then
-                                        name = getname(player)
-                                        break
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            else
-                name = getname(target)
-            end
-            
-            -- Desenhar o texto do nome
-            local nameText = SevereLib.ImprovedBoxes.DrawingManager.GetObject("Text", {
-                Text = name,
-                Position = {(corners[1][1] + corners[2][1]) / 2, corners[1][2] - 20},
-                Color = boxColor,
-                Center = true,
-                Outline = true,
-                Size = 14,
-                Visible = true
-            })
-            table.insert(espObjects, nameText)
-        end
-        
-        -- Adicionar distância se solicitado
-        if distanceDisplay and type(target) == "number" and getlocalplayer then
-            local distance = 0
-            
-            -- Calcular distância do jogador local
-            local localPlayer = getlocalplayer()
-            if localPlayer then
-                local character = getcharacter and getcharacter(localPlayer)
-                if character then
-                    local localRoot = findfirstchild and findfirstchild(character, "HumanoidRootPart")
-                    if localRoot then
-                        local localPos = getposition(localRoot)
-                        if localPos then
-                            -- Calcular distância real 3D
-                            distance = SevereLib.Math.sqrt(
-                                (localPos.x - rootPos.x)^2 + 
-                                (localPos.y - rootPos.y)^2 + 
-                                (localPos.z - rootPos.z)^2
-                            )
-                        end
-                    end
-                end
-            end
-            
-            -- Formato da distância (arredondada para inteiro)
-            local distText = SevereLib.Math.floor(distance + 0.5) .. "m"
-            
-            -- Desenhar o texto da distância
-            local distanceText = SevereLib.ImprovedBoxes.DrawingManager.GetObject("Text", {
-                Text = distText,
-                Position = {(corners[3][1] + corners[4][1]) / 2, corners[3][2] + 5},
-                Color = boxColor,
-                Center = true,
-                Outline = true,
-                Size = 14,
-                Visible = true
-            })
-            table.insert(espObjects, distanceText)
-        end
-        
-        -- Adicionar linha traçadora se solicitado
-        if tracer and getscreendimensions and getmouseposition then
-            local from = {0, 0}
-            local screen = getscreendimensions()
-            
-            -- Determinar origem do tracer
-            if tracerOrigin == "bottom" then
-                from = {screen.x / 2, screen.y}
-            elseif tracerOrigin == "top" then
-                from = {screen.x / 2, 0}
-            elseif tracerOrigin == "mouse" then
-                local mouse = getmouseposition()
-                from = {mouse.x, mouse.y}
-            end
-            
-            -- Ponto central da caixa para o tracer
-            local to = {
-                (corners[1][1] + corners[2][1] + corners[3][1] + corners[4][1]) / 4,
-                (corners[1][2] + corners[2][2] + corners[3][2] + corners[4][2]) / 4
-            }
-            
-            -- Desenhar a linha do tracer
-            local tracerLine = SevereLib.ImprovedBoxes.DrawingManager.GetObject("Line", {
-                From = from,
-                To = to,
-                Color = boxColor,
-                Thickness = thickness,
-                Visible = true
-            })
-            table.insert(espObjects, tracerLine)
-        end
-        
-        return espObjects
-    end,
-    
-    -- Função para esconder e limpar objetos
-    HideAll = function()
-        SevereLib.ImprovedBoxes.DrawingManager.HideAll()
-    end,
-    
-    -- Função para cleanup periódico
-    Cleanup = function()
-        SevereLib.ImprovedBoxes.DrawingManager.CleanupUnused(10) -- Limpar objetos não usados por mais de 10 segundos
-    end
+    -- Drawing cache to avoid recreating objects
+    Drawings = {},
+    -- Active ESP objects
+    ActiveESP = {}
 }
 
--- Limpa todos os objetos de desenho quando o script for descarregado
-SevereLib.Cleanup = function()
-    SevereLib.ESP.Stop()
-    SevereLib.ESP.Clear()
-    
-    -- Limpar objetos ImprovedBoxes
-    if SevereLib.ImprovedBoxes then
-        SevereLib.ImprovedBoxes.HideAll()
-        SevereLib.ImprovedBoxes.Cleanup()
-    end
-    
-    for _, obj in pairs(SevereLib.Cache.DrawingObjects) do
-        pcall(function()
-            obj.Visible = false
-            obj:Remove()
-        end)
-    end
-    
-    SevereLib.Cache.DrawingObjects = {}
-    SevereLib.Cache.DeadPlayers = {}
-    SevereLib.Cache.PlayerCharacters = {}
-    
-    -- Limpar caches do ImprovedBoxes
-    if SevereLib.ImprovedBoxes then
-        SevereLib.ImprovedBoxes.ObjectCache = {
-            Lines = {},
-            Squares = {},
-            Circles = {},
-            Texts = {},
-            Usage = {}
-        }
-    end
-    
-    print("SevereLib: Cleanup completed")
+-- Initialize cache
+function SevereLib:Init()
+    self.Cache.Screen.x, self.Cache.Screen.y = getscreendimensions()
+    self.Cache.Workspace = findfirstchildofclass(Game, "Workspace")
+    self.Cache.LocalPlayer = getlocalplayer()
+    self.Cache.Camera = findfirstchild(self.Cache.Workspace, "Camera")
+    return self
 end
 
-return SevereLib 
+-- Update screen dimensions (call periodically or on screen resize)
+function SevereLib:UpdateScreen()
+    self.Cache.Screen.x, self.Cache.Screen.y = getscreendimensions()
+end
+
+--// Utility Functions
+
+-- Calculate distance between two positions
+function SevereLib:GetDistance(pos1, pos2)
+    local dx = pos1.x - pos2.x
+    local dy = pos1.y - pos2.y
+    local dz = pos1.z - pos2.z
+    return math.sqrt(dx * dx + dy * dy + dz * dz)
+end
+
+-- Calculate distance from local player
+function SevereLib:GetDistanceFromPlayer(position)
+    local character = getcharacter(self.Cache.LocalPlayer)
+    if not character then return 9999 end
+    
+    local rootPart = findfirstchild(character, "HumanoidRootPart")
+    if not rootPart then return 9999 end
+    
+    local playerPos = getposition(rootPart)
+    return self:GetDistance(playerPos, position)
+end
+
+-- Check if mouse is in specified area
+function SevereLib:IsMouseInArea(x1, y1, x2, y2)
+    local mousePos = getmouseposition()
+    return mousePos.x > x1 and mousePos.y > y1 and mousePos.x < x2 and mousePos.y < y2
+end
+
+-- Get part position from instance
+function SevereLib:GetPartPosition(instance)
+    if not instance then return nil end
+    return getposition(instance)
+end
+
+-- Get part from model (with fallback)
+function SevereLib:GetMainPart(model)
+    if not model then return nil end
+    
+    -- Try getting HumanoidRootPart first (for characters)
+    local rootPart = findfirstchild(model, "HumanoidRootPart")
+    if rootPart then return rootPart end
+    
+    -- Try getting PrimaryPart
+    local primaryPart = getprimarypart(model)
+    if primaryPart then return primaryPart end
+    
+    -- Try common part names
+    for _, name in pairs({"MainPart", "Head", "Torso", "LowerTorso", "HumanoidRootPart"}) do
+        local part = findfirstchild(model, name)
+        if part then return part end
+    end
+    
+    -- Fallback: return first part found
+    for _, child in pairs(getchildren(model)) do
+        local className = getclassname(child)
+        if className == "Part" or className == "MeshPart" or className == "UnionOperation" then
+            return child
+        end
+    end
+    
+    return nil
+end
+
+-- Get player's team (returns nil if no team)
+function SevereLib:GetPlayerTeam(player)
+    if not player then return nil end
+    return getteam(player)
+end
+
+-- Check if player is on same team as local player
+function SevereLib:IsSameTeam(player)
+    if not player then return false end
+    
+    local playerTeam = self:GetPlayerTeam(player)
+    local localTeam = self:GetPlayerTeam(self.Cache.LocalPlayer)
+    
+    if not playerTeam or not localTeam then return false end
+    return playerTeam == localTeam
+end
+
+-- Get player from character model
+function SevereLib:GetPlayerFromCharacter(character)
+    if not character then return nil end
+    
+    local players = findservice(Game, "Players")
+    for _, player in pairs(getchildren(players)) do
+        if getcharacter(player) == character then
+            return player
+        end
+    end
+    
+    return nil
+end
+
+--// Drawing Functions
+
+-- Create new drawing object with properties
+function SevereLib:CreateDrawing(type, properties)
+    local drawing = Drawing.new(type)
+    
+    if properties then
+        for property, value in pairs(properties) do
+            drawing[property] = value
+        end
+    end
+    
+    return drawing
+end
+
+-- Create ESP components for an object
+function SevereLib:CreateESPComponents()
+    return {
+        Name = self:CreateDrawing("Text", {
+            Size = self.ESP.FontSize,
+            Font = self.ESP.FontType,
+            Outline = true,
+            Center = true,
+            Visible = false
+        }),
+        Box = self:CreateDrawing("Square", {
+            Thickness = self.ESP.BoxThickness,
+            Filled = false,
+            Visible = false
+        }),
+        BoxCorners = {
+            TopLeft = self:CreateDrawing("Line", {Thickness = self.ESP.BoxThickness, Visible = false}),
+            TopRight = self:CreateDrawing("Line", {Thickness = self.ESP.BoxThickness, Visible = false}),
+            BottomLeft = self:CreateDrawing("Line", {Thickness = self.ESP.BoxThickness, Visible = false}),
+            BottomRight = self:CreateDrawing("Line", {Thickness = self.ESP.BoxThickness, Visible = false})
+        },
+        Tracer = self:CreateDrawing("Line", {
+            Thickness = self.ESP.TracerThickness,
+            Visible = false
+        }),
+        HealthBar = {
+            Outline = self:CreateDrawing("Square", {
+                Thickness = 1,
+                Filled = false,
+                Visible = false
+            }),
+            Fill = self:CreateDrawing("Square", {
+                Filled = true,
+                Visible = false
+            })
+        }
+    }
+end
+
+-- Update ESP components based on object data
+function SevereLib:UpdateESPComponent(espData)
+    if not espData or not espData.Instance or not espData.Components then return end
+    
+    local mainPart = espData.MainPart
+    if not mainPart then return end
+    
+    local position = self:GetPartPosition(mainPart)
+    if not position then return end
+    
+    -- Get distance
+    local distance = self:GetDistanceFromPlayer(position)
+    if distance > self.ESP.MaxDistance then
+        self:HideESPComponents(espData.Components)
+        return
+    end
+    
+    -- Convert 3D position to screen position
+    local screenPosition, onScreen = worldtoscreenpoint({position.x, position.y, position.z})
+    if not onScreen then
+        self:HideESPComponents(espData.Components)
+        return
+    end
+    
+    -- Determine color based on settings
+    local color = self.ESP.BoxColors.Default
+    if espData.Player then
+        color = self:IsSameTeam(espData.Player) and self.ESP.BoxColors.Team or self.ESP.BoxColors.Enemy
+    end
+    
+    -- Update components
+    
+    -- Name and distance text
+    if self.ESP.ShowName then
+        local nameText = espData.Name or getname(espData.Instance)
+        if self.ESP.ShowDistance then
+            nameText = nameText .. " [" .. math.floor(distance) .. "m]"
+        end
+        
+        espData.Components.Name.Text = nameText
+        espData.Components.Name.Position = {screenPosition.x, screenPosition.y - 20}
+        espData.Components.Name.Color = color
+        espData.Components.Name.Visible = true
+    else
+        espData.Components.Name.Visible = false
+    end
+    
+    -- Box size calculation depends on distance
+    local boxSize = math.max(20, 80 - (distance / 10))
+    local halfSize = boxSize / 2
+    
+    -- Update box based on type
+    if self.ESP.BoxType == 1 then
+        -- Corners (4 L shapes)
+        local corners = espData.Components.BoxCorners
+        
+        -- Hide regular box
+        espData.Components.Box.Visible = false
+        
+        -- Top Left Corner
+        corners.TopLeft.From = {screenPosition.x - halfSize, screenPosition.y - halfSize}
+        corners.TopLeft.To = {screenPosition.x - halfSize + 5, screenPosition.y - halfSize}
+        corners.TopLeft.Color = color
+        corners.TopLeft.Visible = true
+        
+        -- Top Right Corner
+        corners.TopRight.From = {screenPosition.x + halfSize, screenPosition.y - halfSize}
+        corners.TopRight.To = {screenPosition.x + halfSize - 5, screenPosition.y - halfSize}
+        corners.TopRight.Color = color
+        corners.TopRight.Visible = true
+        
+        -- Bottom Left Corner
+        corners.BottomLeft.From = {screenPosition.x - halfSize, screenPosition.y + halfSize}
+        corners.BottomLeft.To = {screenPosition.x - halfSize + 5, screenPosition.y + halfSize}
+        corners.BottomLeft.Color = color
+        corners.BottomLeft.Visible = true
+        
+        -- Bottom Right Corner
+        corners.BottomRight.From = {screenPosition.x + halfSize, screenPosition.y + halfSize}
+        corners.BottomRight.To = {screenPosition.x + halfSize - 5, screenPosition.y + halfSize}
+        corners.BottomRight.Color = color
+        corners.BottomRight.Visible = true
+    else
+        -- Full box
+        espData.Components.Box.Position = {screenPosition.x - halfSize, screenPosition.y - halfSize}
+        espData.Components.Box.Size = {boxSize, boxSize}
+        espData.Components.Box.Color = color
+        espData.Components.Box.Visible = true
+        
+        -- Hide corners
+        for _, corner in pairs(espData.Components.BoxCorners) do
+            corner.Visible = false
+        end
+    end
+    
+    -- Tracer
+    if self.ESP.TracerEnabled then
+        local tracerOrigin
+        if self.ESP.TracerOrigin == 1 then
+            tracerOrigin = {self.Cache.Screen.x / 2, self.Cache.Screen.y}
+        else
+            local mousePos = getmouseposition()
+            tracerOrigin = {mousePos.x, mousePos.y}
+        end
+        
+        espData.Components.Tracer.From = tracerOrigin
+        espData.Components.Tracer.To = {screenPosition.x, screenPosition.y}
+        espData.Components.Tracer.Color = color
+        espData.Components.Tracer.Visible = true
+    else
+        espData.Components.Tracer.Visible = false
+    end
+    
+    -- Health bar (if applicable)
+    if self.ESP.ShowHealth and espData.Humanoid then
+        local health = gethealth(espData.Humanoid)
+        local maxHealth = getmaxhealth(espData.Humanoid)
+        
+        if health and maxHealth then
+            local healthPercentage = math.clamp(health / maxHealth, 0, 1)
+            
+            -- Health bar position (to the left of the box)
+            local barWidth = 3
+            local barHeight = boxSize
+            local barX = screenPosition.x - halfSize - 5 - barWidth
+            local barY = screenPosition.y - halfSize
+            
+            -- Outline
+            espData.Components.HealthBar.Outline.Position = {barX, barY}
+            espData.Components.HealthBar.Outline.Size = {barWidth, barHeight}
+            espData.Components.HealthBar.Outline.Color = {0, 0, 0}
+            espData.Components.HealthBar.Outline.Visible = true
+            
+            -- Fill
+            espData.Components.HealthBar.Fill.Position = {barX, barY + barHeight * (1 - healthPercentage)}
+            espData.Components.HealthBar.Fill.Size = {barWidth, barHeight * healthPercentage}
+            
+            -- Color gradient: red to green based on health
+            local r = math.floor((1 - healthPercentage) * 255)
+            local g = math.floor(healthPercentage * 255)
+            espData.Components.HealthBar.Fill.Color = {r, g, 0}
+            espData.Components.HealthBar.Fill.Visible = true
+        else
+            espData.Components.HealthBar.Outline.Visible = false
+            espData.Components.HealthBar.Fill.Visible = false
+        end
+    else
+        espData.Components.HealthBar.Outline.Visible = false
+        espData.Components.HealthBar.Fill.Visible = false
+    end
+end
+
+-- Hide all ESP components
+function SevereLib:HideESPComponents(components)
+    if not components then return end
+    
+    components.Name.Visible = false
+    components.Box.Visible = false
+    components.Tracer.Visible = false
+    components.HealthBar.Outline.Visible = false
+    components.HealthBar.Fill.Visible = false
+    
+    for _, corner in pairs(components.BoxCorners) do
+        corner.Visible = false
+    end
+end
+
+-- Remove ESP components (cleanup)
+function SevereLib:RemoveESPComponents(components)
+    if not components then return end
+    
+    components.Name:Remove()
+    components.Box:Remove()
+    components.Tracer:Remove()
+    components.HealthBar.Outline:Remove()
+    components.HealthBar.Fill:Remove()
+    
+    for _, corner in pairs(components.BoxCorners) do
+        corner:Remove()
+    end
+end
+
+--// ESP Functions
+
+-- Add ESP to an object
+function SevereLib:AddESP(instance, options)
+    if not instance then return nil end
+    
+    options = options or {}
+    
+    -- Check if already added
+    for i, esp in pairs(self.ActiveESP) do
+        if esp.Instance == instance then
+            return esp
+        end
+    end
+    
+    -- Create ESP data
+    local espData = {
+        Instance = instance,
+        Name = options.CustomName or getname(instance),
+        MainPart = options.MainPart or self:GetMainPart(instance),
+        Components = self:CreateESPComponents(),
+        Color = options.Color or self.ESP.BoxColors.Default,
+        IsVisible = true
+    }
+    
+    -- If it's a player or character, get additional info
+    local className = getclassname(instance)
+    if className == "Player" then
+        espData.Player = instance
+        espData.Character = getcharacter(instance)
+        if espData.Character then
+            espData.Humanoid = findfirstchild(espData.Character, "Humanoid")
+            if not espData.MainPart then
+                espData.MainPart = self:GetMainPart(espData.Character)
+            end
+        end
+    elseif className == "Model" then
+        espData.Player = self:GetPlayerFromCharacter(instance)
+        if espData.Player then
+            espData.Character = instance
+            espData.Humanoid = findfirstchild(instance, "Humanoid")
+        end
+    end
+    
+    -- Add to active ESP list
+    table.insert(self.ActiveESP, espData)
+    return espData
+end
+
+-- Remove ESP from an object
+function SevereLib:RemoveESP(instance)
+    for i, esp in pairs(self.ActiveESP) do
+        if esp.Instance == instance then
+            self:RemoveESPComponents(esp.Components)
+            table.remove(self.ActiveESP, i)
+            return true
+        end
+    end
+    return false
+end
+
+-- Update all ESP objects
+function SevereLib:UpdateESP()
+    if not self.ESP.Enabled then
+        for _, esp in pairs(self.ActiveESP) do
+            self:HideESPComponents(esp.Components)
+        end
+        return
+    end
+    
+    for i, esp in pairs(self.ActiveESP) do
+        -- Check if instance still exists
+        if esp.Instance and (isdescendantof(esp.Instance, Game) or esp.Instance == Game) then
+            -- Update ESP if visible
+            if esp.IsVisible then
+                self:UpdateESPComponent(esp)
+            else
+                self:HideESPComponents(esp.Components)
+            end
+        else
+            -- Instance no longer exists, remove it
+            self:RemoveESPComponents(esp.Components)
+            table.remove(self.ActiveESP, i)
+        end
+    end
+end
+
+-- Toggle ESP visibility
+function SevereLib:ToggleESP(enabled)
+    if enabled ~= nil then
+        self.ESP.Enabled = enabled
+    else
+        self.ESP.Enabled = not self.ESP.Enabled
+    end
+    
+    -- Hide all components if disabled
+    if not self.ESP.Enabled then
+        for _, esp in pairs(self.ActiveESP) do
+            self:HideESPComponents(esp.Components)
+        end
+    end
+    
+    return self.ESP.Enabled
+end
+
+-- Set ESP max render distance
+function SevereLib:SetESPMaxDistance(distance)
+    self.ESP.MaxDistance = distance or 1000
+end
+
+-- Clean up all ESP objects and drawings
+function SevereLib:Cleanup()
+    for _, esp in pairs(self.ActiveESP) do
+        self:RemoveESPComponents(esp.Components)
+    end
+    
+    self.ActiveESP = {}
+    
+    -- Attempt to clear all drawings
+    pcall(function()
+        if Drawing and Drawing.clear then
+            Drawing.clear()
+        end
+    end)
+end
+
+-- Return the library
+return SevereLib:Init() 
