@@ -510,7 +510,10 @@ end
 
 -- Create box ESP for a character
 function svlib.CreateESP(character)
-    if not character then return nil end
+    if not character then
+        print("Character inválido para ESP")
+        return nil 
+    end
     
     -- Check if ESP already exists for this character
     if svlib.Cache.CharacterESP[character] then
@@ -521,20 +524,30 @@ function svlib.CreateESP(character)
         return findfirstchildofclass(character, "Humanoid") 
     end)
     
-    if not success or not humanoid then return nil end
+    if not success or not humanoid then
+        print("Humanoid não encontrado para ESP")
+        return nil 
+    end
     
     local rootSuccess, rootPart = pcall(function() 
         return findfirstchild(character, "HumanoidRootPart") 
     end)
     
-    if not rootSuccess or not rootPart then return nil end
+    if not rootSuccess or not rootPart then
+        print("HumanoidRootPart não encontrado para ESP")
+        return nil 
+    end
     
     local headSuccess, head = pcall(function() 
         return findfirstchild(character, "Head") 
     end)
     
-    if not headSuccess or not head then return nil end
+    if not headSuccess or not head then
+        print("Head não encontrado para ESP")
+        return nil 
+    end
     
+    -- Obter posições e verificar distância
     local characterPos = getposition(rootPart)
     local distance = svlib.GetDistanceFromPlayer(characterPos)
     
@@ -543,24 +556,33 @@ function svlib.CreateESP(character)
         return nil
     end
     
-    -- Determine box dimensions based on character size
-    local headPos = getposition(head)
-    local rootPos = getposition(rootPart)
-    local size = getsize(rootPart)
-    
+    -- Ajustar procedimento de conversão para tela
     local screenSize = svlib.UpdateScreenSize()
     
+    -- Get head position and convert to screen coordinates
+    local headPos = getposition(head)
     local worldToScreenResult, onScreen = worldtoscreenpoint({headPos.x, headPos.y + 2, headPos.z})
-    if not onScreen then return nil end
+    if not onScreen then
+        print("Cabeça fora da tela para ESP")
+        return nil
+    end
     
     local topPos = {x = worldToScreenResult.x, y = worldToScreenResult.y}
     
+    -- Get root position and convert to screen coordinates
+    local rootPos = getposition(rootPart)
     worldToScreenResult, onScreen = worldtoscreenpoint({rootPos.x, rootPos.y - 3, rootPos.z})
-    if not onScreen then return nil end
+    if not onScreen then
+        print("Pés fora da tela para ESP")
+        return nil
+    end
     
     local bottomPos = {x = worldToScreenResult.x, y = worldToScreenResult.y}
     
+    -- Calculate box dimensions
     local height = bottomPos.y - topPos.y
+    if height <= 0 then height = 10 end -- Garantir altura mínima
+    
     local width = height / 2
     
     -- Create ESP components based on config
@@ -674,7 +696,10 @@ end
 
 -- Update ESP for a specific character
 function svlib.UpdateCharacterESP(character)
-    if not character then return end
+    if not character then 
+        print("Character inválido para ESP")
+        return false 
+    end
     
     -- Check if character is still valid
     local success, exists = pcall(function() 
@@ -696,7 +721,7 @@ function svlib.UpdateCharacterESP(character)
             
             svlib.Cache.CharacterESP[character] = nil
         end
-        return
+        return false
     end
     
     -- Remove old ESP and create new one to update
@@ -710,10 +735,12 @@ function svlib.UpdateCharacterESP(character)
                 pcall(function() component:Remove() end)
             end
         end
+        svlib.Cache.CharacterESP[character] = nil
     end
     
     -- Create new ESP
-    svlib.CreateESP(character)
+    local result = svlib.CreateESP(character)
+    return result ~= nil
 end
 
 -- Update ESP for all characters with smart drawing (only redraw when needed)
@@ -722,23 +749,34 @@ function svlib.UpdateESP()
     if svlib.Cache.UpdateInProgress or not svlib.Config.ESP.Enabled then return end
     svlib.Cache.UpdateInProgress = true
     
+    -- Debug information
+    print("Atualizando ESP... ESP Enabled: " .. tostring(svlib.Config.ESP.Enabled))
+    
     -- Get local player
     local localPlayer = svlib.GetLocalPlayer()
     if not localPlayer then 
+        print("ERRO: Jogador local não encontrado!")
         svlib.Cache.UpdateInProgress = false
         return 
     end
     
     -- Get all characters
     local characters = {}
-    for _, player in ipairs(svlib.GetPlayers()) do
+    local players = svlib.GetPlayers()
+    print("Encontrados " .. #players .. " jogadores para renderizar ESP")
+    
+    for _, player in ipairs(players) do
         if player ~= localPlayer then
             local success, character = pcall(function() return getcharacter(player) end)
             if success and character then
                 table.insert(characters, character)
+            else
+                print("AVISO: Não foi possível obter o character para jogador")
             end
         end
     end
+    
+    print("Caracteres válidos para ESP: " .. #characters)
     
     -- Update existing ESP or create new ones
     for _, character in ipairs(characters) do
@@ -748,36 +786,12 @@ function svlib.UpdateESP()
         end)
         
         if success and exists then
-            svlib.UpdateCharacterESP(character)
+            local result = svlib.UpdateCharacterESP(character)
+            if not result then
+                print("Falha ao atualizar ESP para character")
+            end
         elseif svlib.Cache.CharacterESP[character] then
             -- Remove ESP for invalid characters
-            for _, component in pairs(svlib.Cache.CharacterESP[character]) do
-                if type(component) == "table" then
-                    for _, obj in pairs(component) do
-                        pcall(function() if obj and obj.Remove then obj:Remove() end end)
-                    end
-                elseif component and component.Remove then
-                    pcall(function() component:Remove() end)
-                end
-            end
-            
-            svlib.Cache.CharacterESP[character] = nil
-        end
-    end
-    
-    -- Remove ESP for characters that no longer exist
-    for character in pairs(svlib.Cache.CharacterESP) do
-        -- Check if this character is still in our list
-        local found = false
-        for _, validChar in ipairs(characters) do
-            if character == validChar then
-                found = true
-                break
-            end
-        end
-        
-        if not found then
-            -- Character is gone, remove ESP
             for _, component in pairs(svlib.Cache.CharacterESP[character]) do
                 if type(component) == "table" then
                     for _, obj in pairs(component) do
@@ -895,15 +909,28 @@ end
 -- Optimized main loop with error handling
 function svlib.RunMainLoop()
     -- Do nothing if there's already an active thread
-    if svlib.Cache.ThreadActive then return end
+    if svlib.Cache.ThreadActive then 
+        print("Loop principal já está ativo, parando...")
+        svlib.StopMainLoop()
+        wait(0.1) -- Dar tempo para a thread anterior terminar
+    end
     
+    print("Iniciando loop principal...")
     svlib.Cache.ThreadActive = true
+    
+    -- Forçar limpeza inicial para ter certeza
+    svlib.ClearDrawings()
     
     spawn(function()
         while svlib.Cache.ThreadActive do
             pcall(function()
                 if svlib.Config.ESP.Enabled then
                     svlib.UpdateESP()
+                else
+                    -- Se o ESP estiver desativado, limpar os desenhos
+                    if #svlib.Cache.DrawingObjects > 0 then
+                        svlib.ClearDrawings()
+                    end
                 end
                 
                 if svlib.Config.Aimbot.Enabled then
