@@ -44,7 +44,10 @@ if not _G.svlib then
                 MaxDrawObjects = 200,
                 UpdateRate = 0.05, -- 20 FPS default (anti-crash setting)
                 CleanRate = 1.0, -- 1 segundo entre limpezas
-                EnableAntiCrash = true,
+                EnableAntiCrash = true, -- Sempre ativado por padrão
+                ObjectLimit = true, -- Limitar objetos por personagem
+                MaxObjectsPerCharacter = 20, -- Limite de objetos por personagem
+                ReuseObjects = true, -- Reutilizar objetos existentes em vez de criar novos
             },
         },
         
@@ -53,6 +56,7 @@ if not _G.svlib then
             PlayerData = {},
             DrawingObjects = {},
             CharacterESP = {}, -- Cache for character ESP objects
+            DrawingPool = {}, -- Pool de objetos para reutilização
             LastUpdate = 0,
             UpdateInProgress = false,
             CleanupInProgress = false,
@@ -60,6 +64,8 @@ if not _G.svlib then
             LocalPlayer = nil,
             Camera = nil,
             ScreenSize = {x = 0, y = 0},
+            LastCleanup = 0,
+            FrameCount = 0,
         },
         
         -- Stats for debugging
@@ -69,6 +75,7 @@ if not _G.svlib then
             LastUpdate = 0,
             Crashes = 0,
             MaxObjects = 0,
+            PoolSize = 0,
         },
     }
 end
@@ -332,30 +339,120 @@ function svlib.NewDrawing(drawingType, properties)
     return drawing
 end
 
+-- Get object from pool or create new
+function svlib.GetDrawingObject(drawingType, properties)
+    -- Verificar limites de objetos
+    if svlib.Config.Performance.EnableAntiCrash and #svlib.Cache.DrawingObjects >= svlib.Config.Performance.MaxDrawObjects then
+        -- Tente limpar alguns objetos primeiro
+        svlib.CleanupInvalidDrawings()
+        
+        -- Se ainda estiver acima do limite, não criar novo objeto
+        if #svlib.Cache.DrawingObjects >= svlib.Config.Performance.MaxDrawObjects then
+            return nil
+        end
+    end
+    
+    local drawing = nil
+    
+    -- Tentar reutilizar um objeto do pool
+    if svlib.Config.Performance.ReuseObjects and #svlib.Cache.DrawingPool > 0 then
+        for i, poolObj in ipairs(svlib.Cache.DrawingPool) do
+            -- Verificar se o objeto é do tipo certo e válido
+            local success, isValid = pcall(function() 
+                return poolObj.Visible ~= nil
+            end)
+            
+            if success and isValid then
+                -- Encontramos um objeto válido no pool
+                drawing = poolObj
+                table.remove(svlib.Cache.DrawingPool, i)
+                break
+            end
+        end
+    end
+    
+    -- Se não encontrou no pool, criar novo
+    if not drawing then
+        local success, newDrawing = pcall(function()
+            return Drawing.new(drawingType)
+        end)
+        
+        if not success or not newDrawing then
+            return nil
+        end
+        
+        drawing = newDrawing
+    end
+    
+    -- Aplicar propriedades
+    for property, value in pairs(properties or {}) do
+        pcall(function() drawing[property] = value end)
+    end
+    
+    -- Adicionar à lista ativa
+    table.insert(svlib.Cache.DrawingObjects, drawing)
+    
+    -- Update stats
+    if #svlib.Cache.DrawingObjects > svlib.Stats.MaxObjects then
+        svlib.Stats.MaxObjects = #svlib.Cache.DrawingObjects
+    end
+    
+    return drawing
+end
+
 -- Clear all drawing objects
-function svlib.ClearDrawings()
-    if svlib.Cache.CleanupInProgress then return end
+function svlib.ClearDrawings(immediate)
+    if svlib.Cache.CleanupInProgress and not immediate then return end
     svlib.Cache.CleanupInProgress = true
     
+    -- Se não for uma limpeza imediata, fazer gradualmente
     local objectsToRemove = {}
+    
     for i, drawing in ipairs(svlib.Cache.DrawingObjects) do
-        table.insert(objectsToRemove, {index = i, obj = drawing})
+        -- Se for limpeza imediata, remover tudo. Senão, limitar a 50 objetos por vez
+        if immediate or i <= 50 then
+            table.insert(objectsToRemove, {index = i, obj = drawing})
+        end
     end
     
     -- Sort in reverse order to avoid index shifting when removing
     table.sort(objectsToRemove, function(a, b) return a.index > b.index end)
     
     for _, data in ipairs(objectsToRemove) do
-        pcall(function() 
-            if data.obj and data.obj.Remove then 
-                data.obj:Remove() 
-            end
-        end)
+        -- Em vez de destruir, mover para o pool para reutilização
+        if svlib.Config.Performance.ReuseObjects and data.obj and data.obj.Visible ~= nil then
+            -- Esconder o objeto e adicionar ao pool
+            pcall(function() 
+                data.obj.Visible = false
+                table.insert(svlib.Cache.DrawingPool, data.obj)
+            end)
+        else
+            -- Destruir se não estiver reutilizando ou o objeto for inválido
+            pcall(function() 
+                if data.obj and data.obj.Remove then 
+                    data.obj:Remove() 
+                end
+            end)
+        end
+        
+        -- Remover da lista ativa
         table.remove(svlib.Cache.DrawingObjects, data.index)
     end
     
-    svlib.Cache.CharacterESP = {}
-    svlib.Cache.CleanupInProgress = false
+    -- Se não for limpeza imediata e ainda houver objetos, programar outra limpeza
+    if not immediate and #svlib.Cache.DrawingObjects > 0 then
+        spawn(function()
+            wait(0.1) -- Esperar um pouco antes da próxima rodada
+            svlib.Cache.CleanupInProgress = false
+            svlib.ClearDrawings(false)
+        end)
+    else
+        svlib.Cache.CharacterESP = {}
+        svlib.Cache.CleanupInProgress = false
+    end
+    
+    -- Atualizar estatísticas do pool
+    svlib.Stats.PoolSize = #svlib.Cache.DrawingPool
 end
 
 -- Remove a specific drawing object
@@ -494,7 +591,7 @@ end
 
 -- Draw line/tracer
 function svlib.DrawLine(from, to, color, thickness)
-    local line = svlib.NewDrawing("Line", {
+    local line = svlib.GetDrawingObject("Line", {
         From = {from.x, from.y},
         To = {to.x, to.y},
         Color = color or svlib.Config.Colors.Primary,
@@ -749,13 +846,18 @@ function svlib.UpdateESP()
     if svlib.Cache.UpdateInProgress or not svlib.Config.ESP.Enabled then return end
     svlib.Cache.UpdateInProgress = true
     
-    -- Debug information
-    print("Atualizando ESP... ESP Enabled: " .. tostring(svlib.Config.ESP.Enabled))
+    -- Incrementar contagem de frames para limitar a limpeza
+    svlib.Cache.FrameCount = svlib.Cache.FrameCount + 1
+    
+    -- Fazer limpeza periódica (a cada 50 frames)
+    if svlib.Cache.FrameCount >= 50 then
+        svlib.Cache.FrameCount = 0
+        svlib.CleanupInvalidDrawings()
+    end
     
     -- Get local player
     local localPlayer = svlib.GetLocalPlayer()
     if not localPlayer then 
-        print("ERRO: Jogador local não encontrado!")
         svlib.Cache.UpdateInProgress = false
         return 
     end
@@ -763,20 +865,15 @@ function svlib.UpdateESP()
     -- Get all characters
     local characters = {}
     local players = svlib.GetPlayers()
-    print("Encontrados " .. #players .. " jogadores para renderizar ESP")
     
     for _, player in ipairs(players) do
         if player ~= localPlayer then
             local success, character = pcall(function() return getcharacter(player) end)
             if success and character then
                 table.insert(characters, character)
-            else
-                print("AVISO: Não foi possível obter o character para jogador")
             end
         end
     end
-    
-    print("Caracteres válidos para ESP: " .. #characters)
     
     -- Update existing ESP or create new ones
     for _, character in ipairs(characters) do
@@ -786,19 +883,33 @@ function svlib.UpdateESP()
         end)
         
         if success and exists then
-            local result = svlib.UpdateCharacterESP(character)
-            if not result then
-                print("Falha ao atualizar ESP para character")
+            -- Não atualizar o ESP a cada frame para o mesmo personagem
+            -- Verificar se já tem ESP e se foi atualizado recentemente
+            local hasESP = svlib.Cache.CharacterESP[character] ~= nil
+            
+            if not hasESP then
+                svlib.CreateESP(character)
+            elseif svlib.Cache.FrameCount % 3 == 0 then
+                -- Atualizar apenas 1/3 dos personagens a cada frame para suavizar
+                svlib.UpdateCharacterESP(character)
             end
         elseif svlib.Cache.CharacterESP[character] then
-            -- Remove ESP for invalid characters
+            -- Character não existe mais, mover objetos para o pool em vez de destruir
             for _, component in pairs(svlib.Cache.CharacterESP[character]) do
                 if type(component) == "table" then
                     for _, obj in pairs(component) do
-                        pcall(function() if obj and obj.Remove then obj:Remove() end end)
+                        if obj and obj.Visible ~= nil then
+                            pcall(function() 
+                                obj.Visible = false
+                                table.insert(svlib.Cache.DrawingPool, obj)
+                            end)
+                        end
                     end
-                elseif component and component.Remove then
-                    pcall(function() component:Remove() end)
+                elseif component and component.Visible ~= nil then
+                    pcall(function() 
+                        component.Visible = false 
+                        table.insert(svlib.Cache.DrawingPool, component)
+                    end)
                 end
             end
             
@@ -908,38 +1019,53 @@ end
 
 -- Optimized main loop with error handling
 function svlib.RunMainLoop()
-    -- Do nothing if there's already an active thread
-    if svlib.Cache.ThreadActive then 
-        print("Loop principal já está ativo, parando...")
-        svlib.StopMainLoop()
-        wait(0.1) -- Dar tempo para a thread anterior terminar
-    end
+    -- Parar loop anterior se existir
+    svlib.StopMainLoop()
     
-    print("Iniciando loop principal...")
+    -- Iniciar novo loop
     svlib.Cache.ThreadActive = true
     
-    -- Forçar limpeza inicial para ter certeza
-    svlib.ClearDrawings()
-    
+    -- Thread principal separada
     spawn(function()
         while svlib.Cache.ThreadActive do
             pcall(function()
                 if svlib.Config.ESP.Enabled then
                     svlib.UpdateESP()
-                else
-                    -- Se o ESP estiver desativado, limpar os desenhos
-                    if #svlib.Cache.DrawingObjects > 0 then
-                        svlib.ClearDrawings()
-                    end
+                elseif #svlib.Cache.DrawingObjects > 0 then
+                    -- Limpar desenhos se ESP estiver desativado
+                    svlib.ClearDrawings(false)
                 end
-                
+            end)
+            
+            -- Usar taxa de atualização estável
+            wait(svlib.Config.Performance.UpdateRate)
+        end
+    end)
+    
+    -- Thread separada para aimbot (reduz interferência)
+    spawn(function()
+        while svlib.Cache.ThreadActive do
+            pcall(function()
                 if svlib.Config.Aimbot.Enabled then
                     svlib.UpdateAimbot()
                 end
             end)
             
-            -- Use configured update rate
-            wait(svlib.Config.Performance.UpdateRate)
+            -- Taxa de atualização mais rápida para o aimbot
+            wait(0.01)
+        end
+    end)
+    
+    -- Thread separada para limpeza preventiva (não bloqueante)
+    spawn(function()
+        while svlib.Cache.ThreadActive do
+            wait(3) -- Limpeza a cada 3 segundos
+            
+            -- Limitar o número de objetos criados para evitar sobrecarga
+            if #svlib.Cache.DrawingObjects > svlib.Config.Performance.MaxDrawObjects * 0.8 then
+                -- Se estiver próximo do limite, fazer uma limpeza parcial
+                svlib.CleanupInvalidDrawings()
+            end
         end
     end)
 end
@@ -952,12 +1078,17 @@ end
 -- Initialize the library
 function svlib.Init()
     print("Severe Library initialized!")
+    
+    -- Garantir que o anti-crash esteja ativado
+    svlib.Config.Performance.EnableAntiCrash = true
+    
+    -- Atualizar tamanho da tela
     svlib.UpdateScreenSize()
     
-    -- Start cleanup thread
-    svlib.ScheduleCleanup()
+    -- Limpar desenhos existentes
+    svlib.ClearDrawings(true)
     
-    -- Start main loop
+    -- Iniciar loop principal
     svlib.RunMainLoop()
     
     return svlib
