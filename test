@@ -4,12 +4,13 @@
     Foco em estabilidade e performance para sistemas ESP
 ]]
 
+local ImprovedBoxes = require(script.Parent.improved_box_functions)
 local SevereLib = {}
 
 -- Cache para evitar chamadas repetidas
 SevereLib.Cache = {
-    LocalPlayer = nil,
-    Camera = nil,
+            LocalPlayer = nil,
+            Camera = nil,
     ESPObjects = {},
     DrawingObjects = {},
     PlayerCache = {}, -- Cache para rastrear jogadores e seus objetos ESP
@@ -35,7 +36,14 @@ SevereLib.Settings = {
     DefaultTextOutlined = true,
     CleanupInterval = 1, -- Intervalo em segundos para verificar e limpar objetos ESP inválidos (reduzido)
     PlayerCheckInterval = 0.5, -- Intervalo para verificar novos jogadores (reduzido)
-    DeadCheckInterval = 0.2 -- Intervalo para verificar jogadores mortos (novo)
+    DeadCheckInterval = 0.2, -- Intervalo para verificar jogadores mortos (novo)
+    
+    -- Configurações do ImprovedBoxes
+    DefaultBoxType = ImprovedBoxes.BoxTypes.CORNERS,
+    DefaultBoxFilled = false,
+    DefaultBoxTransparency = 1,
+    DefaultBoxFillTransparency = 0.3,
+    DefaultCornerSize = ImprovedBoxes.Config.DefaultCornerSize
 }
 
 -- Utilitários matemáticos
@@ -368,8 +376,13 @@ SevereLib.ESP = {
             TracerThickness = config.TracerThickness or SevereLib.Settings.DefaultTracerThickness,
             TextOutlined = config.TextOutlined == nil and true or config.TextOutlined,
             Enabled = config.Enabled == nil and true or config.Enabled,
-            Player = config.Player, -- Referência ao jogador (se este ESP for de um jogador)
+            Player = config.Player, -- Referência ao jogador para rastreamento
             LastUpdated = tick(), -- Tempo da última atualização
+            BoxType = config.BoxType or SevereLib.Settings.DefaultBoxType,
+            BoxFilled = config.BoxFilled or SevereLib.Settings.DefaultBoxFilled,
+            BoxTransparency = config.BoxTransparency or SevereLib.Settings.DefaultBoxTransparency,
+            BoxFillTransparency = config.BoxFillTransparency or SevereLib.Settings.DefaultBoxFillTransparency,
+            CornerSize = config.CornerSize or SevereLib.Settings.DefaultCornerSize,
             
             -- Objetos de desenho
             Text = SevereLib.ESP.CreateDrawingObject("Text", {
@@ -454,116 +467,26 @@ SevereLib.ESP = {
                     return true -- A instância é válida, só está fora de alcance
                 end
                 
-                local screenPos, onScreen = worldtoscreenpoint({instancePos.x, instancePos.y, instancePos.z})
-                if not onScreen then
-                    self:Hide()
-                    return true -- A instância é válida, só está fora da tela
-                end
+                -- Usar ImprovedBoxes para desenhar a caixa ESP
+                local espObjects = ImprovedBoxes.DrawBoxESP(self.Instance, {
+                    BoxType = self.BoxType,
+                    Color = self.Color,
+                    Thickness = self.BoxThickness,
+                    Filled = self.BoxFilled,
+                    Transparency = self.BoxTransparency,
+                    FillTransparency = self.BoxFillTransparency,
+                    HealthBar = self.ShowHealthBar,
+                    NameDisplay = self.ShowName,
+                    DistanceDisplay = self.ShowDistance,
+                    Tracer = self.ShowTracer,
+                    CornerSize = self.CornerSize
+                })
                 
-                -- Atualiza texto
-                if self.ShowName or self.ShowDistance then
-                    local text = ""
-                    if self.ShowName then
-                        text = self.Name
+                -- Atualizar objetos de desenho
+                for _, obj in ipairs(espObjects) do
+                    if not table.find(SevereLib.Cache.DrawingObjects, obj) then
+                        table.insert(SevereLib.Cache.DrawingObjects, obj)
                     end
-                    
-                    if self.ShowDistance then
-                        text = text .. (self.ShowName and " [" or "") .. SevereLib.Math.floor(distance) .. "m" .. (self.ShowName and "]" or "")
-                    end
-                    
-                    self.Text.Text = text
-                    self.Text.Position = {screenPos.x, screenPos.y + 20}
-                    self.Text.Visible = true
-                else
-                    self.Text.Visible = false
-                end
-                
-                -- Atualiza círculo
-                self.Circle.Position = {screenPos.x, screenPos.y}
-                self.Circle.Visible = true
-                
-                -- Atualiza traçador
-                if self.ShowTracer then
-                    if not self.Tracer then
-                        self.Tracer = SevereLib.ESP.CreateDrawingObject("Line", {
-                            Thickness = self.TracerThickness,
-                            Color = self.Color,
-                            Visible = false
-                        })
-                    end
-                    
-                    local screenSize = getscreendimensions()
-                    self.Tracer.From = {screenSize.x / 2, screenSize.y}
-                    self.Tracer.To = {screenPos.x, screenPos.y}
-                    self.Tracer.Visible = true
-                elseif self.Tracer then
-                    self.Tracer.Visible = false
-                end
-                
-                -- Atualiza caixa (simplificado - apenas esqueleto da caixa 2D)
-                if self.ShowBox then
-                    if not self.Box then
-                        self.Box = SevereLib.ESP.CreateDrawingObject("Square", {
-                            Thickness = self.BoxThickness,
-                            Color = self.Color,
-                            Filled = false,
-                            Visible = false
-                        })
-                    end
-                    
-                    -- Tamanho da caixa baseado na distância
-                    local size = 50 * (1 / (distance * 0.05))
-                    size = SevereLib.Math.clamp(size, 10, 100)
-                    
-                    self.Box.Size = {size, size * 1.5}
-                    self.Box.Position = {screenPos.x - (size / 2), screenPos.y - (size * 1.5 / 2)}
-                    self.Box.Visible = true
-                elseif self.Box then
-                    self.Box.Visible = false
-                end
-                
-                -- Verifica e atualiza a barra de saúde, se necessário
-                if self.ShowHealthBar and self.Player then
-                    local character = getcharacter(self.Player)
-                    if character then
-                        local humanoid = findfirstchild(character, "Humanoid")
-                        if humanoid then
-                            local health = gethealth(humanoid)
-                            local maxHealth = getmaxhealth(humanoid)
-                            
-                            -- Criar a barra de saúde se não existir
-                            if not self.HealthBar then
-                                self.HealthBar = SevereLib.ESP.CreateDrawingObject("Square", {
-                                    Thickness = 1,
-                                    Filled = true,
-                                    Visible = false
-                                })
-                            end
-                            
-                            -- Atualizar a barra de saúde
-                            local healthRatio = health / maxHealth
-                            local barColor = {
-                                (1 - healthRatio) * 255,
-                                healthRatio * 255,
-                                0
-                            }
-                            
-                            local barWidth = 5
-                            local barHeight = size * 1.5
-                            local xPos = screenPos.x + (size / 2) + 5
-                            
-                            self.HealthBar.Size = {barWidth, barHeight * healthRatio}
-                            self.HealthBar.Position = {xPos, screenPos.y - (size * 1.5 / 2) + (barHeight * (1 - healthRatio))}
-                            self.HealthBar.Color = barColor
-                            self.HealthBar.Visible = true
-                        elseif self.HealthBar then
-                            self.HealthBar.Visible = false
-                        end
-                    elseif self.HealthBar then
-                        self.HealthBar.Visible = false
-                    end
-                elseif self.HealthBar then
-                    self.HealthBar.Visible = false
                 end
                 
                 return true -- Atualização bem-sucedida
@@ -575,6 +498,7 @@ SevereLib.ESP = {
                 if self.Tracer then self.Tracer.Visible = false end
                 if self.Box then self.Box.Visible = false end
                 if self.HealthBar then self.HealthBar.Visible = false end
+                ImprovedBoxes.HideAll()
             end,
             
             Remove = function(self)
@@ -795,7 +719,14 @@ SevereLib.ESP = {
             ShowHealthBar = config.ShowHealthBar == nil and true or config.ShowHealthBar,
             MaxDistance = config.MaxDistance or 1000,
             Color = config.Color or teamColor,
-            Player = player -- Referência ao jogador para rastreamento
+            Player = player, -- Referência ao jogador para rastreamento
+            
+            -- Configurações do ImprovedBoxes
+            BoxType = config.BoxType or SevereLib.Settings.DefaultBoxType,
+            BoxFilled = config.BoxFilled or SevereLib.Settings.DefaultBoxFilled,
+            BoxTransparency = config.BoxTransparency or SevereLib.Settings.DefaultBoxTransparency,
+            BoxFillTransparency = config.BoxFillTransparency or SevereLib.Settings.DefaultBoxFillTransparency,
+            CornerSize = config.CornerSize or SevereLib.Settings.DefaultCornerSize
         })
         
         return espObject
@@ -857,11 +788,6 @@ SevereLib.ESP = {
                 end)
             end
         end
-        
-        -- Iniciar o ESP se ainda não estiver rodando
-        if not SevereLib.ESP.Running then
-            SevereLib.ESP.Start()
-        end
     end,
     
     -- Atualiza o ESP para um jogador específico
@@ -904,7 +830,7 @@ SevereLib.Cleanup = function()
             obj:Remove()
         end)
     end
-    
+
     SevereLib.Cache.DrawingObjects = {}
     SevereLib.Cache.DeadPlayers = {}
     SevereLib.Cache.PlayerCharacters = {}
