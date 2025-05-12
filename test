@@ -270,8 +270,8 @@ function svl.BoxESP(params)
     local tracertype = params.TracerType or 1 --// 1 = near-bottom, 2 = bottom, 3 = top, 4 = mouse
     local box_type = params.BoxType or 1 --// 1 = corners, 2 = 2d box, 3 = 3d box
 
-    -- Verificação corrigida: não chama getchildren() na validação
-    if type(target) ~= "number" then
+    -- Verificação adaptada para aceitar userdata ou número
+    if type(target) ~= "number" and type(target) ~= "userdata" and type(target) ~= "table" then
         warn("[SVL Error] BoxESP: Target Argument needs to be a valid instance! Tipo recebido: " .. type(target))
         return
     end
