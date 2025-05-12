@@ -1760,4 +1760,3 @@ end
 
 -- Return the library
 return SevereLib:Init() 
-return SevereLib:Init() 
