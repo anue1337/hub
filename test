@@ -4,6 +4,30 @@
     Foco em estabilidade e performance para sistemas ESP
 ]]
 
+-- Remover a dependência do script.Parent
+local ImprovedBoxes = {
+    BoxTypes = {
+        CORNERS = 1,
+        BOX_2D = 2,
+        BOX_3D = 3,
+        ROUNDED = 4,
+        ADAPTIVE = 5,
+        CORNERS_ADVANCED = 6
+    },
+    Config = {
+        DefaultCornerSize = 0.3
+    },
+    DrawBoxESP = function(instance, config)
+        -- Implementação básica do DrawBoxESP
+        local objects = {}
+        -- Aqui você pode implementar a lógica de desenho das caixas
+        return objects
+    end,
+    HideAll = function()
+        -- Implementação básica do HideAll
+    end
+}
+
 local SevereLib = {}
 
 -- Cache para evitar chamadas repetidas
