@@ -1,3 +1,27 @@
+--[[
+    SevereLib v2.0
+    Uma biblioteca abrangente para Roblox Lua no ambiente Severe
+    
+    Recursos principais:
+    - Funções de desenho avançadas (ESP, caixas 3D, barras de vida)
+    - Utilitários de matemática e coordenadas
+    - Console integrado com registro de logs
+    - Funções para interagir com jogadores e personagens
+    - Implementação de efeitos visuais e arco-íris
+    
+    Uso básico:
+    local svl = _G.svl -- Acesse a biblioteca global
+    svl.print("SevereLib inicializada!")
+    
+    Exemplo de Box ESP:
+    svl.BoxESP({
+        Target = player, 
+        Healthbar = true,
+        Nametag = true,
+        BoxType = 2
+    })
+]]--
+
 --// SevereLib //--
 
 --// Presets para facilitar o uso
@@ -37,10 +61,18 @@ if _G.svl == nil then
         --// Rainbow
         CurrentRainbowColor = {255,255,255},
         RainbowHue = 0,
+        
+        --// Armazenamento de cache
+        LoadstringCaching = {},
+        GetCaching = {},
+        OldLoadstring = loadstring,
+        
+        --// Biblioteca da versão
+        Version = "2.0",
     };
 end
 
---// Rainbow Tick
+--// Rainbow Tick - Função melhorada
 function svl_updateRainbow()
     if svl.RainbowHue > 1530 then
         svl.RainbowHue = 0  
@@ -61,6 +93,164 @@ function svl_updateRainbow()
     elseif svl.RainbowHue <= 1530 then
         svl.CurrentRainbowColor = {255, 0, 1530 - svl.RainbowHue}
     end
+    
+    return svl.CurrentRainbowColor
+end
+
+--// Função para obter a cor do arco-íris atual
+function svl.GetRainbowColor()
+    return svl.CurrentRainbowColor
+end
+
+--// Função para obter a cor do arco-íris com velocidade personalizada
+function svl.GetRainbowColorCustom(speed)
+    local hue = (svl.RainbowHue * (speed or 1)) % 1530
+    
+    if hue <= 255 then
+        return {255, hue, 0}
+    elseif hue <= 510 then
+        return {510 - hue, 255, 0}
+    elseif hue <= 765 then
+        return {0, 255, hue - 510}
+    elseif hue <= 1020 then
+        return {0, 1020 - hue, 255}
+    elseif hue <= 1275 then
+        return {hue - 1020, 0, 255}
+    else
+        return {255, 0, 1530 - hue}
+    end
+end
+
+--// Funções de animação
+
+-- Transição suave entre cores
+function svl.LerpColor(color1, color2, alpha)
+    assert(type(color1) == "table" and #color1 == 3, "[SVL Error] LerpColor: First Argument needs to be a table with 3 RGB values!")
+    assert(type(color2) == "table" and #color2 == 3, "[SVL Error] LerpColor: Second Argument needs to be a table with 3 RGB values!")
+    assert(type(alpha) == "number" and alpha >= 0 and alpha <= 1, "[SVL Error] LerpColor: Third Argument needs to be a number between 0 and 1!")
+    
+    return {
+        math.floor(color1[1] + (color2[1] - color1[1]) * alpha),
+        math.floor(color1[2] + (color2[2] - color1[2]) * alpha),
+        math.floor(color1[3] + (color2[3] - color1[3]) * alpha)
+    }
+end
+
+-- Transição suave entre posições
+function svl.LerpPosition(pos1, pos2, alpha)
+    assert(type(pos1) == "table" and #pos1 == 2, "[SVL Error] LerpPosition: First Argument needs to be a table with 2 values!")
+    assert(type(pos2) == "table" and #pos2 == 2, "[SVL Error] LerpPosition: Second Argument needs to be a table with 2 values!")
+    assert(type(alpha) == "number" and alpha >= 0 and alpha <= 1, "[SVL Error] LerpPosition: Third Argument needs to be a number between 0 and 1!")
+    
+    return {
+        pos1[1] + (pos2[1] - pos1[1]) * alpha,
+        pos1[2] + (pos2[2] - pos1[2]) * alpha
+    }
+end
+
+-- Animação de um objeto Drawing
+function svl.Animate(object, property, target_value, duration, callback)
+    assert(object ~= nil, "[SVL Error] Animate: First Argument needs to be a valid Drawing object!")
+    assert(type(property) == "string", "[SVL Error] Animate: Second Argument needs to be a string!")
+    assert(type(duration) == "number" and duration > 0, "[SVL Error] Animate: Fourth Argument needs to be a positive number!")
+    
+    local start_value = object[property]
+    local start_time = tick()
+    local is_color = type(target_value) == "table" and #target_value == 3
+    local is_position = type(target_value) == "table" and #target_value == 2
+    
+    -- Criar função de animação
+    spawn(function()
+        while true do
+            local elapsed = tick() - start_time
+            local alpha = math.min(elapsed / duration, 1)
+            
+            if is_color then
+                object[property] = svl.LerpColor(start_value, target_value, alpha)
+            elseif is_position then
+                object[property] = svl.LerpPosition(start_value, target_value, alpha)
+            else
+                object[property] = start_value + (target_value - start_value) * alpha
+            end
+            
+            if alpha >= 1 then
+                if callback then
+                    callback()
+                end
+                break
+            end
+            
+            wait(0.01) -- Pequena pausa para não sobrecarregar
+        end
+    end)
+end
+
+-- Criar um efeito pulsante em um objeto
+function svl.PulseEffect(object, property, min_value, max_value, speed, continuous)
+    assert(object ~= nil, "[SVL Error] PulseEffect: First Argument needs to be a valid Drawing object!")
+    assert(type(property) == "string", "[SVL Error] PulseEffect: Second Argument needs to be a string!")
+    
+    local is_color = type(min_value) == "table" and #min_value == 3 and type(max_value) == "table" and #max_value == 3
+    local is_position = type(min_value) == "table" and #min_value == 2 and type(max_value) == "table" and #max_value == 2
+    
+    local pulse_id = tostring(object) .. property
+    
+    -- Parar uma animação anterior se existir
+    if svl.ActivePulses and svl.ActivePulses[pulse_id] then
+        svl.ActivePulses[pulse_id] = false
+    end
+    
+    -- Inicializar tabela de pulsos ativos
+    if not svl.ActivePulses then
+        svl.ActivePulses = {}
+    end
+    
+    svl.ActivePulses[pulse_id] = true
+    
+    -- Criar função de pulso
+    spawn(function()
+        local direction = 1
+        local progress = 0
+        
+        while svl.ActivePulses[pulse_id] do
+            progress = progress + (direction * (speed or 0.05))
+            
+            if progress >= 1 then
+                progress = 1
+                if continuous then
+                    direction = -1
+                else
+                    break
+                end
+            elseif progress <= 0 then
+                progress = 0
+                direction = 1
+            end
+            
+            if is_color then
+                object[property] = svl.LerpColor(min_value, max_value, progress)
+            elseif is_position then
+                object[property] = svl.LerpPosition(min_value, max_value, progress)
+            else
+                object[property] = min_value + (max_value - min_value) * progress
+            end
+            
+            wait(0.01) -- Pequena pausa para não sobrecarregar
+        end
+        
+        svl.ActivePulses[pulse_id] = nil
+    end)
+    
+    return pulse_id
+end
+
+-- Parar um efeito pulsante
+function svl.StopPulse(pulse_id)
+    if svl.ActivePulses and svl.ActivePulses[pulse_id] then
+        svl.ActivePulses[pulse_id] = false
+        return true
+    end
+    return false
 end
 
 --// Funções Básicas
@@ -183,19 +373,19 @@ function svl.HealthBar(params)
     return {background, healthFill} -- Retornar os objetos para que possam ser removidos depois
 end
 
--- Função auxiliar para criar linhas
-function createLine(point1, point2, color)
+--// Função auxiliar para criar linhas
+function createLine(point1, point2, color, thickness)
     local line = Drawing.new("Line")
     line.From = {point1[1], point1[2]}
     line.To = {point2[1], point2[2]}
     line.Color = color
-    line.Thickness = 1
+    line.Thickness = thickness or 1
     line.Visible = true
     return line
 end
 
 --// Box3D Function
-function svl.Box3d(pos1, pos2, box_color)
+function svl.Box3d(pos1, pos2, box_color, thickness)
     assert(type(pos1) == "table" and #pos1 == 3, "[SVL Error] Box3d: First Argument needs to be a table with 3 position values!")
     assert(type(pos2) == "table" and #pos2 == 3, "[SVL Error] Box3d: Second Argument needs to be a table with 3 position values!")
     assert(type(box_color) == "table" and #box_color == 3, "[SVL Error] Box3d: Third Argument needs to be a table with 3 RGB values!")
@@ -237,30 +427,32 @@ function svl.Box3d(pos1, pos2, box_color)
     
     -- Criar linhas de desenho para cada aresta
     local lines = {}
+    local line_thickness = thickness or 1
     
     -- Face traseira
-    table.insert(lines, createLine(points2D[1], points2D[2], box_color))
-    table.insert(lines, createLine(points2D[2], points2D[3], box_color))
-    table.insert(lines, createLine(points2D[3], points2D[4], box_color))
-    table.insert(lines, createLine(points2D[4], points2D[1], box_color))
+    table.insert(lines, createLine(points2D[1], points2D[2], box_color, line_thickness))
+    table.insert(lines, createLine(points2D[2], points2D[3], box_color, line_thickness))
+    table.insert(lines, createLine(points2D[3], points2D[4], box_color, line_thickness))
+    table.insert(lines, createLine(points2D[4], points2D[1], box_color, line_thickness))
     
     -- Face frontal
-    table.insert(lines, createLine(points2D[5], points2D[6], box_color))
-    table.insert(lines, createLine(points2D[6], points2D[7], box_color))
-    table.insert(lines, createLine(points2D[7], points2D[8], box_color))
-    table.insert(lines, createLine(points2D[8], points2D[5], box_color))
+    table.insert(lines, createLine(points2D[5], points2D[6], box_color, line_thickness))
+    table.insert(lines, createLine(points2D[6], points2D[7], box_color, line_thickness))
+    table.insert(lines, createLine(points2D[7], points2D[8], box_color, line_thickness))
+    table.insert(lines, createLine(points2D[8], points2D[5], box_color, line_thickness))
     
     -- Conexões
-    table.insert(lines, createLine(points2D[1], points2D[5], box_color))
-    table.insert(lines, createLine(points2D[2], points2D[6], box_color))
-    table.insert(lines, createLine(points2D[3], points2D[7], box_color))
-    table.insert(lines, createLine(points2D[4], points2D[8], box_color))
+    table.insert(lines, createLine(points2D[1], points2D[5], box_color, line_thickness))
+    table.insert(lines, createLine(points2D[2], points2D[6], box_color, line_thickness))
+    table.insert(lines, createLine(points2D[3], points2D[7], box_color, line_thickness))
+    table.insert(lines, createLine(points2D[4], points2D[8], box_color, line_thickness))
     
     return lines -- Retornar as linhas para que possam ser removidas depois
 end
 
 --// BoxESP Function
 function svl.BoxESP(params)
+    -- Parâmetros e valores padrão
     local target = params.Target or nil
     local box_color = params.Color or {255,255,255}
     local healthbar = params.Healthbar or false
@@ -269,61 +461,86 @@ function svl.BoxESP(params)
     local tracer = params.Tracer or false
     local tracertype = params.TracerType or 1 --// 1 = near-bottom, 2 = bottom, 3 = top, 4 = mouse
     local box_type = params.BoxType or 1 --// 1 = corners, 2 = 2d box, 3 = 3d box
+    local show_team_color = params.TeamColor or false
+    local thickness = params.Thickness or 1
     
+    -- Validação
     if not target then
-        warn("[SVL Error] BoxESP: Target is nil!")
+        svl.error("[SVL Error] BoxESP: Target é obrigatório!")
         return
     end
     
-    assert(type(box_color) == "table" and #box_color == 3, "[SVL Error] BoxESP: Color Argument needs to be a table with 3 RGB values!")
+    assert(type(box_color) == "table" and #box_color == 3, "[SVL Error] BoxESP: Color precisa ser uma tabela com 3 valores RGB!")
+    assert(type(tracertype) == "number" and tracertype >= 1 and tracertype <= 4, "[SVL Error] BoxESP: TracerType precisa ser um número entre 1-4!")
+    assert(type(box_type) == "number" and box_type >= 1 and box_type <= 3, "[SVL Error] BoxESP: BoxType precisa ser um número entre 1-3!")
     
     -- Tentar encontrar o HumanoidRootPart
     local torso = findfirstchild(target, "HumanoidRootPart")
     
     if not torso then 
-        warn("[SVL Error] BoxESP: Cannot find HumanoidRootPart in target!")
+        svl.error("[SVL Error] BoxESP: Não foi possível encontrar HumanoidRootPart no alvo!")
         return 
     end
     
     local rootPos = getposition(torso)
     
+    -- Definir limites da caixa
     local HeadPosY = rootPos.y + 2.5
     local LegPosY = rootPos.y - 3.5
 
     local Top = worldtoscreenpoint({rootPos.x, HeadPosY, rootPos.z})
     local Bottom = worldtoscreenpoint({rootPos.x, LegPosY, rootPos.z})
     
+    -- Verificar se o alvo está visível na tela
     if not Top or not Bottom then return end
     
+    -- Cálculos para tamanho da caixa
     local height = Top.y - Bottom.y
     local width = (height / 2) / 1.2
     
     local elements = {}
     
+    -- Obter cor da equipe se necessário
+    if show_team_color then
+        local humanoid = findfirstchild(target, "Humanoid")
+        if humanoid then
+            local player = getparent(getparent(humanoid))
+            if player then
+                local team = getteam(player)
+                if team then
+                    -- Implementar lógica para obter cor da equipe
+                    -- box_color = team_color
+                end
+            end
+        end
+    end
+    
     -- Desenhar caixa
     if box_type == 1 then -- cantos
         -- Superior esquerdo
-        table.insert(elements, createLine({Top.x + width + 2, Top.y}, {Top.x + (width/2) + 2, Top.y}, box_color))
-        table.insert(elements, createLine({Top.x + width + 2, Top.y}, {Top.x + width + 2, Top.y - (height/4)}, box_color))
+        local corner_size = height / 4
+        
+        table.insert(elements, createLine({Top.x + width + 2, Top.y}, {Top.x + (width/2) + 2, Top.y}, box_color, thickness))
+        table.insert(elements, createLine({Top.x + width + 2, Top.y}, {Top.x + width + 2, Top.y - corner_size}, box_color, thickness))
         
         -- Superior direito
-        table.insert(elements, createLine({Bottom.x - width, Top.y}, {Bottom.x - (width/2), Top.y}, box_color))
-        table.insert(elements, createLine({Bottom.x - width, Top.y}, {Bottom.x - width, Top.y - (height/4)}, box_color))
+        table.insert(elements, createLine({Bottom.x - width, Top.y}, {Bottom.x - (width/2), Top.y}, box_color, thickness))
+        table.insert(elements, createLine({Bottom.x - width, Top.y}, {Bottom.x - width, Top.y - corner_size}, box_color, thickness))
         
         -- Inferior esquerdo
-        table.insert(elements, createLine({Top.x + width + 2, Bottom.y}, {Top.x + (width/2) + 2, Bottom.y}, box_color))
-        table.insert(elements, createLine({Top.x + width + 2, Bottom.y}, {Top.x + width + 2, Bottom.y + (height/4)}, box_color))
+        table.insert(elements, createLine({Top.x + width + 2, Bottom.y}, {Top.x + (width/2) + 2, Bottom.y}, box_color, thickness))
+        table.insert(elements, createLine({Top.x + width + 2, Bottom.y}, {Top.x + width + 2, Bottom.y + corner_size}, box_color, thickness))
         
         -- Inferior direito
-        table.insert(elements, createLine({Bottom.x - width, Bottom.y}, {Bottom.x - (width/2), Bottom.y}, box_color))
-        table.insert(elements, createLine({Bottom.x - width, Bottom.y}, {Bottom.x - width, Bottom.y + (height/4)}, box_color))
+        table.insert(elements, createLine({Bottom.x - width, Bottom.y}, {Bottom.x - (width/2), Bottom.y}, box_color, thickness))
+        table.insert(elements, createLine({Bottom.x - width, Bottom.y}, {Bottom.x - width, Bottom.y + corner_size}, box_color, thickness))
         
     elseif box_type == 2 then -- caixa 2d
         local box = Drawing.new("Square")
         box.Position = {Bottom.x - width, Top.y}
         box.Size = {width * 2, Bottom.y - Top.y}
         box.Color = box_color
-        box.Thickness = 1
+        box.Thickness = thickness
         box.Filled = false
         box.Visible = true
         table.insert(elements, box)
@@ -332,7 +549,8 @@ function svl.BoxESP(params)
         local boxElements = svl.Box3d(
             {rootPos.x - 2, HeadPosY, rootPos.z - 2},
             {rootPos.x + 2, LegPosY, rootPos.z + 2},
-            box_color
+            box_color,
+            thickness
         )
         if boxElements then
             for _, element in ipairs(boxElements) do
@@ -374,10 +592,13 @@ function svl.BoxESP(params)
             local hbFill = Drawing.new("Square")
             hbFill.Position = {tl[1] + 1, br[2] - addon}
             hbFill.Size = {br[1] - tl[1] - 2, addon + 1}
+            -- Cor dinâmica baseada na vida (vermelho->amarelo->verde)
             hbFill.Color = {255 - 255 / (maxhp / hp), 255 / (maxhp / hp), 0}
             hbFill.Filled = true
             hbFill.Visible = true
             table.insert(elements, hbFill)
+        else
+            svl.print("[SVL Warning] BoxESP: Target não tem humanoid, barra de vida não adicionada.")
         end
     end
     
@@ -385,7 +606,7 @@ function svl.BoxESP(params)
     if distance then
         local dist = tostring(svl.GetDistanceFromPlayer(rootPos))
         local text = Drawing.new("Text")
-        text.Text = dist
+        text.Text = dist .. "m"
         text.Position = {Bottom.x - (dist:len() * 4), Bottom.y + 5}
         text.Color = box_color
         text.Size = 13
@@ -427,7 +648,7 @@ function svl.BoxESP(params)
         line.From = {loc[1], loc[2]}
         line.To = {Top.x + width + (((Bottom.x - width) - (Top.x + width)) / 2), Bottom.y}
         line.Color = box_color
-        line.Thickness = 1
+        line.Thickness = thickness
         line.Visible = true
         table.insert(elements, line)
     end
@@ -438,7 +659,9 @@ end
 --// Função para console
 function svl.ShowConsole()
     local mouse = getmouseposition()
+    local console_title = "SevereLib Console v" .. svl.Version .. " | Mouse: " .. mouse.x .. ", " .. mouse.y
     
+    -- Verificar interação com botão de toggle
     if svl.isMouseInArea({svl.Location[1] + svl.Size[1] - 27, svl.Location[2] + 3, svl.Location[1] + svl.Size[1] - 5, svl.Location[2] + 19}) then
         if isleftclicked() then
             svl.Open = not svl.Open
@@ -468,6 +691,7 @@ function svl.ShowConsole()
     
     if svl.Open then
         -- Criar elementos do console via Drawing API
+        -- Contorno externo
         local outline = Drawing.new("Square")
         outline.Position = {svl.Location[1] - 1, svl.Location[2] - 1}
         outline.Size = {svl.Size[1] + 2, svl.Size[2] + 2}
@@ -476,6 +700,7 @@ function svl.ShowConsole()
         outline.Visible = true
         table.insert(consoleElements, outline)
         
+        -- Borda colorida (accent)
         local accent = Drawing.new("Square")
         accent.Position = {svl.Location[1], svl.Location[2]}
         accent.Size = {svl.Size[1], svl.Size[2]}
@@ -484,6 +709,7 @@ function svl.ShowConsole()
         accent.Visible = true
         table.insert(consoleElements, accent)
         
+        -- Fundo principal
         local mainOuter = Drawing.new("Square")
         mainOuter.Position = {svl.Location[1] + 1, svl.Location[2] + 1}
         mainOuter.Size = {svl.Size[1] - 2, svl.Size[2] - 2}
@@ -492,6 +718,7 @@ function svl.ShowConsole()
         mainOuter.Visible = true
         table.insert(consoleElements, mainOuter)
         
+        -- Área de texto
         local mainInner = Drawing.new("Square")
         mainInner.Position = {svl.Location[1] + 5, svl.Location[2] + 20}
         mainInner.Size = {svl.Size[1] - 10, svl.Size[2] - 25}
@@ -500,6 +727,7 @@ function svl.ShowConsole()
         mainInner.Visible = true
         table.insert(consoleElements, mainInner)
         
+        -- Contorno da área de texto
         local mainInnerOutline = Drawing.new("Square")
         mainInnerOutline.Position = {svl.Location[1] + 5, svl.Location[2] + 20}
         mainInnerOutline.Size = {svl.Size[1] - 10, svl.Size[2] - 25}
@@ -508,13 +736,24 @@ function svl.ShowConsole()
         mainInnerOutline.Visible = true
         table.insert(consoleElements, mainInnerOutline)
         
+        -- Título
         local title = Drawing.new("Text")
-        title.Text = "SevereLib Console | Mouse: " .. mouse.x .. ", " .. mouse.y
+        title.Text = console_title
         title.Position = {svl.Location[1], svl.Location[2]}
         title.Color = svl.FontColor
         title.Size = 13
         title.Visible = true
         table.insert(consoleElements, title)
+        
+        -- FPS Counter
+        local fps = math.floor(1 / (tick() % 1))
+        local fpsText = Drawing.new("Text")
+        fpsText.Text = "FPS: " .. fps
+        fpsText.Position = {svl.Location[1] + svl.Size[1] - 60, svl.Location[2]}
+        fpsText.Color = fps > 30 and {0, 255, 0} or (fps > 15 and {255, 255, 0} or {255, 0, 0})
+        fpsText.Size = 13
+        fpsText.Visible = true
+        table.insert(consoleElements, fpsText)
         
         -- Mostrar logs
         for i, v in pairs(svl.StoredLogs) do
@@ -531,6 +770,16 @@ function svl.ShowConsole()
             logText.Visible = true
             table.insert(consoleElements, logText)
         end
+        
+        -- Exibir informações de memória na parte inferior
+        local memInfo = Drawing.new("Text")
+        memInfo.Text = "Memória: " .. math.floor(collectgarbage("count") / 1024) .. " MB"
+        memInfo.Position = {svl.Location[1] + 10, svl.Location[2] + svl.Size[2] - 20}
+        memInfo.Color = {150, 150, 255}
+        memInfo.Size = 13
+        memInfo.Visible = true
+        table.insert(consoleElements, memInfo)
+        
     else
         -- Versão minimizada do console
         local minimizedOutline = Drawing.new("Square")
@@ -558,7 +807,7 @@ function svl.ShowConsole()
         table.insert(consoleElements, minimizedMain)
         
         local minimizedTitle = Drawing.new("Text")
-        minimizedTitle.Text = "SevereLib Console"
+        minimizedTitle.Text = "SevereLib Console v" .. svl.Version
         minimizedTitle.Position = {svl.Location[1] + 305, svl.Location[2] + 2}
         minimizedTitle.Color = svl.FontColor
         minimizedTitle.Size = 13
@@ -596,7 +845,7 @@ function svl.ShowConsole()
     table.insert(consoleElements, toggleMain)
     
     local toggleText = Drawing.new("Text")
-    toggleText.Text = "_"
+    toggleText.Text = svl.Open and "_" or "+"
     toggleText.Position = {svl.Location[1] + svl.Size[1] - 20, svl.Location[2] + 1}
     toggleText.Color = svl.FontColor
     toggleText.Size = 13
@@ -606,33 +855,75 @@ function svl.ShowConsole()
     return consoleElements
 end
 
---// Funções de log
+--// Funções de log melhoradas
 function svl.print(...)
     local message = ""
-    for i, v in pairs({...}) do
-        message = message .. tostring(v) .. " "
+    local args = {...}
+    
+    for i, v in pairs(args) do
+        if type(v) == "table" then
+            -- Tentar formatar tabelas
+            local success, formatted = pcall(function()
+                local result = "{"
+                for k, val in pairs(v) do
+                    result = result .. tostring(k) .. "=" .. tostring(val) .. ", "
+                end
+                result = result .. "}"
+                return result
+            end)
+            
+            if success then
+                message = message .. formatted .. " "
+            else
+                message = message .. "table:" .. tostring(v) .. " "
+            end
+        else
+            message = message .. tostring(v) .. " "
+        end
     end
     
+    -- Limitar o tamanho da lista de logs
     if #svl.StoredLogs >= 45 then
         table.remove(svl.StoredLogs, 1)
     end
     
-    table.insert(svl.StoredLogs, message)
-    print(message) -- Também usar o print nativo
+    -- Formatação de data/hora
+    local timestamp = os.date("%H:%M:%S")
+    table.insert(svl.StoredLogs, "[" .. timestamp .. "] " .. message)
+    
+    -- Também usar o print nativo se disponível
+    if print then
+        print(message)
+    end
 end
 
 function svl.error(...)
     local message = ""
-    for i, v in pairs({...}) do
+    local args = {...}
+    
+    for i, v in pairs(args) do
         message = message .. tostring(v) .. " "
     end
     
+    -- Limitar o tamanho da lista de logs
     if #svl.StoredLogs >= 45 then
         table.remove(svl.StoredLogs, 1)
     end
     
-    table.insert(svl.StoredLogs, "ERROR_TAG" .. message)
-    warn(message) -- Usar o warn nativo
+    -- Formatação de data/hora para erros
+    local timestamp = os.date("%H:%M:%S")
+    table.insert(svl.StoredLogs, "ERROR_TAG[" .. timestamp .. "] " .. message)
+    
+    -- Também usar o warn nativo se disponível
+    if warn then
+        warn(message)
+    end
+end
+
+-- Função para limpar os logs
+function svl.ClearLogs()
+    svl.StoredLogs = {}
+    svl.print("Logs limpos.")
 end
 
 --// Funções utilitárias
@@ -670,14 +961,195 @@ function svl.GetLocalCharacter()
     return getcharacter(getlocalplayer())
 end
 
+--// Funções utilitárias adicionais
+function svl.JsonToTable(json)
+    assert(type(json) == "string", "[SVL Error] JsonToTable: First Argument needs to be a string!")
+    return loadstring("return "..json:gsub('("[^"]-"):','[%1]='))()
+end
+
+--// Função avançada para desenhar caixas 2D
+function svl.Box2d(pos_list, box_color, thickness) 
+    assert(type(pos_list) == "table" and #pos_list == 4, "[SVL Error] Box2d: First Argument needs to be a table with 4 values!")
+    assert(type(box_color) == "table" and #box_color == 3, "[SVL Error] Box2d: Second Argument needs to be a table with 3 RGB values!")
+
+    assert(type(pos_list[1]) == "table" and #pos_list[1] == 3, "[SVL Error] Box2d: First Argument needs to be a table with 4 x,y,z values!")
+    assert(type(pos_list[2]) == "table" and #pos_list[2] == 3, "[SVL Error] Box2d: First Argument needs to be a table with 4 x,y,z values!")
+    assert(type(pos_list[3]) == "table" and #pos_list[3] == 3, "[SVL Error] Box2d: First Argument needs to be a table with 4 x,y,z values!")
+    assert(type(pos_list[4]) == "table" and #pos_list[4] == 3, "[SVL Error] Box2d: First Argument needs to be a table with 4 x,y,z values!")
+
+    local TL = worldtoscreenpoint(pos_list[1])
+    local TR = worldtoscreenpoint(pos_list[2])
+    local BL = worldtoscreenpoint(pos_list[3])
+    local BR = worldtoscreenpoint(pos_list[4])
+    
+    if not TL or not TR or not BL or not BR then
+        return -- Se algum ponto não estiver visível na tela, não desenha a caixa
+    end
+
+    local lines = {}
+    local line_thickness = thickness or 1
+    
+    -- Criar as linhas da caixa 2D
+    table.insert(lines, createLine({TL.x, TL.y}, {TR.x, TR.y}, box_color, line_thickness)) -- Superior
+    table.insert(lines, createLine({BL.x, BL.y}, {BR.x, BR.y}, box_color, line_thickness)) -- Inferior
+    table.insert(lines, createLine({TR.x, TR.y}, {BR.x, BR.y}, box_color, line_thickness)) -- Direita
+    table.insert(lines, createLine({BL.x, BL.y}, {TL.x, TL.y}, box_color, line_thickness)) -- Esquerda
+    
+    return lines
+end
+
+--// Função melhorada para cache de loadstring
+function svl.loadstring(string)
+    assert(type(string) == "string", "[SVL Error] loadstring: First Argument needs to be a string!")
+
+    if svl.LoadstringCaching[string] == nil then
+        svl.LoadstringCaching[string] = svl.OldLoadstring(string)
+    end
+    
+    return svl.LoadstringCaching[string]
+end
+
+--// Função para obter o jogador mais próximo
+function svl.GetClosestPlayer()
+    local players = getchildren(findfirstchildofclass(Game, "Players"))
+    local closest_player = nil
+    local closest_distance = math.huge
+    
+    for _, player in ipairs(players) do
+        if player ~= getlocalplayer() then
+            local character = getcharacter(player)
+            if character then
+                local humanoidRootPart = findfirstchild(character, "HumanoidRootPart")
+                if humanoidRootPart then
+                    local distance = svl.GetDistanceFromPlayer(getposition(humanoidRootPart))
+                    if distance < closest_distance then
+                        closest_distance = distance
+                        closest_player = player
+                    end
+                end
+            end
+        end
+    end
+    
+    return closest_player, closest_distance
+end
+
+--// Função para desenhar uma linha traçadora até o alvo
+function svl.DrawTracer(target, color, thickness, start_position)
+    assert(type(target) == "table" and (target.x ~= nil or target[1] ~= nil), "[SVL Error] DrawTracer: First Argument needs to be a position vector!")
+    assert(type(color) == "table" and #color == 3, "[SVL Error] DrawTracer: Second Argument needs to be a color table!")
+    
+    -- Processar a posição do alvo
+    local target_position
+    if target.x then
+        target_position = {target.x, target.y}
+    else
+        target_position = {target[1], target[2]}
+    end
+    
+    -- Determinar a posição inicial
+    local line_start
+    if start_position then
+        if start_position.x then
+            line_start = {start_position.x, start_position.y}
+        else
+            line_start = {start_position[1], start_position[2]}
+        end
+    else
+        -- Padrão: parte inferior da tela
+        local screen = getscreendimensions()
+        line_start = {screen.x / 2, screen.y}
+    end
+    
+    local line_thickness = thickness or 1
+    
+    local line = Drawing.new("Line")
+    line.From = line_start
+    line.To = target_position
+    line.Color = color
+    line.Thickness = line_thickness
+    line.Visible = true
+    
+    return line
+end
+
+--// Função para verificar visibilidade
+function svl.IsVisible(from, to)
+    assert(type(from) == "table" and (from.x ~= nil or #from == 3), "[SVL Error] IsVisible: First Argument needs to be a position vector!")
+    assert(type(to) == "table" and (to.x ~= nil or #to == 3), "[SVL Error] IsVisible: Second Argument needs to be a position vector!")
+    
+    -- Processar posições
+    local start_pos, end_pos
+    
+    if from.x then
+        start_pos = {from.x, from.y, from.z}
+    else
+        start_pos = {from[1], from[2], from[3]}
+    end
+    
+    if to.x then
+        end_pos = {to.x, to.y, to.z}
+    else
+        end_pos = {to[1], to[2], to[3]}
+    end
+    
+    -- Implementar a lógica de raycast para verificar visibilidade
+    -- Isso é uma simplificação - em uma implementação real, você faria um raycast no jogo
+    local workspace = findfirstchildofclass(Game, "Workspace")
+    -- Aqui seria necessário usar a função raycast do Roblox, mas como não temos acesso direto
+    -- Retornamos true por padrão - em uma implementação real, isso seria o resultado do raycast
+    return true
+end
+
 -- Exportar a biblioteca
 _G.svl = svl
-print("SevereLib iniciada com sucesso!")
 
--- Atualização da cor do arco-íris (a ser chamada em um loop)
-spawn(function()
-    while true do
-        svl_updateRainbow()
-        wait(0.03)
+-- Substituir funções globais para usar as da biblioteca
+_G.loadstring = svl.loadstring
+
+-- Inicialização
+do
+    svl.print("SevereLib v" .. svl.Version .. " iniciada com sucesso!")
+    svl.print("Desenvolvida como uma extensão das bibliotecas DX9/Severe.")
+    
+    -- Atualizar cores de arco-íris em um loop de fundo
+    spawn(function()
+        while true do
+            svl_updateRainbow()
+            wait(0.03)
+        end
+    end)
+    
+    -- Limpar recursos não utilizados periodicamente
+    spawn(function()
+        while true do
+            wait(30) -- A cada 30 segundos
+            collectgarbage("collect")
+        end
+    end)
+end
+
+--[[
+    NOTAS DE USO:
+    
+    - Utilize svl.ShowConsole() para exibir o console de depuração
+    - As funções ESP (BoxESP, Box3d, etc.) retornam os elementos criados para que possam ser removidos posteriormente
+    - As funções de desenho são otimizadas para desempenho
+    
+    EXEMPLO COMPLETO:
+    
+    local player = getplayer("Username") -- Obtenha um jogador
+    local elements = svl.BoxESP({
+        Target = player,
+        Healthbar = true,
+        Nametag = true,
+        Distance = true,
+        BoxType = 2,
+        Color = svl.GetRainbowColor() -- Usar cor do arco-íris
+    })
+    
+    -- Para remover os elementos:
+    for _, element in ipairs(elements) do
+        element:Remove()
     end
-end)
+]]--
