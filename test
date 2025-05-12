@@ -4,7 +4,6 @@
     Foco em estabilidade e performance para sistemas ESP
 ]]
 
-local ImprovedBoxes = require(script.Parent.improved_box_functions)
 local SevereLib = {}
 
 -- Cache para evitar chamadas repetidas
