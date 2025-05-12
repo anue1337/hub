@@ -1,893 +1,555 @@
+-- SevereLib.lua
+-- A foundational library for Severe scripting, focusing on ESP and utility functions.
+
+local SevereLib = {}
+
 --[[
-    Severe Library - An optimized utility library for Severe
-    
-    Features:
-    - Optimized ESP functionality
-    - Game object utilities
-    - Mouse/input helpers
-    - Distance calculations
-    - Drawing utilities
+================================================================================
+UTILITY FUNCTIONS
+================================================================================
 ]]
 
--- Initialize library
-if not _G.svlib then
-    _G.svlib = {
-        -- Configuration
-        Config = {
-            ESP = {
-                Enabled = false,
-                BoxColor = {255, 255, 255},
-                HealthbarEnabled = true,
-                NametagEnabled = true,
-                DistanceEnabled = true,
-                TracerEnabled = false,
-                TracerOrigin = "Bottom", -- "Bottom", "Top", "Mouse"
-                BoxType = "Corners", -- "Corners", "2D", "3D"
-            },
-            Aimbot = {
-                Enabled = false,
-                Smoothness = 0.5,
-                FOV = 100,
-                TargetPart = "Head",
-            },
-            Colors = {
-                Primary = {255, 255, 255},
-                Secondary = {25, 25, 25},
-                Accent = {255, 0, 0},
-                Background = {15, 15, 15},
-                Warning = {255, 200, 0},
-                Error = {255, 50, 50},
-                Success = {0, 255, 50},
-            },
-            Performance = {
-                MaxESPDistance = 1000,
-                MaxDrawObjects = 200,
-                UpdateRate = 0.05, -- 20 FPS default
-                StableMode = true, -- Novo modo estável que evita criação/destruição excessiva de objetos
-                EnableAntiCrash = true,
-            },
-        },
-        
-        -- Cache for optimization
-        Cache = {
-            PlayerData = {},
-            DrawingObjects = {},
-            ESPObjects = {}, -- ESP objects organized by player name
-            UpdateInProgress = false,
-            ThreadActive = false,
-            LocalPlayer = nil,
-            Camera = nil,
-            ScreenSize = {x = 0, y = 0},
-            DebugMode = true, -- Ativar depuração por padrão
-        },
-        
-        -- Stats for debugging
-        Stats = {
-            FrameTime = 0,
-            ObjectsDrawn = 0,
-            LastUpdate = 0,
-            FPS = 0,
-        },
-    }
-end
-
--- Reference to the library
-local svlib = _G.svlib
-
--- Shorthand to Game
-local Game = Game
-
-----------------------------------
--- Utility Functions
-----------------------------------
-
--- Debug function
-function svlib.Debug(message)
-    if svlib.Cache.DebugMode then
-        print("[SEVERE LIB DEBUG] " .. message)
+-- Safe call utility to wrap pcalls for Severe functions
+function SevereLib.SafeCall(func, ...)
+    if not func or type(func) ~= "function" then
+        warn("[SevereLib Error] SafeCall: Invalid function provided.")
+        return nil, "Invalid function"
     end
-end
-
--- Get screen dimensions
-function svlib.UpdateScreenSize()
-    local dims = getscreendimensions()
-    svlib.Cache.ScreenSize = {x = dims.x, y = dims.y}
-    return svlib.Cache.ScreenSize
-end
-
--- Check if mouse is in an area
-function svlib.IsMouseInArea(x1, y1, x2, y2)
-    local mouse = getmouseposition()
-    return (mouse.x >= x1 and mouse.x <= x2 and mouse.y >= y1 and mouse.y <= y2)
-end
-
--- Get distance between two positions
-function svlib.GetDistance(pos1, pos2)
-    local x = pos1.x - pos2.x
-    local y = pos1.y - pos2.y
-    local z = pos1.z - pos2.z
-    return math.sqrt(x*x + y*y + z*z)
-end
-
--- Get distance from position to player
-function svlib.GetDistanceFromPlayer(pos)
-    local character = getcharacter(getlocalplayer())
-    if not character then return 0 end
-    
-    local rootPart = findfirstchild(character, "HumanoidRootPart")
-    if not rootPart then return 0 end
-    
-    local playerPos = getposition(rootPart)
-    return svlib.GetDistance(playerPos, pos)
-end
-
--- Get game service
-function svlib.GetService(serviceName)
-    return findservice(Game, serviceName)
-end
-
--- Navigate Game path easily
-function svlib.Game(...)
-    local current = Game
-    local args = {...}
-    
-    for _, path in ipairs(args) do
-        current = findfirstchild(current, path)
-        if not current then return nil end
+    local status, result = pcall(func, ...)
+    if not status then
+        warn("[SevereLib Error] SafeCall failed. Error:", tostring(result))
+        return nil, result
     end
-    
-    return current
+    return result
 end
 
-----------------------------------
--- Player Functions
-----------------------------------
-
--- Get local player
-function svlib.GetLocalPlayer()
-    if not svlib.Cache.LocalPlayer then
-        svlib.Cache.LocalPlayer = getlocalplayer()
+-- Get magnitude between two Vector3-like tables {x, y, z}
+function SevereLib.GetMagnitude(pos1, pos2)
+    if not pos1 or not pos2 or not pos1.x or not pos1.y or not pos1.z or not pos2.x or not pos2.y or not pos2.z then
+        warn("[SevereLib Error] GetMagnitude: Invalid position arguments.")
+        return math.huge -- Return a large number on error
     end
-    return svlib.Cache.LocalPlayer
+    local dx = pos1.x - pos2.x
+    local dy = pos1.y - pos2.y
+    local dz = pos1.z - pos2.z
+    return math.sqrt(dx*dx + dy*dy + dz*dz)
 end
 
--- Get all players
-function svlib.GetPlayers()
-    local players = svlib.GetService("Players")
-    return getchildren(players)
-end
-
--- Get humanoid health
-function svlib.GetHealth(humanoid)
-    local success, health = pcall(function() return gethealth(humanoid) end)
-    local successMax, maxHealth = pcall(function() return getmaxhealth(humanoid) end)
-    
-    if not success or not successMax then
-        return { Health = 100, MaxHealth = 100 }
+-- Check if mouse is in a rectangular area {x1, y1, x2, y2}
+function SevereLib.IsMouseInArea(area)
+    if not area or type(area) ~= "table" or #area ~= 4 then
+        warn("[SevereLib Error] IsMouseInArea: Area must be a table with 4 values {x1, y1, x2, y2}.")
+        return false
     end
-    
-    return {
-        Health = health,
-        MaxHealth = maxHealth
-    }
+    local mouse_pos = SevereLib.SafeCall(getmouseposition)
+    if not mouse_pos then
+        warn("[SevereLib Error] IsMouseInArea: Could not get mouse position.")
+        return false
+    end
+    return mouse_pos.x >= area[1] and mouse_pos.y >= area[2] and mouse_pos.x <= area[3] and mouse_pos.y <= area[4]
 end
 
-----------------------------------
--- Drawing Functions - Simplificado
-----------------------------------
 
--- Cria ou obtém um objeto de desenho
-function svlib.DrawingObject(drawingType, properties)
-    local obj = Drawing.new(drawingType)
-    
-    -- Aplicar propriedades
-    for prop, value in pairs(properties or {}) do
-        pcall(function() obj[prop] = value end)
+--[[
+================================================================================
+INSTANCE FUNCTIONS (Wrappers around Severe API)
+================================================================================
+]]
+
+function SevereLib.GetChildren(instance)
+    if not instance then return {} end
+    return SevereLib.SafeCall(getchildren, instance) or {}
+end
+
+function SevereLib.FindFirstChild(instance, name)
+    if not instance or not name then return nil end
+    return SevereLib.SafeCall(findfirstchild, instance, name)
+end
+
+function SevereLib.FindFirstChildOfClass(instance, className)
+    if not instance or not className then return nil end
+    return SevereLib.SafeCall(findfirstchildofclass, instance, className)
+end
+
+function SevereLib.GetPosition(instance)
+    if not instance then return nil end
+    return SevereLib.SafeCall(getposition, instance)
+end
+
+function SevereLib.GetName(instance)
+    if not instance then return "" end
+    return SevereLib.SafeCall(getname, instance) or ""
+end
+
+function SevereLib.GetClassName(instance)
+    if not instance then return "" end
+    return SevereLib.SafeCall(getclassname, instance) or ""
+end
+
+function SevereLib.GetParent(instance)
+    if not instance then return nil end
+    return SevereLib.SafeCall(getparent, instance)
+end
+
+function SevereLib.IsDescendantOf(instance, ancestor)
+    if not instance or not ancestor then return false end
+    -- Ensure workspace is valid if it's the ancestor, otherwise use standard IsDescendantOf
+    if ancestor == workspace and instance then -- workspace is a global from Severe context
+         local current = instance
+         while current do
+             if current == workspace then return true end
+             current = SevereLib.GetParent(current)
+         end
+         return false
     end
-    
-    -- Adicionar ao cache
-    table.insert(svlib.Cache.DrawingObjects, obj)
-    
+    return SevereLib.SafeCall(isdescendantof, instance, ancestor) or false
+end
+
+function SevereLib.GetDescendants(instance)
+    if not instance then return {} end
+    return SevereLib.SafeCall(getdescendants, instance) or {}
+end
+
+function SevereLib.GetDescendantsOfClass(instance, className)
+    if not instance or not className then return {} end
+    local descendants = SevereLib.GetDescendants(instance)
+    local result = {}
+    if type(descendants) == "table" then
+        for _, child in ipairs(descendants) do
+            if SevereLib.GetClassName(child) == className then
+                table.insert(result, child)
+            end
+        end
+    end
+    return result
+end
+
+function SevereLib.GetSize(instance)
+    if not instance then return nil end
+    return SevereLib.SafeCall(getsize, instance)
+end
+
+function SevereLib.WorldToScreenPoint(worldPosTable)
+    if not worldPosTable or type(worldPosTable) ~= "table" or #worldPosTable ~= 3 then
+        warn("[SevereLib Error] WorldToScreenPoint: worldPosTable must be a table {x, y, z}.")
+        return nil, false
+    end
+    return SevereLib.SafeCall(worldtoscreenpoint, worldPosTable)
+end
+
+
+--[[
+================================================================================
+PLAYER FUNCTIONS
+================================================================================
+]]
+
+function SevereLib.GetLocalPlayer()
+    return SevereLib.SafeCall(getlocalplayer)
+end
+
+function SevereLib.GetCharacter(playerInstance)
+    if not playerInstance then return nil end
+    return SevereLib.SafeCall(getcharacter, playerInstance)
+end
+
+function SevereLib.GetHealth(humanoidInstance)
+    if not humanoidInstance then return nil end
+    local health = SevereLib.SafeCall(gethealth, humanoidInstance)
+    return type(health) == "number" and health or nil
+end
+
+function SevereLib.GetMaxHealth(humanoidInstance)
+    if not humanoidInstance then return nil end
+    local maxHealth = SevereLib.SafeCall(getmaxhealth, humanoidInstance)
+    return type(maxHealth) == "number" and maxHealth or nil
+end
+
+--[[
+================================================================================
+DRAWING FUNCTIONS (Using Severe Drawing API)
+================================================================================
+]]
+
+function SevereLib.CreateDrawing(type, properties)
+    local obj = SevereLib.SafeCall(Drawing.new, type)
+    if not obj then
+        warn("[SevereLib Error] CreateDrawing: Failed to create drawing object of type", type)
+        return nil
+    end
+    if properties and type(properties) == "table" then
+        for k, v in pairs(properties) do
+            obj[k] = v
+        end
+    end
     return obj
 end
 
--- Limpar todos os objetos de desenho
-function svlib.ClearAllDrawings()
-    for _, obj in ipairs(svlib.Cache.DrawingObjects) do
-        pcall(function() 
-            if obj and obj.Remove then
-                obj:Remove()
+function SevereLib.CreateTextESP(text, position, size, color, font, center, outline, outlineColor)
+    return SevereLib.CreateDrawing("Text", {
+        Text = text or "", Position = position or {0, 0}, Size = size or 12,
+        Color = color or {255, 255, 255}, Font = font or 0,
+        Center = center == nil and true or center, Outline = outline == nil and true or outline,
+        OutlineColor = outlineColor or {0, 0, 0}, Visible = false
+    })
+end
+
+function SevereLib.CreateCircleESP(position, radius, color, filled, thickness, numSides)
+    return SevereLib.CreateDrawing("Circle", {
+        Position = position or {0, 0}, Radius = radius or 5, Color = color or {255, 255, 255},
+        Filled = filled == nil and false or filled, Thickness = thickness or 1,
+        NumSides = numSides or 12, Visible = false
+    })
+end
+
+function SevereLib.CreateBoxESP(position, size, color, filled, thickness) -- For Square objects
+    return SevereLib.CreateDrawing("Square", {
+        Position = position or {0,0}, Size = size or {10,10}, Color = color or {255,255,255},
+        Filled = filled == nil and false or filled, Thickness = thickness or 1, Visible = false
+    })
+end
+
+function SevereLib.CreateLineESP(fromPos, toPos, color, thickness)
+    return SevereLib.CreateDrawing("Line", {
+        From = fromPos or {0,0}, To = toPos or {0,0}, Color = color or {255,255,255},
+        Thickness = thickness or 1, Visible = false
+    })
+end
+
+function SevereLib.Draw2DBox(elements, topLeftScreen, widthScreen, heightScreen, color, boxType, visible)
+    if not elements or not topLeftScreen or not widthScreen or not heightScreen or not color then
+        warn("[SevereLib Error] Draw2DBox: Missing arguments.")
+        return
+    end
+
+    local topRightScreen = {topLeftScreen[1] + widthScreen, topLeftScreen[2]}
+    local bottomLeftScreen = {topLeftScreen[1], topLeftScreen[2] + heightScreen}
+    local bottomRightScreen = {topLeftScreen[1] + widthScreen, topLeftScreen[2] + heightScreen}
+
+    local lineNames = {"top", "bottom", "left", "right",
+                       "corner_tl1", "corner_tl2", "corner_tr1", "corner_tr2",
+                       "corner_bl1", "corner_bl2", "corner_br1", "corner_br2"}
+
+    for _, name in ipairs(lineNames) do
+        if not elements[name] then
+            elements[name] = SevereLib.CreateLineESP({0,0}, {0,0}, color, 1)
+            if not elements[name] then
+                warn("[SevereLib Error] Draw2DBox: Failed to create line element '" .. name .. "'.")
+                return
             end
-        end)
+        end
+        elements[name].Color = color
+        elements[name].Visible = false
     end
-    
-    svlib.Cache.DrawingObjects = {}
-    svlib.Cache.ESPObjects = {}
-    svlib.Debug("Todos os objetos de desenho foram limpos")
+
+    if not visible then return end
+
+    if boxType == 1 then -- Corners
+        local cornerLenW = widthScreen / 4
+        local cornerLenH = heightScreen / 4
+        elements.corner_tl1.From = topLeftScreen; elements.corner_tl1.To = {topLeftScreen[1] + cornerLenW, topLeftScreen[2]}; elements.corner_tl1.Visible = true;
+        elements.corner_tl2.From = topLeftScreen; elements.corner_tl2.To = {topLeftScreen[1], topLeftScreen[2] + cornerLenH}; elements.corner_tl2.Visible = true;
+        elements.corner_tr1.From = topRightScreen; elements.corner_tr1.To = {topRightScreen[1] - cornerLenW, topRightScreen[2]}; elements.corner_tr1.Visible = true;
+        elements.corner_tr2.From = topRightScreen; elements.corner_tr2.To = {topRightScreen[1], topRightScreen[2] + cornerLenH}; elements.corner_tr2.Visible = true;
+        elements.corner_bl1.From = bottomLeftScreen; elements.corner_bl1.To = {bottomLeftScreen[1] + cornerLenW, bottomLeftScreen[2]}; elements.corner_bl1.Visible = true;
+        elements.corner_bl2.From = bottomLeftScreen; elements.corner_bl2.To = {bottomLeftScreen[1], bottomLeftScreen[2] - cornerLenH}; elements.corner_bl2.Visible = true;
+        elements.corner_br1.From = bottomRightScreen; elements.corner_br1.To = {bottomRightScreen[1] - cornerLenW, bottomRightScreen[2]}; elements.corner_br1.Visible = true;
+        elements.corner_br2.From = bottomRightScreen; elements.corner_br2.To = {bottomRightScreen[1], bottomRightScreen[2] - cornerLenH}; elements.corner_br2.Visible = true;
+    elseif boxType == 2 then -- Full Box
+        elements.top.From = topLeftScreen; elements.top.To = topRightScreen; elements.top.Visible = true;
+        elements.bottom.From = bottomLeftScreen; elements.bottom.To = bottomRightScreen; elements.bottom.Visible = true;
+        elements.left.From = topLeftScreen; elements.left.To = bottomLeftScreen; elements.left.Visible = true;
+        elements.right.From = topRightScreen; elements.right.To = bottomRightScreen; elements.right.Visible = true;
+    end
 end
 
-----------------------------------
--- ESP Functions - Reimplementado
-----------------------------------
+function SevereLib.Draw3DBoxLines(elements, worldPos, worldSize, color, visible)
+    if not elements or not worldPos or not worldSize or not color then
+        warn("[SevereLib Error] Draw3DBoxLines: Missing arguments.")
+        return
+    end
 
--- Criar objeto ESP para um personagem
-function svlib.CreatePlayerESP(player)
-    if not player then return nil end
-    
-    -- Ignorar jogador local
-    local localPlayer = svlib.GetLocalPlayer()
-    if player == localPlayer then return nil end
-    
-    -- Verificar se já existe ESP para este jogador
-    local playerName = getname(player)
-    if svlib.Cache.ESPObjects[playerName] then
-        return svlib.Cache.ESPObjects[playerName]
-    end
-    
-    -- Obter personagem
-    local character = nil
-    pcall(function() character = getcharacter(player) end)
-    if not character then return nil end
-    
-    -- Verificar partes importantes
-    local humanoid = findfirstchildofclass(character, "Humanoid")
-    local rootPart = findfirstchild(character, "HumanoidRootPart")
-    local head = findfirstchild(character, "Head")
-    
-    if not humanoid or not rootPart or not head then
-        svlib.Debug("Partes importantes não encontradas para " .. playerName)
-        return nil
-    end
-    
-    -- Verificar distância
-    local characterPos = getposition(rootPart)
-    local distance = svlib.GetDistanceFromPlayer(characterPos)
-    
-    if distance > svlib.Config.Performance.MaxESPDistance then
-        return nil
-    end
-    
-    -- Obter posições na tela
-    local headPos = getposition(head)
-    local rootPos = getposition(rootPart)
-    
-    -- Converter para coordenadas de tela
-    local topScreenPos, topVisible = worldtoscreenpoint({headPos.x, headPos.y + 2, headPos.z})
-    local bottomScreenPos, bottomVisible = worldtoscreenpoint({rootPos.x, rootPos.y - 3, rootPos.z})
-    
-    if not topVisible or not bottomVisible then
-        return nil
-    end
-    
-    -- Criar objetos ESP
-    local espObjects = {
-        BoxLines = {},
-        Healthbar = nil,
-        NameText = nil,
-        DistanceText = nil,
-        TracerLine = nil,
-        Character = character,
-        LastUpdate = time()
+    local half = {x = worldSize.x / 2, y = worldSize.y / 2, z = worldSize.z / 2}
+    local cornersWorld = {
+        {worldPos.x - half.x, worldPos.y + half.y, worldPos.z - half.z}, {worldPos.x + half.x, worldPos.y + half.y, worldPos.z - half.z},
+        {worldPos.x + half.x, worldPos.y + half.y, worldPos.z + half.z}, {worldPos.x - half.x, worldPos.y + half.y, worldPos.z + half.z},
+        {worldPos.x - half.x, worldPos.y - half.y, worldPos.z - half.z}, {worldPos.x + half.x, worldPos.y - half.y, worldPos.z - half.z},
+        {worldPos.x + half.x, worldPos.y - half.y, worldPos.z + half.z}, {worldPos.x - half.x, worldPos.y - half.y, worldPos.z + half.z}
     }
-    
-    -- Dimensões da caixa
-    local height = math.max(10, bottomScreenPos.y - topScreenPos.y)
-    local width = height / 2
-    
-    -- Box
-    if svlib.Config.ESP.BoxType == "Corners" then
-        -- Top left corner
-        table.insert(espObjects.BoxLines, svlib.DrawingObject("Line", {
-            From = {topScreenPos.x - width/2, topScreenPos.y},
-            To = {topScreenPos.x - width/2 + width/4, topScreenPos.y},
-            Color = svlib.Config.ESP.BoxColor,
-            Thickness = 1,
-            Visible = true
-        }))
-        
-        table.insert(espObjects.BoxLines, svlib.DrawingObject("Line", {
-            From = {topScreenPos.x - width/2, topScreenPos.y},
-            To = {topScreenPos.x - width/2, topScreenPos.y + height/4},
-            Color = svlib.Config.ESP.BoxColor,
-            Thickness = 1,
-            Visible = true
-        }))
-        
-        -- Top right corner
-        table.insert(espObjects.BoxLines, svlib.DrawingObject("Line", {
-            From = {topScreenPos.x + width/2, topScreenPos.y},
-            To = {topScreenPos.x + width/2 - width/4, topScreenPos.y},
-            Color = svlib.Config.ESP.BoxColor,
-            Thickness = 1,
-            Visible = true
-        }))
-        
-        table.insert(espObjects.BoxLines, svlib.DrawingObject("Line", {
-            From = {topScreenPos.x + width/2, topScreenPos.y},
-            To = {topScreenPos.x + width/2, topScreenPos.y + height/4},
-            Color = svlib.Config.ESP.BoxColor,
-            Thickness = 1,
-            Visible = true
-        }))
-        
-        -- Bottom left corner
-        table.insert(espObjects.BoxLines, svlib.DrawingObject("Line", {
-            From = {bottomScreenPos.x - width/2, bottomScreenPos.y},
-            To = {bottomScreenPos.x - width/2 + width/4, bottomScreenPos.y},
-            Color = svlib.Config.ESP.BoxColor,
-            Thickness = 1,
-            Visible = true
-        }))
-        
-        table.insert(espObjects.BoxLines, svlib.DrawingObject("Line", {
-            From = {bottomScreenPos.x - width/2, bottomScreenPos.y},
-            To = {bottomScreenPos.x - width/2, bottomScreenPos.y - height/4},
-            Color = svlib.Config.ESP.BoxColor,
-            Thickness = 1,
-            Visible = true
-        }))
-        
-        -- Bottom right corner
-        table.insert(espObjects.BoxLines, svlib.DrawingObject("Line", {
-            From = {bottomScreenPos.x + width/2, bottomScreenPos.y},
-            To = {bottomScreenPos.x + width/2 - width/4, bottomScreenPos.y},
-            Color = svlib.Config.ESP.BoxColor,
-            Thickness = 1,
-            Visible = true
-        }))
-        
-        table.insert(espObjects.BoxLines, svlib.DrawingObject("Line", {
-            From = {bottomScreenPos.x + width/2, bottomScreenPos.y},
-            To = {bottomScreenPos.x + width/2, bottomScreenPos.y - height/4},
-            Color = svlib.Config.ESP.BoxColor,
-            Thickness = 1,
-            Visible = true
-        }))
-    elseif svlib.Config.ESP.BoxType == "2D" then
-        -- Box completa
-        espObjects.BoxLines = svlib.DrawingObject("Square", {
-            Position = {topScreenPos.x - width/2, topScreenPos.y},
-            Size = {width, height},
-            Color = svlib.Config.ESP.BoxColor,
-            Thickness = 1,
-            Filled = false,
-            Visible = true
-        })
+
+    local cornersScreen = {}
+    local allOnScreen = true
+    for i, cw in ipairs(cornersWorld) do
+        local csVec, onScreen = SevereLib.WorldToScreenPoint({cw[1], cw[2], cw[3]})
+        if not onScreen or not csVec then allOnScreen = false; break end
+        cornersScreen[i] = {csVec.x, csVec.y}
     end
-    
-    -- Healthbar
-    if svlib.Config.ESP.HealthbarEnabled then
-        local healthData = svlib.GetHealth(humanoid)
-        local healthRatio = math.min(1, healthData.Health / healthData.MaxHealth)
-        
-        -- Background
-        espObjects.HealthbarBG = svlib.DrawingObject("Square", {
-            Position = {topScreenPos.x - width/2 - 5, topScreenPos.y},
-            Size = {3, height},
-            Color = {0, 0, 0},
-            Filled = true,
-            Visible = true
-        })
-        
-        -- Fill
-        espObjects.Healthbar = svlib.DrawingObject("Square", {
-            Position = {topScreenPos.x - width/2 - 5, topScreenPos.y + height * (1 - healthRatio)},
-            Size = {3, height * healthRatio},
-            Color = {255 * (1 - healthRatio), 255 * healthRatio, 0},
-            Filled = true,
-            Visible = true
-        })
-    end
-    
-    -- Name
-    if svlib.Config.ESP.NametagEnabled then
-        espObjects.NameText = svlib.DrawingObject("Text", {
-            Text = playerName,
-            Position = {topScreenPos.x, topScreenPos.y - 20},
-            Color = svlib.Config.ESP.BoxColor,
-            Size = 13,
-            Center = true,
-            Outline = true,
-            OutlineColor = {0, 0, 0},
-            Visible = true
-        })
-    end
-    
-    -- Distance
-    if svlib.Config.ESP.DistanceEnabled then
-        espObjects.DistanceText = svlib.DrawingObject("Text", {
-            Text = tostring(math.floor(distance)),
-            Position = {bottomScreenPos.x, bottomScreenPos.y + 5},
-            Color = svlib.Config.ESP.BoxColor,
-            Size = 13,
-            Center = true,
-            Outline = true,
-            OutlineColor = {0, 0, 0},
-            Visible = true
-        })
-    end
-    
-    -- Tracer
-    if svlib.Config.ESP.TracerEnabled then
-        local tracerStart = {x = svlib.Cache.ScreenSize.x / 2, y = svlib.Cache.ScreenSize.y}
-        
-        if svlib.Config.ESP.TracerOrigin == "Top" then
-            tracerStart.y = 0
-        elseif svlib.Config.ESP.TracerOrigin == "Mouse" then
-            local mouse = getmouseposition()
-            tracerStart.x = mouse.x
-            tracerStart.y = mouse.y
+
+    for i = 1, 12 do -- Ensure all 12 line elements exist
+        if not elements["line" .. i] then
+            elements["line" .. i] = SevereLib.CreateLineESP({0,0}, {0,0}, color, 1)
+            if not elements["line" .. i] then return end
         end
-        
-        espObjects.TracerLine = svlib.DrawingObject("Line", {
-            From = {tracerStart.x, tracerStart.y},
-            To = {bottomScreenPos.x, bottomScreenPos.y},
-            Color = svlib.Config.ESP.BoxColor,
-            Thickness = 1,
-            Visible = true
-        })
+        elements["line" .. i].Color = color
+        elements["line" .. i].Visible = false
     end
-    
-    -- Armazenar objetos ESP por nome do jogador
-    svlib.Cache.ESPObjects[playerName] = espObjects
-    
-    return espObjects
+
+    if not visible or not allOnScreen then return end
+
+    local edges = {
+        {1,2},{2,3},{3,4},{4,1}, {5,6},{6,7},{7,8},{8,5}, {1,5},{2,6},{3,7},{4,8}
+    }
+    for i, edge in ipairs(edges) do
+        local line = elements["line"..i]
+        if line and cornersScreen[edge[1]] and cornersScreen[edge[2]] then
+            line.From = cornersScreen[edge[1]]
+            line.To = cornersScreen[edge[2]]
+            line.Visible = true
+        end
+    end
 end
 
--- Atualizar ESP para um jogador
-function svlib.UpdatePlayerESP(player)
-    if not player then return false end
-    
-    -- Ignorar jogador local
-    local localPlayer = svlib.GetLocalPlayer()
-    if player == localPlayer then return false end
-    
-    -- Verificar se existe ESP para este jogador
-    local playerName = getname(player)
-    local espObjects = svlib.Cache.ESPObjects[playerName]
-    
-    -- Se não existe, criar novo
-    if not espObjects then
-        svlib.CreatePlayerESP(player)
-        return true
+function SevereLib.DrawHealthBar(elements, screenPos, screenSize, currentHealth, maxHealth, visible)
+    if not elements or not screenPos or not screenSize or currentHealth == nil or maxHealth == nil then
+        warn("[SevereLib Error] DrawHealthBar: Missing arguments.")
+        return
+    end
+
+    if not elements.background then
+        elements.background = SevereLib.CreateBoxESP({0,0}, {0,0}, {20,20,20,150}, true, 1) -- Dark semi-transparent bg
+        if not elements.background then return end
+    end
+    if not elements.foreground then
+        elements.foreground = SevereLib.CreateBoxESP({0,0}, {0,0}, {0,255,0}, true, 1)
+        if not elements.foreground then return end
     end
     
-    -- Verificar se o personagem ainda é válido
-    local character = nil
-    pcall(function() character = getcharacter(player) end)
+    elements.background.Visible = false
+    elements.foreground.Visible = false
+
+    if not visible or currentHealth <= 0 or maxHealth <= 0 then return end
+
+    elements.background.Position = screenPos
+    elements.background.Size = screenSize
+    elements.background.Visible = true
+
+    local healthRatio = math.max(0, math.min(1, currentHealth / maxHealth))
     
-    if not character or character ~= espObjects.Character then
-        -- Personagem mudou ou não é mais válido, remover ESP antigo
-        svlib.RemovePlayerESP(playerName)
-        
-        -- Tentar criar novo se o personagem for válido
-        if character then
-            svlib.CreatePlayerESP(player)
-        end
-        
-        return true
-    end
+    -- Assuming a vertical health bar, filling from bottom to top
+    -- screenSize[1] is width, screenSize[2] is height
+    local fgHeight = screenSize[2] * healthRatio
+    local fgY = screenPos[2] + (screenSize[2] - fgHeight) -- Calculate Y for bottom-up fill
     
-    -- Verificar partes importantes
-    local humanoid = findfirstchildofclass(character, "Humanoid")
-    local rootPart = findfirstchild(character, "HumanoidRootPart")
-    local head = findfirstchild(character, "Head")
-    
-    if not humanoid or not rootPart or not head then
-        svlib.RemovePlayerESP(playerName)
-        return false
-    end
-    
-    -- Verificar distância
-    local characterPos = getposition(rootPart)
-    local distance = svlib.GetDistanceFromPlayer(characterPos)
-    
-    if distance > svlib.Config.Performance.MaxESPDistance then
-        -- Ocultar ESP ao invés de remover (para evitar piscadas)
-        svlib.SetPlayerESPVisible(playerName, false)
-        return true
-    else {
-        -- Mostrar ESP se estava oculto
-        svlib.SetPlayerESPVisible(playerName, true)
-    }
-    
-    -- Obter posições na tela
-    local headPos = getposition(head)
-    local rootPos = getposition(rootPart)
-    
-    -- Converter para coordenadas de tela
-    local topScreenPos, topVisible = worldtoscreenpoint({headPos.x, headPos.y + 2, headPos.z})
-    local bottomScreenPos, bottomVisible = worldtoscreenpoint({rootPos.x, rootPos.y - 3, rootPos.z})
-    
-    if not topVisible or not bottomVisible then
-        -- Ocultar ESP ao invés de remover (para evitar piscadas)
-        svlib.SetPlayerESPVisible(playerName, false)
-        return true
-    } else {
-        -- Mostrar ESP se estava oculto
-        svlib.SetPlayerESPVisible(playerName, true)
-    }
-    
-    -- Dimensões da caixa
-    local height = math.max(10, bottomScreenPos.y - topScreenPos.y)
-    local width = height / 2
-    
-    -- Atualizar linhas da caixa
-    if svlib.Config.ESP.BoxType == "Corners" then
-        if type(espObjects.BoxLines) == "table" and #espObjects.BoxLines >= 8 then
-            -- Top left corner
-            pcall(function()
-                espObjects.BoxLines[1].From = {topScreenPos.x - width/2, topScreenPos.y}
-                espObjects.BoxLines[1].To = {topScreenPos.x - width/2 + width/4, topScreenPos.y}
-                
-                espObjects.BoxLines[2].From = {topScreenPos.x - width/2, topScreenPos.y}
-                espObjects.BoxLines[2].To = {topScreenPos.x - width/2, topScreenPos.y + height/4}
-                
-                -- Top right corner
-                espObjects.BoxLines[3].From = {topScreenPos.x + width/2, topScreenPos.y}
-                espObjects.BoxLines[3].To = {topScreenPos.x + width/2 - width/4, topScreenPos.y}
-                
-                espObjects.BoxLines[4].From = {topScreenPos.x + width/2, topScreenPos.y}
-                espObjects.BoxLines[4].To = {topScreenPos.x + width/2, topScreenPos.y + height/4}
-                
-                -- Bottom left corner
-                espObjects.BoxLines[5].From = {bottomScreenPos.x - width/2, bottomScreenPos.y}
-                espObjects.BoxLines[5].To = {bottomScreenPos.x - width/2 + width/4, bottomScreenPos.y}
-                
-                espObjects.BoxLines[6].From = {bottomScreenPos.x - width/2, bottomScreenPos.y}
-                espObjects.BoxLines[6].To = {bottomScreenPos.x - width/2, bottomScreenPos.y - height/4}
-                
-                -- Bottom right corner
-                espObjects.BoxLines[7].From = {bottomScreenPos.x + width/2, bottomScreenPos.y}
-                espObjects.BoxLines[7].To = {bottomScreenPos.x + width/2 - width/4, bottomScreenPos.y}
-                
-                espObjects.BoxLines[8].From = {bottomScreenPos.x + width/2, bottomScreenPos.y}
-                espObjects.BoxLines[8].To = {bottomScreenPos.x + width/2, bottomScreenPos.y - height/4}
-            end)
-        end
-    elseif svlib.Config.ESP.BoxType == "2D" then
-        pcall(function()
-            espObjects.BoxLines.Position = {topScreenPos.x - width/2, topScreenPos.y}
-            espObjects.BoxLines.Size = {width, height}
-        end)
-    end
-    
-    -- Atualizar barra de vida
-    if svlib.Config.ESP.HealthbarEnabled and espObjects.Healthbar and espObjects.HealthbarBG then
-        local healthData = svlib.GetHealth(humanoid)
-        local healthRatio = math.min(1, healthData.Health / healthData.MaxHealth)
-        
-        pcall(function()
-            espObjects.HealthbarBG.Position = {topScreenPos.x - width/2 - 5, topScreenPos.y}
-            espObjects.HealthbarBG.Size = {3, height}
-            
-            espObjects.Healthbar.Position = {topScreenPos.x - width/2 - 5, topScreenPos.y + height * (1 - healthRatio)}
-            espObjects.Healthbar.Size = {3, height * healthRatio}
-            espObjects.Healthbar.Color = {255 * (1 - healthRatio), 255 * healthRatio, 0}
-        end)
-    end
-    
-    -- Atualizar nome
-    if svlib.Config.ESP.NametagEnabled and espObjects.NameText then
-        pcall(function()
-            espObjects.NameText.Position = {topScreenPos.x, topScreenPos.y - 20}
-        end)
-    end
-    
-    -- Atualizar distância
-    if svlib.Config.ESP.DistanceEnabled and espObjects.DistanceText then
-        pcall(function()
-            espObjects.DistanceText.Text = tostring(math.floor(distance))
-            espObjects.DistanceText.Position = {bottomScreenPos.x, bottomScreenPos.y + 5}
-        end)
-    end
-    
-    -- Atualizar traçador
-    if svlib.Config.ESP.TracerEnabled and espObjects.TracerLine then
-        local tracerStart = {x = svlib.Cache.ScreenSize.x / 2, y = svlib.Cache.ScreenSize.y}
-        
-        if svlib.Config.ESP.TracerOrigin == "Top" then
-            tracerStart.y = 0
-        elseif svlib.Config.ESP.TracerOrigin == "Mouse" then
-            local mouse = getmouseposition()
-            tracerStart.x = mouse.x
-            tracerStart.y = mouse.y
-        end
-        
-        pcall(function()
-            espObjects.TracerLine.From = {tracerStart.x, tracerStart.y}
-            espObjects.TracerLine.To = {bottomScreenPos.x, bottomScreenPos.y}
-        end)
-    end
-    
-    -- Atualizar timestamp
-    espObjects.LastUpdate = time()
-    
-    return true
+    elements.foreground.Position = {screenPos[1], fgY}
+    elements.foreground.Size = {screenSize[1], fgHeight}
+    elements.foreground.Color = {255 * (1 - healthRatio), 255 * healthRatio, 0}
+    elements.foreground.Visible = true
 end
 
--- Definir visibilidade do ESP de um jogador
-function svlib.SetPlayerESPVisible(playerName, visible)
-    local espObjects = svlib.Cache.ESPObjects[playerName]
-    if not espObjects then return end
+
+--[[
+================================================================================
+ESPObject STRUCTURE
+================================================================================
+]]
+
+SevereLib.ESPObject = {}
+SevereLib.ESPObject.__index = SevereLib.ESPObject
+
+-- Constructor for a new ESP object
+function SevereLib.ESPObject:New(target, espConfig)
+    local self = setmetatable({}, SevereLib.ESPObject)
+    self.target = target
+    self.config = espConfig or {}
+    self.elements = {} -- Stores drawing objects {textLabel, circleIndicator, boxLines={}, healthBar={}, tracerLine}
+    self.visible = false
+    self:CreateElements() -- Create drawing objects upon instantiation
+    return self
+end
+
+-- Create necessary drawing elements based on config
+function SevereLib.ESPObject:CreateElements()
+    local cfg = self.config
+    if cfg.drawText then
+        self.elements.textLabel = SevereLib.CreateTextESP("", {0,0}, cfg.textSize, cfg.textColor, cfg.font, cfg.textCenter, cfg.textOutline, cfg.textOutlineColor)
+    end
+    if cfg.drawBox then
+        self.elements.boxLines = {} -- For 2D box (corners or full)
+    end
+    if cfg.draw3DBox then
+        self.elements.box3DLines = {} -- For 3D box
+    end
+    if cfg.drawCircle then
+        self.elements.circleIndicator = SevereLib.CreateCircleESP({0,0}, cfg.circleRadius, cfg.circleColor, cfg.circleFilled, cfg.circleThickness, cfg.circleNumSides)
+    end
+    if cfg.drawHealthBar then
+        self.elements.healthBar = {} -- Will hold background and foreground Square objects
+    end
+    if cfg.drawTracer then
+        self.elements.tracerLine = SevereLib.CreateLineESP({0,0}, {0,0}, cfg.tracerColor, cfg.tracerThickness)
+    end
+end
+
+-- Update ESP elements' properties (position, text, color, visibility)
+-- workspaceRef should be the game's Workspace instance, passed from the main script
+function SevereLib.ESPObject:Update(cameraWorldPos, screenDimensions, workspaceRef)
+    if not self.target or not self.config.enabled then
+        self:SetVisible(false)
+        return
+    end
+
+    local rootPart = self.config.getRootPart and self.config.getRootPart(self.target) or self.target
+    -- Pass workspaceRef to IsDescendantOf
+    if not rootPart or not SevereLib.IsDescendantOf(rootPart, workspaceRef) then
+        self:SetVisible(false)
+        return
+    end
+
+    local targetWorldPos = SevereLib.GetPosition(rootPart)
+    if not targetWorldPos then
+        self:SetVisible(false)
+        return
+    end
+
+    local distance = SevereLib.GetMagnitude(targetWorldPos, cameraWorldPos)
+    if distance > (self.config.maxDistance or 300) then
+        self:SetVisible(false)
+        return
+    end
+
+    local targetScreenVec, onScreen = SevereLib.WorldToScreenPoint({targetWorldPos.x, targetWorldPos.y, targetWorldPos.z})
+    if not onScreen or not targetScreenVec then
+        self:SetVisible(false)
+        return
+    end
     
-    -- Atualizar visibilidade de todos os componentes
-    local function updateVisibility(obj)
-        if obj and type(obj) == "table" then
-            if obj.Visible ~= nil then
-                pcall(function() obj.Visible = visible end)
+    local targetScreenPos = {targetScreenVec.x, targetScreenVec.y}
+    self:SetVisible(true) -- Target is valid and on screen
+
+    -- Update Text
+    if self.elements.textLabel and self.config.drawText then
+        local name = self.config.getName and self.config.getName(self.target) or SevereLib.GetName(self.target) or "Object"
+        local text = self.config.showDistance and (name .. " [" .. math.floor(distance) .. "m]") or name
+        self.elements.textLabel.Text = text
+        self.elements.textLabel.Position = {targetScreenPos[1], targetScreenPos[2] - (self.config.textOffsetY or 20)}
+        self.elements.textLabel.Color = self.config.textColor or {255,255,255}
+    end
+
+    -- Update Circle
+    if self.elements.circleIndicator and self.config.drawCircle then
+        self.elements.circleIndicator.Position = targetScreenPos
+        self.elements.circleIndicator.Color = self.config.circleColor or self.config.textColor or {255,255,255}
+    end
+    
+    -- Update 2D Box (corners or full)
+    if self.elements.boxLines and self.config.drawBox then
+        -- Default size if not provided by config.getSize
+        local defaultSize = {x = 2, y = (self.target.Humanoid and 5 or 2) , z = 2} -- Smaller default for non-humanoids
+        local targetSize = (self.config.getSize and self.config.getSize(rootPart)) or defaultSize
+        
+        local headOffset = self.config.headOffset or {y = targetSize.y / 2}
+        local feetOffset = self.config.feetOffset or {y = -targetSize.y / 2}
+        
+        local headWorld = {targetWorldPos.x + (headOffset.x or 0), targetWorldPos.y + headOffset.y, targetWorldPos.z + (headOffset.z or 0)}
+        local feetWorld = {targetWorldPos.x + (feetOffset.x or 0), targetWorldPos.y + feetOffset.y, targetWorldPos.z + (feetOffset.z or 0)}
+
+        local headScreenVec, headOnScreen = SevereLib.WorldToScreenPoint(headWorld)
+        local feetScreenVec, feetOnScreen = SevereLib.WorldToScreenPoint(feetWorld)
+
+        if headOnScreen and feetOnScreen and headScreenVec and feetScreenVec then
+            local boxH = math.abs(headScreenVec.y - feetScreenVec.y)
+            local boxW = boxH / (self.config.boxAspectRatio or 2)
+            local boxTopLeft = {headScreenVec.x - boxW / 2, math.min(headScreenVec.y, feetScreenVec.y)}
+            SevereLib.Draw2DBox(self.elements.boxLines, boxTopLeft, boxW, boxH, self.config.boxColor or self.config.textColor, self.config.boxType or 1, true)
+        else
+            SevereLib.Draw2DBox(self.elements.boxLines, {0,0}, 0,0, {0,0,0}, 1, false) -- Hide
+        end
+    end
+
+    -- Update 3D Box
+    if self.elements.box3DLines and self.config.draw3DBox then
+        local modelSize = (self.config.getSize and self.config.getSize(rootPart)) or {x=2, y=2, z=2} 
+        SevereLib.Draw3DBoxLines(self.elements.box3DLines, targetWorldPos, modelSize, self.config.box3DColor or self.config.textColor, true)
+    end
+
+    -- Update HealthBar
+    if self.elements.healthBar and self.config.drawHealthBar then
+        local humanoid = self.config.getHumanoid and self.config.getHumanoid(self.target)
+        if humanoid then
+            local currentHealth = SevereLib.GetHealth(humanoid)
+            local maxHealth = SevereLib.GetMaxHealth(humanoid)
+            if currentHealth and maxHealth and maxHealth > 0 then
+                local hbPos, hbSize
+                if self.elements.boxLines and headScreenVec and feetScreenVec then -- If 2D box is drawn
+                    local boxH = math.abs(headScreenVec.y - feetScreenVec.y)
+                    local boxActualTopY = math.min(headScreenVec.y, feetScreenVec.y)
+                    local boxActualBottomY = math.max(headScreenVec.y, feetScreenVec.y)
+                    local boxW = boxH / (self.config.boxAspectRatio or 2)
+                    local boxActualLeftX = headScreenVec.x - boxW / 2
+                    
+                    hbSize = {self.config.healthBarWidth or 5, boxH} -- Vertical bar
+                    hbPos = {boxActualLeftX - (self.config.healthBarOffsetX or 7), boxActualTopY}
+                else -- Default position if no 2D box (e.g., above text)
+                    hbSize = {self.config.healthBarWidth or 50, self.config.healthBarHeight or 5} -- Horizontal bar
+                    hbPos = {targetScreenPos[1] - hbSize[1]/2, targetScreenPos[2] - (self.config.textOffsetY or 20) - hbSize[2] - 2}
+                end
+                SevereLib.DrawHealthBar(self.elements.healthBar, hbPos, hbSize, currentHealth, maxHealth, true)
             else
-                for _, subObj in pairs(obj) do
-                    if subObj and subObj.Visible ~= nil then
-                        pcall(function() subObj.Visible = visible end)
+                SevereLib.DrawHealthBar(self.elements.healthBar, {0,0},{0,0},0,0,false)
+            end
+        else
+             SevereLib.DrawHealthBar(self.elements.healthBar, {0,0},{0,0},0,0,false)
+        end
+    end
+    
+    -- Update Tracer
+    if self.elements.tracerLine and self.config.drawTracer then
+        local tracerOrigin = self.config.tracerOriginScreenPos or {x = screenDimensions.x / 2, y = screenDimensions.y}
+        self.elements.tracerLine.From = {tracerOrigin.x, tracerOrigin.y}
+        self.elements.tracerLine.To = targetScreenPos
+        self.elements.tracerLine.Color = self.config.tracerColor or self.config.textColor or {255,255,255}
+    end
+end
+
+-- Set visibility of all drawing elements for this ESP object
+function SevereLib.ESPObject:SetVisible(isVisible)
+    if self.visible == isVisible then return end
+    self.visible = isVisible
+
+    for _, elementOrTable in pairs(self.elements) do
+        if type(elementOrTable) == "table" then
+            if elementOrTable.Remove then -- Single drawing object
+                SevereLib.SafeCall(function() elementOrTable.Visible = isVisible end)
+            else -- Table of drawing objects (e.g., boxLines, healthBar)
+                for _, actualElement in pairs(elementOrTable) do
+                    if actualElement and actualElement.Remove then
+                         SevereLib.SafeCall(function() actualElement.Visible = isVisible end)
                     end
                 end
             end
         end
     end
-    
-    updateVisibility(espObjects.BoxLines)
-    updateVisibility(espObjects.Healthbar)
-    updateVisibility(espObjects.HealthbarBG)
-    updateVisibility(espObjects.NameText)
-    updateVisibility(espObjects.DistanceText)
-    updateVisibility(espObjects.TracerLine)
 end
 
--- Remover ESP de um jogador
-function svlib.RemovePlayerESP(playerName)
-    local espObjects = svlib.Cache.ESPObjects[playerName]
-    if not espObjects then return end
-    
-    -- Remover todos os objetos de desenho
-    local function removeObject(obj)
-        if obj and type(obj) == "table" then
-            if obj.Remove then
-                pcall(function() obj:Remove() end)
-                
-                -- Remover da lista de objetos
-                for i, drawObj in ipairs(svlib.Cache.DrawingObjects) do
-                    if drawObj == obj then
-                        table.remove(svlib.Cache.DrawingObjects, i)
-                        break
-                    end
-                end
-            else
-                for _, subObj in pairs(obj) do
-                    if subObj and subObj.Remove then
-                        pcall(function() subObj:Remove() end)
-                        
-                        -- Remover da lista de objetos
-                        for i, drawObj in ipairs(svlib.Cache.DrawingObjects) do
-                            if drawObj == subObj then
-                                table.remove(svlib.Cache.DrawingObjects, i)
-                                break
-                            end
-                        end
+-- Destroy and remove all drawing elements
+function SevereLib.ESPObject:Destroy()
+    self:SetVisible(false) -- Hide elements before removing
+    for elementName, elementOrTable in pairs(self.elements) do
+        if type(elementOrTable) == "table" then
+            if elementOrTable.Remove then -- Single drawing object
+                 SevereLib.SafeCall(function() elementOrTable:Remove() end)
+            else -- Table of drawing objects
+                for _, actualElement in pairs(elementOrTable) do
+                    if actualElement and actualElement.Remove then
+                        SevereLib.SafeCall(function() actualElement:Remove() end)
                     end
                 end
             end
         end
+        self.elements[elementName] = nil
     end
-    
-    removeObject(espObjects.BoxLines)
-    removeObject(espObjects.Healthbar)
-    removeObject(espObjects.HealthbarBG)
-    removeObject(espObjects.NameText)
-    removeObject(espObjects.DistanceText)
-    removeObject(espObjects.TracerLine)
-    
-    -- Remover da lista de ESPs
-    svlib.Cache.ESPObjects[playerName] = nil
+    self.target = nil -- Clear reference to target
+    self.config = nil
 end
 
--- Atualizar todos os ESPs
-function svlib.UpdateAllESPs()
-    if svlib.Cache.UpdateInProgress then return end
-    svlib.Cache.UpdateInProgress = true
-    
-    local localPlayer = svlib.GetLocalPlayer()
-    if not localPlayer then 
-        svlib.Cache.UpdateInProgress = false
-        return 
-    end
-    
-    -- Atualizar dimensões da tela
-    svlib.UpdateScreenSize()
-    
-    -- Obter todos os jogadores
-    local players = svlib.GetPlayers()
-    local playerNames = {}
-    
-    -- Processar cada jogador
-    for _, player in ipairs(players) do
-        if player ~= localPlayer then
-            local playerName = nil
-            pcall(function() playerName = getname(player) end)
-            
-            if playerName then
-                -- Salvar nome para verificação posterior
-                table.insert(playerNames, playerName)
-                
-                -- Atualizar ESP para este jogador
-                svlib.UpdatePlayerESP(player)
-            end
-        end
-    end
-    
-    -- Verificar jogadores que foram removidos do jogo
-    for playerName in pairs(svlib.Cache.ESPObjects) do
-        local found = false
-        for _, name in ipairs(playerNames) do
-            if name == playerName then
-                found = true
-                break
-            end
-        end
-        
-        if not found then
-            svlib.RemovePlayerESP(playerName)
-        end
-    end
-    
-    -- Atualizar estatísticas
-    svlib.Stats.ObjectsDrawn = #svlib.Cache.DrawingObjects
-    svlib.Stats.FrameTime = time() - svlib.Stats.LastUpdate
-    svlib.Stats.LastUpdate = time()
-    svlib.Stats.FPS = svlib.Stats.FrameTime > 0 and math.floor(1 / svlib.Stats.FrameTime) or 0
-    
-    svlib.Cache.UpdateInProgress = false
-end
-
-----------------------------------
--- Aimbot Functions
-----------------------------------
-
--- Get closest visible player
-function svlib.GetClosestVisiblePlayer()
-    local localPlayer = svlib.GetLocalPlayer()
-    local localCharacter = getcharacter(localPlayer)
-    if not localCharacter then return nil end
-    
-    local localHead = findfirstchild(localCharacter, "Head")
-    if not localHead then return nil end
-    
-    local localHeadPos = getposition(localHead)
-    local closestDistance = math.huge
-    local targetPlayer = nil
-    local targetPart = nil
-    
-    for _, player in ipairs(svlib.GetPlayers()) do
-        if player ~= localPlayer then
-            local character = getcharacter(player)
-            if character then
-                local humanoid = findfirstchildofclass(character, "Humanoid")
-                if humanoid and gethealth(humanoid) > 0 then
-                    local part = findfirstchild(character, svlib.Config.Aimbot.TargetPart)
-                    if part then
-                        local partPos = getposition(part)
-                        local distance = svlib.GetDistance(localHeadPos, partPos)
-                        
-                        if distance < closestDistance and distance <= svlib.Config.Aimbot.FOV then
-                            -- Check if target is visible
-                            local screenPos, visible = worldtoscreenpoint({partPos.x, partPos.y, partPos.z})
-                            if visible then
-                                closestDistance = distance
-                                targetPlayer = player
-                                targetPart = part
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    return targetPlayer, targetPart
-end
-
--- Aim at target
-function svlib.AimAtTarget(targetPart)
-    if not targetPart then return end
-    
-    local targetPos = getposition(targetPart)
-    local screenPos, visible = worldtoscreenpoint({targetPos.x, targetPos.y, targetPos.z})
-    
-    if visible then
-        local mousePos = getmouseposition()
-        local aimPos = {screenPos.x, screenPos.y}
-        
-        -- Apply smooth aim
-        local result = smoothmouse_linear({mousePos.x, mousePos.y}, aimPos, 1, svlib.Config.Aimbot.Smoothness)
-        mousemoverel(result.x, result.y)
-    end
-end
-
--- Aimbot update function
-function svlib.UpdateAimbot()
-    if not svlib.Config.Aimbot.Enabled then return end
-    
-    local _, targetPart = svlib.GetClosestVisiblePlayer()
-    if targetPart then
-        svlib.AimAtTarget(targetPart)
-    end
-end
-
-----------------------------------
--- Core Functions - Simplificado
-----------------------------------
-
--- Run main loop
-function svlib.RunMainLoop()
-    -- Parar loop anterior se existir
-    svlib.StopMainLoop()
-    wait(0.1) -- Pequena pausa para garantir que thread anterior parou
-    
-    print("Iniciando loop principal")
-    svlib.Cache.ThreadActive = true
-    
-    -- Thread principal - usar pcall para evitar quebras
-    spawn(function()
-        while svlib.Cache.ThreadActive do
-            pcall(function()
-                if svlib.Config.ESP.Enabled then
-                    svlib.UpdateAllESPs()
-                end
-                
-                if svlib.Config.Aimbot.Enabled then
-                    svlib.UpdateAimbot()
-                end
-            end)
-            
-            -- Use taxa de atualização estável
-            wait(svlib.Config.Performance.UpdateRate)
-        end
-    end)
-    
-    -- Thread de monitoramento para garantir que ESP continue funcionando
-    spawn(function()
-        while svlib.Cache.ThreadActive do
-            wait(3) -- Verificar a cada 3 segundos
-            
-            -- Se o ESP está habilitado mas não há objetos desenhados, tentar reiniciar
-            if svlib.Config.ESP.Enabled and svlib.Stats.ObjectsDrawn == 0 then
-                print("ESP parece estar sem objetos! Tentando reiniciar...")
-                
-                -- Forçar recriação dos objetos ESP
-                svlib.ClearAllDrawings()
-                
-                -- Garantir que ESP esteja habilitado
-                svlib.Config.ESP.Enabled = true
-            end
-        end
-    end)
-end
-
--- Stop main loop
-function svlib.StopMainLoop()
-    print("Parando loop principal...")
-    svlib.Cache.ThreadActive = false
-end
-
--- Initialize the library
-function svlib.Init()
-    print("Inicializando Severe Library")
-    
-    -- Reset de configurações para garantir funcionamento
-    svlib.Config.Performance.UpdateRate = 0.05
-    svlib.Config.Performance.EnableAntiCrash = true
-    
-    -- Limpar desenhos existentes
-    svlib.ClearAllDrawings()
-    
-    -- Atualizar tamanho da tela
-    svlib.UpdateScreenSize()
-    
-    -- Iniciar loop principal
-    svlib.RunMainLoop()
-    
-    return svlib
-end
-
--- Return the library
-return svlib 
+return SevereLib 
