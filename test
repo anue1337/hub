@@ -69,6 +69,11 @@ if _G.svl == nil then
         
         --// Biblioteca da versão
         Version = "2.0",
+        
+        --// Funções de segurança
+        SafeConcat = function(str1, str2)
+            return tostring(str1 or "") .. tostring(str2 or "")
+        end
     };
 end
 
@@ -659,7 +664,9 @@ end
 --// Função para console
 function svl.ShowConsole()
     local mouse = getmouseposition()
-    local console_title = "SevereLib Console v" .. svl.Version .. " | Mouse: " .. mouse.x .. ", " .. mouse.y
+    -- Garantir que Version nunca seja nil
+    local version_str = tostring(svl.Version or "2.0")
+    local console_title = "SevereLib Console v" .. version_str .. " | Mouse: " .. mouse.x .. ", " .. mouse.y
     
     -- Verificar interação com botão de toggle
     if svl.isMouseInArea({svl.Location[1] + svl.Size[1] - 27, svl.Location[2] + 3, svl.Location[1] + svl.Size[1] - 5, svl.Location[2] + 19}) then
@@ -807,7 +814,7 @@ function svl.ShowConsole()
         table.insert(consoleElements, minimizedMain)
         
         local minimizedTitle = Drawing.new("Text")
-        minimizedTitle.Text = "SevereLib Console v" .. svl.Version
+        minimizedTitle.Text = svl.MinimizedTitle()
         minimizedTitle.Position = {svl.Location[1] + 305, svl.Location[2] + 2}
         minimizedTitle.Color = svl.FontColor
         minimizedTitle.Size = 13
@@ -887,8 +894,12 @@ function svl.print(...)
         table.remove(svl.StoredLogs, 1)
     end
     
-    -- Formatação de data/hora
-    local timestamp = os.date("%H:%M:%S")
+    -- Formatação de data/hora protegida contra erros
+    local timestamp = ""
+    pcall(function()
+        timestamp = os.date("%H:%M:%S") or ""
+    end)
+    
     table.insert(svl.StoredLogs, "[" .. timestamp .. "] " .. message)
     
     -- Também usar o print nativo se disponível
@@ -910,14 +921,32 @@ function svl.error(...)
         table.remove(svl.StoredLogs, 1)
     end
     
-    -- Formatação de data/hora para erros
-    local timestamp = os.date("%H:%M:%S")
+    -- Formatação de data/hora protegida contra erros
+    local timestamp = ""
+    pcall(function()
+        timestamp = os.date("%H:%M:%S") or ""
+    end)
+    
     table.insert(svl.StoredLogs, "ERROR_TAG[" .. timestamp .. "] " .. message)
     
     -- Também usar o warn nativo se disponível
     if warn then
         warn(message)
     end
+end
+
+-- Função para verificar se um valor é nil (útil para depuração)
+function svl.IsNil(value, default)
+    if value == nil then
+        return default or "nil"
+    end
+    return value
+end
+
+-- Função para tabela minimizada com tamanho fixo
+function svl.MinimizedTitle()
+    local version_str = tostring(svl.Version or "2.0")
+    return "SevereLib Console v" .. version_str
 end
 
 -- Função para limpar os logs
@@ -1109,7 +1138,12 @@ _G.loadstring = svl.loadstring
 
 -- Inicialização
 do
-    svl.print("SevereLib v" .. svl.Version .. " iniciada com sucesso!")
+    -- Garantir que Version nunca seja nil
+    svl.Version = svl.Version or "2.0"
+    
+    -- Usar valores seguros em concatenações
+    local version_str = tostring(svl.Version)
+    svl.print("SevereLib v" .. version_str .. " iniciada com sucesso!")
     svl.print("Desenvolvida como uma extensão das bibliotecas DX9/Severe.")
     
     -- Atualizar cores de arco-íris em um loop de fundo
@@ -1153,3 +1187,12 @@ end
         element:Remove()
     end
 ]]--
+
+--// Função de concatenação segura
+function svl.SafeConcat(...)
+    local result = ""
+    for i, v in ipairs({...}) do
+        result = result .. tostring(v or "")
+    end
+    return result
+end
