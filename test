@@ -1,5 +1,5 @@
---// SevereLib - Performance-optimized utility library
---// Main focus: ESP functionality, stability and performance
+--// SevereLib - Enhanced Performance-optimized utility library
+--// Main focus: ESP functionality with improved visuals and performance
 
 local SevereLib = {
     -- Cache for frequently used values
@@ -9,8 +9,14 @@ local SevereLib = {
         Workspace = nil,
         LocalPlayer = nil,
         Camera = nil,
-        Mouse = nil
+        Mouse = nil,
+        Time = 0,
+        FrameRate = 0,
+        LastTick = 0,
+        Players = {},
+        TeamColors = {}
     },
+    
     -- ESP Settings
     ESP = {
         Enabled = true,
@@ -20,36 +26,354 @@ local SevereLib = {
         ShowDistance = true,
         ShowHealth = true,
         ShowName = true,
-        BoxType = 1, -- 1 = Corners, 2 = 2D Box, 3 = 3D Box
+        BoxType = 1, -- 1 = Corners, 2 = 2D Box, 3 = 3D Box, 4 = Skeleton
         BoxThickness = 1,
-        BoxColors = {
+        
+        -- Customization options
+        TraceMode = 1, -- 1 = Bottom screen, 2 = Mouse, 3 = Top screen
+        HealthBarMode = 1, -- 1 = Side, 2 = Bottom, 3 = Head
+        
+        -- Extra options
+        ShowTeam = true,
+        ShowChams = false,
+        ShowBoundingBox = false,
+        ShowGroundCircle = false,
+        GroundCircleRadius = 5,
+        GroundCircleSegments = 16,
+        
+        -- Healthbar settings
+        HealthBar = {
+            Enabled = true,
+            Width = 3,
+            Outline = true,
+            GradientColors = true, -- Red to green
+            VerticalOffset = 0
+        },
+        
+        -- Filter settings
+        Filter = {
+            Team = true,
+            Friends = false,
+            NPCs = true
+        },
+        
+        -- Colors
+        Colors = {
             Default = {255, 255, 255},
             Team = {0, 255, 0},
             Enemy = {255, 0, 0},
-            Neutral = {255, 255, 0}
+            Neutral = {255, 255, 0},
+            Friend = {0, 150, 255},
+            NPC = {255, 150, 0},
+            Items = {0, 255, 255},
+            Highlighted = {255, 0, 255},
+            HealthLow = {255, 0, 0},
+            HealthMid = {255, 255, 0},
+            HealthHigh = {0, 255, 0},
+            Chams = {255, 0, 255, 50}, -- RGBA with alpha
+            Tracer = {255, 255, 255},
+            Names = {255, 255, 255},
+            Distance = {200, 200, 200},
+            Outline = {0, 0, 0}
         },
-        TracerEnabled = false,
-        TracerOrigin = 1, -- 1 = Bottom Center, 2 = Mouse Position
-        TracerThickness = 1
+        
+        -- Tracers
+        Tracers = {
+            Enabled = false,
+            Origin = {centered = true, offset_x = 0, offset_y = 0},
+            Thickness = 1,
+            AlphaByDistance = true
+        }
     },
-    -- Drawing cache to avoid recreating objects
-    Drawings = {},
+    
+    -- Performance settings
+    Performance = {
+        UpdateInterval = 0.01, -- ESP update interval
+        CleanupInterval = 5,
+        MaxActiveESP = 100,
+        CullDistance = 1000,
+        ScreenCheckFrequency = 2, -- How often to check screen dimensions in seconds
+        ObjectCheckFrequency = 0.5, -- How often to process new objects
+        LOD = 2, -- Level of detail (1-3, 3 = highest)
+        EnableObjectPooling = true,
+        AggressiveLOD = true, -- Reduce detail automatically for better performance
+        OnScreenOnly = false -- Only render ESP for on-screen elements
+    },
+    
+    -- Drawing objects pool
+    Pool = {
+        Available = {
+            Text = {},
+            Line = {},
+            Square = {},
+            Circle = {},
+            Triangle = {},
+            Quad = {},
+            Image = {}
+        },
+        InUse = {
+            Text = {},
+            Line = {},
+            Square = {},
+            Circle = {},
+            Triangle = {},
+            Quad = {},
+            Image = {}
+        },
+        Stats = {
+            Created = 0,
+            Recycled = 0,
+            Active = 0
+        }
+    },
+    
     -- Active ESP objects
-    ActiveESP = {}
+    ActiveESP = {},
+    
+    -- Event handlers
+    Events = {},
+    
+    -- Flags
+    Flags = {
+        Initialized = false,
+        Unloading = false,
+        PendingCleanup = false,
+        RefreshTeamData = true
+    },
+    
+    -- Debug
+    Debug = {
+        Enabled = false,
+        ShowStats = false,
+        LastError = "",
+        Stats = {
+            FPS = 0,
+            Objects = 0,
+            OnScreen = 0,
+            DrawCalls = 0
+        }
+    }
 }
+
+-- Create a simple event system
+function SevereLib:CreateEvent()
+    local event = {
+        Listeners = {}
+    }
+    
+    function event:Connect(callback)
+        if type(callback) ~= "function" then return end
+        table.insert(self.Listeners, callback)
+        
+        -- Return a handle to disconnect
+        return {
+            Disconnect = function()
+                for i, cb in pairs(self.Listeners) do
+                    if cb == callback then
+                        table.remove(self.Listeners, i)
+                        break
+                    end
+                end
+            end
+        }
+    end
+    
+    function event:Fire(...)
+        for _, callback in ipairs(self.Listeners) do
+            pcall(callback, ...)
+        end
+    end
+    
+    return event
+end
+
+-- Initialize events
+SevereLib.Events.OnRender = SevereLib:CreateEvent()
+SevereLib.Events.OnPlayerAdded = SevereLib:CreateEvent()
+SevereLib.Events.OnPlayerRemoved = SevereLib:CreateEvent()
+SevereLib.Events.OnToggle = SevereLib:CreateEvent()
 
 -- Initialize cache
 function SevereLib:Init()
+    if self.Flags.Initialized then
+        return self
+    end
+    
+    -- Cache screen size
     self.Cache.Screen.x, self.Cache.Screen.y = getscreendimensions()
+    
+    -- Cache game objects
     self.Cache.Workspace = findfirstchildofclass(Game, "Workspace")
     self.Cache.LocalPlayer = getlocalplayer()
-    self.Cache.Camera = findfirstchild(self.Cache.Workspace, "Camera")
+    
+    -- Try to find camera in workspace first, fallback to workspace itself
+    local camera = findfirstchild(self.Cache.Workspace, "Camera")
+    if camera then
+        self.Cache.Camera = camera
+    else
+        -- Fallback - use workspace as camera reference point
+        self.Cache.Camera = self.Cache.Workspace
+    end
+    
+    -- Initialize time tracking
+    self.Cache.LastTick = tick()
+    self.Cache.Time = 0
+    
+    self.Flags.Initialized = true
+    
+    -- Start the update loop
+    self:StartUpdateLoop()
+    
+    -- Return the library for chaining
     return self
 end
 
--- Update screen dimensions (call periodically or on screen resize)
+-- Start the main update loop
+function SevereLib:StartUpdateLoop()
+    spawn(function()
+        while not self.Flags.Unloading do
+            -- Calculate frame time
+            local currentTick = tick()
+            local deltaTime = currentTick - self.Cache.LastTick
+            self.Cache.LastTick = currentTick
+            self.Cache.Time = self.Cache.Time + deltaTime
+            
+            -- Calculate FPS
+            if deltaTime > 0 then
+                self.Cache.FrameRate = 1 / deltaTime
+                self.Debug.Stats.FPS = math.floor(self.Cache.FrameRate + 0.5)
+            end
+            
+            -- Update screen dimensions occasionally
+            if (self.Cache.Time % self.Performance.ScreenCheckFrequency) < deltaTime then
+                self:UpdateScreen()
+            end
+            
+            -- Main ESP update
+            if self.ESP.Enabled then
+                self:UpdateESP()
+                
+                -- Fire render event
+                self.Events.OnRender:Fire(deltaTime)
+            end
+            
+            -- Periodic cleanup
+            if (self.Cache.Time % self.Performance.CleanupInterval) < deltaTime then
+                self:CleanupUnusedESP()
+            end
+            
+            -- Small delay to prevent excessive CPU usage
+            wait(self.Performance.UpdateInterval)
+        end
+    end)
+end
+
+-- Update screen dimensions
 function SevereLib:UpdateScreen()
     self.Cache.Screen.x, self.Cache.Screen.y = getscreendimensions()
+end
+
+-- Safe error handling
+function SevereLib:SafeCall(func, ...)
+    local success, result = pcall(func, ...)
+    if not success then
+        self.Debug.LastError = tostring(result)
+        if self.Debug.Enabled then
+            print("[SevereLib Error] " .. result)
+        end
+        return nil
+    end
+    return result
+end
+
+-- Draw object pooling system
+function SevereLib:GetPooledDrawing(drawingType, properties)
+    -- Check if we have a pooled object available
+    if #self.Pool.Available[drawingType] > 0 then
+        -- Get an object from the pool
+        local drawing = table.remove(self.Pool.Available[drawingType])
+        table.insert(self.Pool.InUse[drawingType], drawing)
+        
+        -- Reset properties
+        for prop, value in pairs(properties or {}) do
+            drawing[prop] = value
+        end
+        
+        -- Update stats
+        self.Pool.Stats.Recycled = self.Pool.Stats.Recycled + 1
+        self.Pool.Stats.Active = self.Pool.Stats.Active + 1
+        
+        return drawing
+    else
+        -- Create a new drawing object
+        local drawing = Drawing.new(drawingType)
+        
+        -- Set properties
+        for prop, value in pairs(properties or {}) do
+            drawing[prop] = value
+        end
+        
+        -- Add to in-use pool
+        table.insert(self.Pool.InUse[drawingType], drawing)
+        
+        -- Update stats
+        self.Pool.Stats.Created = self.Pool.Stats.Created + 1
+        self.Pool.Stats.Active = self.Pool.Stats.Active + 1
+        
+        return drawing
+    end
+end
+
+-- Return a drawing to the pool
+function SevereLib:ReturnToPool(drawing, drawingType)
+    if not drawing then return end
+    
+    -- Hide the drawing
+    drawing.Visible = false
+    
+    -- Remove from in-use
+    for i, obj in ipairs(self.Pool.InUse[drawingType]) do
+        if obj == drawing then
+            table.remove(self.Pool.InUse[drawingType], i)
+            break
+        end
+    end
+    
+    -- Add to available
+    table.insert(self.Pool.Available[drawingType], drawing)
+    
+    -- Update stats
+    self.Pool.Stats.Active = self.Pool.Stats.Active - 1
+end
+
+-- Get a color from the ESP colors table, with optional alpha
+function SevereLib:GetColor(colorName, alpha)
+    local color = self.ESP.Colors[colorName] or self.ESP.Colors.Default
+    
+    if alpha then
+        return {color[1], color[2], color[3], alpha}
+    else
+        return color
+    end
+end
+
+-- Get a health-based color gradient (red to yellow to green)
+function SevereLib:GetHealthColor(health, maxHealth)
+    local healthPercentage = health / maxHealth
+    
+    if healthPercentage <= 0.5 then
+        -- Red to Yellow gradient
+        local r = 255
+        local g = math.floor(255 * (healthPercentage * 2))
+        local b = 0
+        return {r, g, b}
+    else
+        -- Yellow to Green gradient
+        local r = math.floor(255 * (1 - (healthPercentage - 0.5) * 2))
+        local g = 255
+        local b = 0
+        return {r, g, b}
+    end
 end
 
 --// Utility Functions
@@ -86,7 +410,7 @@ function SevereLib:GetPartPosition(instance)
     return getposition(instance)
 end
 
--- Get part from model (with fallback)
+-- Get the main part from a model with improved fallback system
 function SevereLib:GetMainPart(model)
     if not model then return nil end
     
@@ -98,13 +422,26 @@ function SevereLib:GetMainPart(model)
     local primaryPart = getprimarypart(model)
     if primaryPart then return primaryPart end
     
-    -- Try common part names
-    for _, name in pairs({"MainPart", "Head", "Torso", "LowerTorso", "HumanoidRootPart"}) do
+    -- Try common part names in priority order
+    local partNames = {
+        "HumanoidRootPart", "Torso", "UpperTorso", "LowerTorso", 
+        "Head", "Root", "MainPart", "Handle", "Base", "Hitbox"
+    }
+    
+    for _, name in pairs(partNames) do
         local part = findfirstchild(model, name)
         if part then return part end
     end
     
-    -- Fallback: return first part found
+    -- Fallback: search for components by class type
+    local classNames = {"Part", "MeshPart", "UnionOperation", "BasePart"}
+    
+    for _, className in pairs(classNames) do
+        local part = findfirstchildofclass(model, className)
+        if part then return part end
+    end
+    
+    -- Last resort: first child that might be a part
     for _, child in pairs(getchildren(model)) do
         local className = getclassname(child)
         if className == "Part" or className == "MeshPart" or className == "UnionOperation" then
@@ -115,10 +452,50 @@ function SevereLib:GetMainPart(model)
     return nil
 end
 
--- Get player's team (returns nil if no team)
+-- Get player's team with better error handling
 function SevereLib:GetPlayerTeam(player)
     if not player then return nil end
-    return getteam(player)
+    
+    local success, team = pcall(function()
+        return getteam(player)
+    end)
+    
+    if success and team then
+        return team
+    end
+    
+    return nil
+end
+
+-- Get a player's team color
+function SevereLib:GetTeamColor(player)
+    if not player then return self.ESP.Colors.Default end
+    
+    local team = self:GetPlayerTeam(player)
+    if not team then return self.ESP.Colors.Default end
+    
+    -- Check cache first
+    if self.Cache.TeamColors[team] then
+        return self.Cache.TeamColors[team]
+    end
+    
+    -- Get team color and cache it
+    local success, teamColor = pcall(function()
+        return getteamcolour(player)
+    end)
+    
+    if success and teamColor then
+        local color = {
+            math.floor(teamColor.r * 255),
+            math.floor(teamColor.g * 255),
+            math.floor(teamColor.b * 255)
+        }
+        self.Cache.TeamColors[team] = color
+        return color
+    end
+    
+    -- Default color if team color not available
+    return self.ESP.Colors.Default
 end
 
 -- Check if player is on same team as local player
@@ -132,13 +509,20 @@ function SevereLib:IsSameTeam(player)
     return playerTeam == localTeam
 end
 
+-- Check if a player is friend
+function SevereLib:IsFriend(player)
+    -- Simple example - in a real implementation, this would check friend status
+    return false
+end
+
 -- Get player from character model
 function SevereLib:GetPlayerFromCharacter(character)
     if not character then return nil end
     
     local players = findservice(Game, "Players")
     for _, player in pairs(getchildren(players)) do
-        if getcharacter(player) == character then
+        local playerCharacter = getcharacter(player)
+        if playerCharacter == character then
             return player
         end
     end
@@ -146,245 +530,363 @@ function SevereLib:GetPlayerFromCharacter(character)
     return nil
 end
 
---// Drawing Functions
-
--- Create new drawing object with properties
-function SevereLib:CreateDrawing(type, properties)
-    local drawing = Drawing.new(type)
+-- Get the humanoid from a character
+function SevereLib:GetHumanoid(character)
+    if not character then return nil end
     
-    if properties then
-        for property, value in pairs(properties) do
-            drawing[property] = value
+    -- Try direct lookup first
+    local humanoid = findfirstchild(character, "Humanoid")
+    if humanoid then return humanoid end
+    
+    -- Try finding by class name
+    humanoid = findfirstchildofclass(character, "Humanoid")
+    if humanoid then return humanoid end
+    
+    -- Last resort: look through all descendants
+    for _, child in pairs(getchildren(character)) do
+        if getclassname(child) == "Humanoid" then
+            return child
         end
     end
     
-    return drawing
+    return nil
 end
 
--- Create ESP components for an object
-function SevereLib:CreateESPComponents()
-    return {
-        Name = self:CreateDrawing("Text", {
-            Size = self.ESP.FontSize,
-            Font = self.ESP.FontType,
-            Outline = true,
-            Center = true,
-            Visible = false
-        }),
-        Box = self:CreateDrawing("Square", {
-            Thickness = self.ESP.BoxThickness,
-            Filled = false,
-            Visible = false
-        }),
-        BoxCorners = {
-            TopLeft = self:CreateDrawing("Line", {Thickness = self.ESP.BoxThickness, Visible = false}),
-            TopRight = self:CreateDrawing("Line", {Thickness = self.ESP.BoxThickness, Visible = false}),
-            BottomLeft = self:CreateDrawing("Line", {Thickness = self.ESP.BoxThickness, Visible = false}),
-            BottomRight = self:CreateDrawing("Line", {Thickness = self.ESP.BoxThickness, Visible = false})
+-- Get health information from a character
+function SevereLib:GetHealth(character)
+    if not character then return 100, 100 end
+    
+    local humanoid = self:GetHumanoid(character)
+    if not humanoid then return 100, 100 end
+    
+    local health, maxHealth = 100, 100
+    
+    -- Try to get health values with error handling
+    pcall(function()
+        health = gethealth(humanoid) or 100
+        maxHealth = getmaxhealth(humanoid) or 100
+    end)
+    
+    return health, maxHealth
+end
+
+-- Check if a model is an NPC (non-player character)
+function SevereLib:IsNPC(model)
+    if not model then return false end
+    
+    local humanoid = self:GetHumanoid(model)
+    if not humanoid then return false end
+    
+    -- Check if this model belongs to a player
+    local player = self:GetPlayerFromCharacter(model)
+    if player then return false end
+    
+    -- If it has a humanoid but no player, it's likely an NPC
+    return true
+end
+
+-- Create an ESP component template based on the target type
+function SevereLib:CreateESPComponentTemplate(targetType)
+    local template = {
+        Text = {
+            Name = {
+                Properties = {
+                    Size = self.ESP.FontSize,
+                    Font = self.ESP.FontType,
+                    Outline = true,
+                    Center = true,
+                    Visible = false
+                },
+                Offset = {0, -15}
+            },
+            Distance = {
+                Properties = {
+                    Size = self.ESP.FontSize * 0.8,
+                    Font = self.ESP.FontType,
+                    Outline = true,
+                    Center = true,
+                    Visible = false
+                },
+                Offset = {0, 0}
+            },
+            Info = {
+                Properties = {
+                    Size = self.ESP.FontSize * 0.8,
+                    Font = self.ESP.FontType,
+                    Outline = true,
+                    Center = true,
+                    Visible = false
+                },
+                Offset = {0, 15}
+            }
         },
-        Tracer = self:CreateDrawing("Line", {
-            Thickness = self.ESP.TracerThickness,
-            Visible = false
-        }),
+        Box = {
+            Main = {
+                Properties = {
+                    Thickness = self.ESP.BoxThickness,
+                    Filled = false,
+                    Visible = false
+                }
+            },
+            Corners = {
+                TopLeft = {
+                    Properties = {
+                        Thickness = self.ESP.BoxThickness,
+                        Visible = false
+                    }
+                },
+                TopRight = {
+                    Properties = {
+                        Thickness = self.ESP.BoxThickness,
+                        Visible = false
+                    }
+                },
+                BottomLeft = {
+                    Properties = {
+                        Thickness = self.ESP.BoxThickness,
+                        Visible = false
+                    }
+                },
+                BottomRight = {
+                    Properties = {
+                        Thickness = self.ESP.BoxThickness,
+                        Visible = false
+                    }
+                }
+            },
+            Outline = {
+                Properties = {
+                    Thickness = self.ESP.BoxThickness + 1,
+                    Filled = false,
+                    Visible = false,
+                    Color = self.ESP.Colors.Outline
+                }
+            }
+        },
         HealthBar = {
-            Outline = self:CreateDrawing("Square", {
-                Thickness = 1,
-                Filled = false,
+            Outline = {
+                Properties = {
+                    Thickness = 1,
+                    Filled = false,
+                    Visible = false
+                }
+            },
+            Fill = {
+                Properties = {
+                    Filled = true,
+                    Visible = false
+                }
+            }
+        },
+        Tracer = {
+            Properties = {
+                Thickness = self.ESP.Tracers.Thickness,
                 Visible = false
-            }),
-            Fill = self:CreateDrawing("Square", {
-                Filled = true,
+            }
+        },
+        Skeleton = {},
+        GroundCircle = {}
+    }
+    
+    -- Additional configurations based on target type
+    if targetType == "Player" then
+        -- Add player-specific components like skeleton trackers
+        for _, boneName in pairs({"Head", "Torso", "LeftArm", "RightArm", "LeftLeg", "RightLeg"}) do
+            template.Skeleton[boneName] = {
+                Properties = {
+                    Thickness = self.ESP.BoxThickness,
+                    Visible = false
+                }
+            }
+        end
+    elseif targetType == "Item" then
+        -- Simplified setup for items
+        template.Box.Outline = nil
+        template.HealthBar = nil
+        template.Skeleton = nil
+    elseif targetType == "NPC" then
+        -- NPCs may need different skeleton structure based on rig
+    end
+    
+    return template
+end
+
+-- Create all ESP components for an object based on template
+function SevereLib:CreateESPComponents(template)
+    local components = {}
+    
+    -- Create text components
+    components.Text = {}
+    for textName, textConfig in pairs(template.Text) do
+        components.Text[textName] = self:GetPooledDrawing("Text", textConfig.Properties)
+    end
+    
+    -- Create box components
+    components.Box = {}
+    components.Box.Main = self:GetPooledDrawing("Square", template.Box.Main.Properties)
+    
+    -- Create box corners if needed
+    if template.Box.Corners then
+        components.Box.Corners = {}
+        for cornerName, cornerConfig in pairs(template.Box.Corners) do
+            components.Box.Corners[cornerName] = self:GetPooledDrawing("Line", cornerConfig.Properties)
+        end
+    end
+    
+    -- Create box outline if needed
+    if template.Box.Outline then
+        components.Box.Outline = self:GetPooledDrawing("Square", template.Box.Outline.Properties)
+    end
+    
+    -- Create health bar if needed
+    if template.HealthBar then
+        components.HealthBar = {}
+        components.HealthBar.Outline = self:GetPooledDrawing("Square", template.HealthBar.Outline.Properties)
+        components.HealthBar.Fill = self:GetPooledDrawing("Square", template.HealthBar.Fill.Properties)
+    end
+    
+    -- Create tracer
+    components.Tracer = self:GetPooledDrawing("Line", template.Tracer.Properties)
+    
+    -- Create skeleton components if needed
+    if template.Skeleton and next(template.Skeleton) then
+        components.Skeleton = {}
+        for boneName, boneConfig in pairs(template.Skeleton) do
+            components.Skeleton[boneName] = self:GetPooledDrawing("Line", boneConfig.Properties)
+        end
+    end
+    
+    -- Create ground circle components if needed
+    if template.GroundCircle and next(template.GroundCircle) then
+        components.GroundCircle = {}
+        for i = 1, self.ESP.GroundCircleSegments do
+            components.GroundCircle[i] = self:GetPooledDrawing("Line", {
+                Thickness = 1,
                 Visible = false
             })
-        }
-    }
-end
-
--- Update ESP components based on object data
-function SevereLib:UpdateESPComponent(espData)
-    if not espData or not espData.Instance or not espData.Components then return end
-    
-    local mainPart = espData.MainPart
-    if not mainPart then return end
-    
-    local position = self:GetPartPosition(mainPart)
-    if not position then return end
-    
-    -- Get distance
-    local distance = self:GetDistanceFromPlayer(position)
-    if distance > self.ESP.MaxDistance then
-        self:HideESPComponents(espData.Components)
-        return
-    end
-    
-    -- Convert 3D position to screen position
-    local screenPosition, onScreen = worldtoscreenpoint({position.x, position.y, position.z})
-    if not onScreen then
-        self:HideESPComponents(espData.Components)
-        return
-    end
-    
-    -- Determine color based on settings
-    local color = self.ESP.BoxColors.Default
-    if espData.Player then
-        color = self:IsSameTeam(espData.Player) and self.ESP.BoxColors.Team or self.ESP.BoxColors.Enemy
-    end
-    
-    -- Update components
-    
-    -- Name and distance text
-    if self.ESP.ShowName then
-        local nameText = espData.Name or getname(espData.Instance)
-        if self.ESP.ShowDistance then
-            nameText = nameText .. " [" .. math.floor(distance) .. "m]"
-        end
-        
-        espData.Components.Name.Text = nameText
-        espData.Components.Name.Position = {screenPosition.x, screenPosition.y - 20}
-        espData.Components.Name.Color = color
-        espData.Components.Name.Visible = true
-    else
-        espData.Components.Name.Visible = false
-    end
-    
-    -- Box size calculation depends on distance
-    local boxSize = math.max(20, 80 - (distance / 10))
-    local halfSize = boxSize / 2
-    
-    -- Update box based on type
-    if self.ESP.BoxType == 1 then
-        -- Corners (4 L shapes)
-        local corners = espData.Components.BoxCorners
-        
-        -- Hide regular box
-        espData.Components.Box.Visible = false
-        
-        -- Top Left Corner
-        corners.TopLeft.From = {screenPosition.x - halfSize, screenPosition.y - halfSize}
-        corners.TopLeft.To = {screenPosition.x - halfSize + 5, screenPosition.y - halfSize}
-        corners.TopLeft.Color = color
-        corners.TopLeft.Visible = true
-        
-        -- Top Right Corner
-        corners.TopRight.From = {screenPosition.x + halfSize, screenPosition.y - halfSize}
-        corners.TopRight.To = {screenPosition.x + halfSize - 5, screenPosition.y - halfSize}
-        corners.TopRight.Color = color
-        corners.TopRight.Visible = true
-        
-        -- Bottom Left Corner
-        corners.BottomLeft.From = {screenPosition.x - halfSize, screenPosition.y + halfSize}
-        corners.BottomLeft.To = {screenPosition.x - halfSize + 5, screenPosition.y + halfSize}
-        corners.BottomLeft.Color = color
-        corners.BottomLeft.Visible = true
-        
-        -- Bottom Right Corner
-        corners.BottomRight.From = {screenPosition.x + halfSize, screenPosition.y + halfSize}
-        corners.BottomRight.To = {screenPosition.x + halfSize - 5, screenPosition.y + halfSize}
-        corners.BottomRight.Color = color
-        corners.BottomRight.Visible = true
-    else
-        -- Full box
-        espData.Components.Box.Position = {screenPosition.x - halfSize, screenPosition.y - halfSize}
-        espData.Components.Box.Size = {boxSize, boxSize}
-        espData.Components.Box.Color = color
-        espData.Components.Box.Visible = true
-        
-        -- Hide corners
-        for _, corner in pairs(espData.Components.BoxCorners) do
-            corner.Visible = false
         end
     end
     
-    -- Tracer
-    if self.ESP.TracerEnabled then
-        local tracerOrigin
-        if self.ESP.TracerOrigin == 1 then
-            tracerOrigin = {self.Cache.Screen.x / 2, self.Cache.Screen.y}
-        else
-            local mousePos = getmouseposition()
-            tracerOrigin = {mousePos.x, mousePos.y}
-        end
-        
-        espData.Components.Tracer.From = tracerOrigin
-        espData.Components.Tracer.To = {screenPosition.x, screenPosition.y}
-        espData.Components.Tracer.Color = color
-        espData.Components.Tracer.Visible = true
-    else
-        espData.Components.Tracer.Visible = false
-    end
-    
-    -- Health bar (if applicable)
-    if self.ESP.ShowHealth and espData.Humanoid then
-        local health = gethealth(espData.Humanoid)
-        local maxHealth = getmaxhealth(espData.Humanoid)
-        
-        if health and maxHealth then
-            local healthPercentage = math.clamp(health / maxHealth, 0, 1)
-            
-            -- Health bar position (to the left of the box)
-            local barWidth = 3
-            local barHeight = boxSize
-            local barX = screenPosition.x - halfSize - 5 - barWidth
-            local barY = screenPosition.y - halfSize
-            
-            -- Outline
-            espData.Components.HealthBar.Outline.Position = {barX, barY}
-            espData.Components.HealthBar.Outline.Size = {barWidth, barHeight}
-            espData.Components.HealthBar.Outline.Color = {0, 0, 0}
-            espData.Components.HealthBar.Outline.Visible = true
-            
-            -- Fill
-            espData.Components.HealthBar.Fill.Position = {barX, barY + barHeight * (1 - healthPercentage)}
-            espData.Components.HealthBar.Fill.Size = {barWidth, barHeight * healthPercentage}
-            
-            -- Color gradient: red to green based on health
-            local r = math.floor((1 - healthPercentage) * 255)
-            local g = math.floor(healthPercentage * 255)
-            espData.Components.HealthBar.Fill.Color = {r, g, 0}
-            espData.Components.HealthBar.Fill.Visible = true
-        else
-            espData.Components.HealthBar.Outline.Visible = false
-            espData.Components.HealthBar.Fill.Visible = false
-        end
-    else
-        espData.Components.HealthBar.Outline.Visible = false
-        espData.Components.HealthBar.Fill.Visible = false
-    end
+    return components
 end
 
 -- Hide all ESP components
 function SevereLib:HideESPComponents(components)
     if not components then return end
     
-    components.Name.Visible = false
-    components.Box.Visible = false
-    components.Tracer.Visible = false
-    components.HealthBar.Outline.Visible = false
-    components.HealthBar.Fill.Visible = false
+    -- Hide text components
+    if components.Text then
+        for _, text in pairs(components.Text) do
+            if text then text.Visible = false end
+        end
+    end
     
-    for _, corner in pairs(components.BoxCorners) do
-        corner.Visible = false
+    -- Hide box components
+    if components.Box then
+        if components.Box.Main then components.Box.Main.Visible = false end
+        if components.Box.Outline then components.Box.Outline.Visible = false end
+        
+        if components.Box.Corners then
+            for _, corner in pairs(components.Box.Corners) do
+                if corner then corner.Visible = false end
+            end
+        end
+    end
+    
+    -- Hide health bar
+    if components.HealthBar then
+        if components.HealthBar.Outline then components.HealthBar.Outline.Visible = false end
+        if components.HealthBar.Fill then components.HealthBar.Fill.Visible = false end
+    end
+    
+    -- Hide tracer
+    if components.Tracer then components.Tracer.Visible = false end
+    
+    -- Hide skeleton
+    if components.Skeleton then
+        for _, bone in pairs(components.Skeleton) do
+            if bone then bone.Visible = false end
+        end
+    end
+    
+    -- Hide ground circle
+    if components.GroundCircle then
+        for _, line in pairs(components.GroundCircle) do
+            if line then line.Visible = false end
+        end
     end
 end
 
--- Remove ESP components (cleanup)
-function SevereLib:RemoveESPComponents(components)
+-- Return ESP components to the pool (cleanup)
+function SevereLib:CleanupESPComponents(components)
     if not components then return end
     
-    components.Name:Remove()
-    components.Box:Remove()
-    components.Tracer:Remove()
-    components.HealthBar.Outline:Remove()
-    components.HealthBar.Fill:Remove()
+    -- Clean up text components
+    if components.Text then
+        for textName, text in pairs(components.Text) do
+            if text then
+                self:ReturnToPool(text, "Text")
+            end
+        end
+    end
     
-    for _, corner in pairs(components.BoxCorners) do
-        corner:Remove()
+    -- Clean up box components
+    if components.Box then
+        if components.Box.Main then
+            self:ReturnToPool(components.Box.Main, "Square")
+        end
+        
+        if components.Box.Outline then
+            self:ReturnToPool(components.Box.Outline, "Square")
+        end
+        
+        if components.Box.Corners then
+            for cornerName, corner in pairs(components.Box.Corners) do
+                if corner then
+                    self:ReturnToPool(corner, "Line")
+                end
+            end
+        end
+    end
+    
+    -- Clean up health bar
+    if components.HealthBar then
+        if components.HealthBar.Outline then
+            self:ReturnToPool(components.HealthBar.Outline, "Square")
+        end
+        
+        if components.HealthBar.Fill then
+            self:ReturnToPool(components.HealthBar.Fill, "Square")
+        end
+    end
+    
+    -- Clean up tracer
+    if components.Tracer then
+        self:ReturnToPool(components.Tracer, "Line")
+    end
+    
+    -- Clean up skeleton
+    if components.Skeleton then
+        for boneName, bone in pairs(components.Skeleton) do
+            if bone then
+                self:ReturnToPool(bone, "Line")
+            end
+        end
+    end
+    
+    -- Clean up ground circle
+    if components.GroundCircle then
+        for i, line in pairs(components.GroundCircle) do
+            if line then
+                self:ReturnToPool(line, "Line")
+            end
+        end
     end
 end
 
 --// ESP Functions
 
--- Add ESP to an object
+-- Add ESP to an object with improved detection and classification
 function SevereLib:AddESP(instance, options)
     if not instance then return nil end
     
@@ -397,33 +899,101 @@ function SevereLib:AddESP(instance, options)
         end
     end
     
+    -- Determine target type
+    local targetType = options.TargetType or "Unknown"
+    local className = getclassname(instance)
+    
+    if className == "Player" then
+        targetType = "Player"
+    elseif className == "Model" then
+        -- Check if it's a player character or NPC
+        local player = self:GetPlayerFromCharacter(instance)
+        if player then
+            targetType = "Player"
+        elseif self:IsNPC(instance) then
+            targetType = "NPC"
+        elseif options.ItemModel then
+            targetType = "Item"
+        end
+    end
+    
+    -- Create template and components based on target type
+    local template = self:CreateESPComponentTemplate(targetType)
+    local components = self:CreateESPComponents(template)
+    
     -- Create ESP data
     local espData = {
         Instance = instance,
         Name = options.CustomName or getname(instance),
         MainPart = options.MainPart or self:GetMainPart(instance),
-        Components = self:CreateESPComponents(),
-        Color = options.Color or self.ESP.BoxColors.Default,
-        IsVisible = true
+        Components = components,
+        Color = options.Color,
+        TargetType = targetType,
+        IsVisible = true,
+        Template = template,
+        LastPosition = nil,
+        LastScreenPosition = nil,
+        LastScreenVisible = false,
+        LastUpdateTime = 0,
+        BoundingBox = options.BoundingBox or {min = {x=0, y=0, z=0}, max = {x=0, y=0, z=0}},
+        CustomData = options.CustomData or {}
     }
     
-    -- If it's a player or character, get additional info
-    local className = getclassname(instance)
-    if className == "Player" then
+    -- Add player-specific data
+    if targetType == "Player" then
         espData.Player = instance
-        espData.Character = getcharacter(instance)
+        if className == "Model" then
+            espData.Player = self:GetPlayerFromCharacter(instance)
+            espData.Character = instance
+        else
+            espData.Character = getcharacter(instance)
+        end
+        
         if espData.Character then
-            espData.Humanoid = findfirstchild(espData.Character, "Humanoid")
-            if not espData.MainPart then
-                espData.MainPart = self:GetMainPart(espData.Character)
+            espData.Humanoid = self:GetHumanoid(espData.Character)
+            
+            -- Get additional parts for skeleton ESP
+            espData.SkeletonParts = {}
+            local partNames = {"Head", "Torso", "UpperTorso", "LowerTorso", "HumanoidRootPart", 
+                               "LeftArm", "RightArm", "LeftLeg", "RightLeg", 
+                               "LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm",
+                               "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg"}
+            
+            for _, partName in ipairs(partNames) do
+                local part = findfirstchild(espData.Character, partName)
+                if part then
+                    espData.SkeletonParts[partName] = part
+                end
+            end
+            
+            -- Get rig type (R6 or R15)
+            espData.RigType = espData.SkeletonParts["UpperTorso"] and "R15" or "R6"
+        end
+        
+        -- Get team information
+        if espData.Player then
+            espData.Team = self:GetPlayerTeam(espData.Player)
+            espData.IsSameTeam = self:IsSameTeam(espData.Player)
+            espData.IsFriend = self:IsFriend(espData.Player)
+            
+            -- Determine color based on team/friend status
+            if not espData.Color then
+                if espData.IsFriend then
+                    espData.Color = self:GetColor("Friend")
+                elseif espData.IsSameTeam then
+                    espData.Color = self:GetColor("Team")
+                else
+                    espData.Color = self:GetColor("Enemy")
+                end
             end
         end
-    elseif className == "Model" then
-        espData.Player = self:GetPlayerFromCharacter(instance)
-        if espData.Player then
-            espData.Character = instance
-            espData.Humanoid = findfirstchild(instance, "Humanoid")
-        end
+    elseif targetType == "NPC" then
+        espData.Humanoid = self:GetHumanoid(instance)
+        espData.Color = espData.Color or self:GetColor("NPC")
+    elseif targetType == "Item" then
+        espData.Color = espData.Color or self:GetColor("Items")
+    else
+        espData.Color = espData.Color or self:GetColor("Default")
     end
     
     -- Add to active ESP list
@@ -435,12 +1005,545 @@ end
 function SevereLib:RemoveESP(instance)
     for i, esp in pairs(self.ActiveESP) do
         if esp.Instance == instance then
-            self:RemoveESPComponents(esp.Components)
+            self:CleanupESPComponents(esp.Components)
             table.remove(self.ActiveESP, i)
             return true
         end
     end
     return false
+end
+
+-- Calculate box dimensions based on model size and distance
+function SevereLib:CalculateBoxDimensions(espData)
+    local mainPart = espData.MainPart
+    if not mainPart then return nil end
+    
+    local position = self:GetPartPosition(mainPart)
+    if not position then return nil end
+    
+    local character = espData.Character
+    local screenPosition, onScreen = worldtoscreenpoint({position.x, position.y, position.z})
+    
+    -- Get distance for size scaling
+    local distance = self:GetDistanceFromPlayer(position)
+    local scale = 1
+    
+    -- Base size on character type
+    if espData.TargetType == "Player" or espData.TargetType == "NPC" then
+        if character then
+            -- Attempt to calculate height based on character
+            local head = findfirstchild(character, "Head")
+            local rootPart = findfirstchild(character, "HumanoidRootPart")
+            local humanoid = espData.Humanoid
+            
+            -- Use default dimensions for simplicity, or calculate from the character if possible
+            local height = 5
+            local width = 2
+            
+            if head and rootPart then
+                local headPos = getposition(head)
+                local rootPos = getposition(rootPart)
+                height = math.abs(headPos.y - rootPos.y) * 2
+                width = height * 0.6
+            end
+            
+            -- Get character size with fallback values
+            local sizeMultiplier = 1
+            if humanoid then
+                pcall(function()
+                    local humanoidScaleFactor = getvalue(findfirstchild(humanoid, "BodyHeightScale")) or 1
+                    sizeMultiplier = humanoidScaleFactor
+                end)
+            end
+            
+            -- Calculate box dimensions with scaling for distance
+            local boxHeight = (80 * sizeMultiplier) / (1 + distance * 0.005)
+            local boxWidth = boxHeight * 0.5
+            
+            return {
+                height = boxHeight,
+                width = boxWidth,
+                position = screenPosition
+            }
+        else
+            -- Fallback for non-character players
+            local boxSize = 80 / (1 + distance * 0.005)
+            return {
+                height = boxSize,
+                width = boxSize * 0.6,
+                position = screenPosition
+            }
+        end
+    else
+        -- For non-character objects
+        local boxSize = 40 / (1 + distance * 0.01)
+        return {
+            height = boxSize,
+            width = boxSize,
+            position = screenPosition
+        }
+    end
+end
+
+-- Draw boxes around a target
+function SevereLib:DrawBox(espData, dimensions)
+    if not dimensions or not espData.Components.Box then return end
+    
+    local position = dimensions.position
+    local width = dimensions.width / 2
+    local height = dimensions.height / 2
+    local color = espData.Color
+    
+    -- Update box based on type
+    if self.ESP.BoxType == 1 then
+        -- Corners (4 L shapes)
+        local corners = espData.Components.Box.Corners
+        
+        -- Hide regular box
+        espData.Components.Box.Main.Visible = false
+        
+        -- Calculate corner sizes (25% of total box size)
+        local cornerSize = width * 0.25
+        
+        -- Top Left Corner
+        corners.TopLeft.From = {position.x - width, position.y - height}
+        corners.TopLeft.To = {position.x - width + cornerSize, position.y - height}
+        corners.TopLeft.Color = color
+        corners.TopLeft.Visible = true
+        
+        -- Line connecting corner pieces
+        local cornerLine = self:GetPooledDrawing("Line", {Thickness = corners.TopLeft.Thickness, Visible = true})
+        cornerLine.From = {position.x - width, position.y - height}
+        cornerLine.To = {position.x - width, position.y - height + cornerSize}
+        cornerLine.Color = color
+        
+        -- Top Right Corner
+        corners.TopRight.From = {position.x + width, position.y - height}
+        corners.TopRight.To = {position.x + width - cornerSize, position.y - height}
+        corners.TopRight.Color = color
+        corners.TopRight.Visible = true
+        
+        cornerLine = self:GetPooledDrawing("Line", {Thickness = corners.TopRight.Thickness, Visible = true})
+        cornerLine.From = {position.x + width, position.y - height}
+        cornerLine.To = {position.x + width, position.y - height + cornerSize}
+        cornerLine.Color = color
+        
+        -- Bottom Left Corner
+        corners.BottomLeft.From = {position.x - width, position.y + height}
+        corners.BottomLeft.To = {position.x - width + cornerSize, position.y + height}
+        corners.BottomLeft.Color = color
+        corners.BottomLeft.Visible = true
+        
+        cornerLine = self:GetPooledDrawing("Line", {Thickness = corners.BottomLeft.Thickness, Visible = true})
+        cornerLine.From = {position.x - width, position.y + height}
+        cornerLine.To = {position.x - width, position.y + height - cornerSize}
+        cornerLine.Color = color
+        
+        -- Bottom Right Corner
+        corners.BottomRight.From = {position.x + width, position.y + height}
+        corners.BottomRight.To = {position.x + width - cornerSize, position.y + height}
+        corners.BottomRight.Color = color
+        corners.BottomRight.Visible = true
+        
+        cornerLine = self:GetPooledDrawing("Line", {Thickness = corners.BottomRight.Thickness, Visible = true})
+        cornerLine.From = {position.x + width, position.y + height}
+        cornerLine.To = {position.x + width, position.y + height - cornerSize}
+        cornerLine.Color = color
+    else
+        -- Full box
+        if espData.Components.Box.Outline then
+            espData.Components.Box.Outline.Position = {position.x - width - 1, position.y - height - 1}
+            espData.Components.Box.Outline.Size = {width * 2 + 2, height * 2 + 2}
+            espData.Components.Box.Outline.Visible = true
+        end
+        
+        espData.Components.Box.Main.Position = {position.x - width, position.y - height}
+        espData.Components.Box.Main.Size = {width * 2, height * 2}
+        espData.Components.Box.Main.Color = color
+        espData.Components.Box.Main.Visible = true
+        
+        -- Hide corners
+        for _, corner in pairs(espData.Components.Box.Corners) do
+            corner.Visible = false
+        end
+    end
+end
+
+-- Draw skeleton for a player character
+function SevereLib:DrawSkeleton(espData)
+    if not espData.Components.Skeleton or not espData.Character or not espData.SkeletonParts then
+        return
+    end
+    
+    local color = espData.Color
+    local parts = espData.SkeletonParts
+    
+    -- Define connection points based on rig type
+    local connections = {}
+    
+    if espData.RigType == "R15" then
+        connections = {
+            {"Head", "UpperTorso"},
+            {"UpperTorso", "LowerTorso"},
+            {"UpperTorso", "LeftUpperArm"},
+            {"LeftUpperArm", "LeftLowerArm"},
+            {"UpperTorso", "RightUpperArm"},
+            {"RightUpperArm", "RightLowerArm"},
+            {"LowerTorso", "LeftUpperLeg"},
+            {"LeftUpperLeg", "LeftLowerLeg"},
+            {"LowerTorso", "RightUpperLeg"},
+            {"RightUpperLeg", "RightLowerLeg"}
+        }
+    else -- R6
+        connections = {
+            {"Head", "Torso"},
+            {"Torso", "LeftArm"},
+            {"Torso", "RightArm"},
+            {"Torso", "LeftLeg"},
+            {"Torso", "RightLeg"}
+        }
+    end
+    
+    -- Draw each bone connection
+    for i, connection in ipairs(connections) do
+        local part1 = parts[connection[1]]
+        local part2 = parts[connection[2]]
+        
+        if part1 and part2 then
+            local pos1 = getposition(part1)
+            local pos2 = getposition(part2)
+            
+            local screen1, visible1 = worldtoscreenpoint({pos1.x, pos1.y, pos1.z})
+            local screen2, visible2 = worldtoscreenpoint({pos2.x, pos2.y, pos2.z})
+            
+            if visible1 and visible2 then
+                -- Use or create a line for this bone
+                local boneName = connection[1] .. "_" .. connection[2]
+                local bone = self:GetPooledDrawing("Line", {
+                    Thickness = self.ESP.BoxThickness,
+                    Visible = true
+                })
+                
+                bone.From = {screen1.x, screen1.y}
+                bone.To = {screen2.x, screen2.y}
+                bone.Color = color
+            end
+        end
+    end
+end
+
+-- Draw health bar for a character
+function SevereLib:DrawHealthBar(espData, dimensions)
+    if not espData.Components.HealthBar or not espData.Humanoid then return end
+    
+    local health, maxHealth = self:GetHealth(espData.Character)
+    if not health or not maxHealth or maxHealth == 0 then return end
+    
+    local healthPercentage = math.clamp(health / maxHealth, 0, 1)
+    
+    -- Get box dimensions
+    local position = dimensions.position
+    local width = dimensions.width
+    local height = dimensions.height
+    
+    -- Health bar based on ESP settings
+    local barWidth = self.ESP.HealthBar.Width
+    local barHeight = height * 2
+    local barPosition = {
+        x = position.x - width - 5 - barWidth,
+        y = position.y - height
+    }
+    
+    -- Draw outline
+    espData.Components.HealthBar.Outline.Position = {barPosition.x, barPosition.y}
+    espData.Components.HealthBar.Outline.Size = {barWidth, barHeight}
+    espData.Components.HealthBar.Outline.Color = self.ESP.Colors.Outline
+    espData.Components.HealthBar.Outline.Visible = true
+    
+    -- Draw fill
+    espData.Components.HealthBar.Fill.Position = {barPosition.x, barPosition.y + barHeight * (1 - healthPercentage)}
+    espData.Components.HealthBar.Fill.Size = {barWidth, barHeight * healthPercentage}
+    
+    -- Determine color based on health percentage
+    local color
+    if self.ESP.HealthBar.GradientColors then
+        color = self:GetHealthColor(health, maxHealth)
+    else
+        if healthPercentage > 0.75 then
+            color = self.ESP.Colors.HealthHigh
+        elseif healthPercentage > 0.25 then
+            color = self.ESP.Colors.HealthMid
+        else
+            color = self.ESP.Colors.HealthLow
+        end
+    end
+    
+    espData.Components.HealthBar.Fill.Color = color
+    espData.Components.HealthBar.Fill.Visible = true
+end
+
+-- Draw text information (name, distance, etc.)
+function SevereLib:DrawTextInfo(espData, dimensions)
+    if not espData.Components.Text then return end
+    
+    local position = dimensions.position
+    local color = espData.Color
+    
+    -- Draw name text
+    if self.ESP.ShowName and espData.Components.Text.Name then
+        local name = espData.Name or getname(espData.Instance)
+        espData.Components.Text.Name.Position = {position.x, position.y - dimensions.height - 15}
+        espData.Components.Text.Name.Text = name
+        espData.Components.Text.Name.Color = self.ESP.Colors.Names or color
+        espData.Components.Text.Name.Visible = true
+    end
+    
+    -- Draw distance text
+    if self.ESP.ShowDistance and espData.Components.Text.Distance then
+        local mainPart = espData.MainPart
+        if mainPart then
+            local pos = self:GetPartPosition(mainPart)
+            local distance = math.floor(self:GetDistanceFromPlayer(pos))
+            
+            espData.Components.Text.Distance.Position = {position.x, position.y + dimensions.height + 5}
+            espData.Components.Text.Distance.Text = distance .. "m"
+            espData.Components.Text.Distance.Color = self.ESP.Colors.Distance or color
+            espData.Components.Text.Distance.Visible = true
+        end
+    end
+    
+    -- Draw additional info text (health, etc.)
+    if espData.Humanoid and espData.Components.Text.Info then
+        local health, maxHealth = self:GetHealth(espData.Character)
+        local infoText = math.floor(health) .. "/" .. math.floor(maxHealth)
+        
+        espData.Components.Text.Info.Position = {position.x, position.y + dimensions.height + 20}
+        espData.Components.Text.Info.Text = infoText
+        espData.Components.Text.Info.Color = self:GetHealthColor(health, maxHealth)
+        espData.Components.Text.Info.Visible = true
+    end
+end
+
+-- Draw tracers to objects
+function SevereLib:DrawTracer(espData, dimensions)
+    if not self.ESP.Tracers.Enabled or not espData.Components.Tracer then return end
+    
+    local position = dimensions.position
+    local color = espData.Color
+    
+    -- Determine tracer origin point
+    local origin = {
+        x = self.Cache.Screen.x / 2,
+        y = self.Cache.Screen.y
+    }
+    
+    if self.ESP.TraceMode == 2 then -- Mouse
+        local mousePos = getmouseposition()
+        origin = {x = mousePos.x, y = mousePos.y}
+    elseif self.ESP.TraceMode == 3 then -- Top
+        origin.y = 0
+    end
+    
+    -- Adjust for user-defined offset
+    origin.x = origin.x + self.ESP.Tracers.Origin.offset_x
+    origin.y = origin.y + self.ESP.Tracers.Origin.offset_y
+    
+    -- Calculate alpha based on distance if enabled
+    local alpha = 1
+    if self.ESP.Tracers.AlphaByDistance then
+        local distance = dimensions.originalDistance or 0
+        alpha = math.max(0, math.min(1, 1 - (distance / self.ESP.MaxDistance)))
+    end
+    
+    -- Draw tracer
+    espData.Components.Tracer.From = {origin.x, origin.y}
+    espData.Components.Tracer.To = {position.x, position.y}
+    espData.Components.Tracer.Color = self.ESP.Colors.Tracer or color
+    espData.Components.Tracer.Visible = true
+end
+
+-- Draw ground circle under character
+function SevereLib:DrawGroundCircle(espData)
+    if not self.ESP.ShowGroundCircle or not espData.Components.GroundCircle then return end
+    
+    local mainPart = espData.MainPart
+    if not mainPart then return end
+    
+    local position = self:GetPartPosition(mainPart)
+    if not position then return end
+    
+    local color = espData.Color
+    local radius = self.ESP.GroundCircleRadius
+    local segments = self.ESP.GroundCircleSegments
+    
+    -- Set ground height slightly below character
+    local groundY = position.y - 3
+    
+    -- Calculate points around circle
+    for i = 1, segments do
+        local angle1 = ((i - 1) / segments) * math.pi * 2
+        local angle2 = (i / segments) * math.pi * 2
+        
+        local x1 = position.x + math.cos(angle1) * radius
+        local z1 = position.z + math.sin(angle1) * radius
+        
+        local x2 = position.x + math.cos(angle2) * radius
+        local z2 = position.z + math.sin(angle2) * radius
+        
+        local screen1, visible1 = worldtoscreenpoint({x1, groundY, z1})
+        local screen2, visible2 = worldtoscreenpoint({x2, groundY, z2})
+        
+        if visible1 and visible2 and espData.Components.GroundCircle[i] then
+            espData.Components.GroundCircle[i].From = {screen1.x, screen1.y}
+            espData.Components.GroundCircle[i].To = {screen2.x, screen2.y}
+            espData.Components.GroundCircle[i].Color = color
+            espData.Components.GroundCircle[i].Visible = true
+        elseif espData.Components.GroundCircle[i] then
+            espData.Components.GroundCircle[i].Visible = false
+        end
+    end
+end
+
+-- Update a specific ESP element
+function SevereLib:UpdateESPElement(espData)
+    if not espData or not espData.Instance then return false end
+    
+    -- Check if the object still exists
+    local exists = pcall(function() return isdescendantof(espData.Instance, Game) end)
+    if not exists then
+        return false
+    end
+    
+    -- Quick visibility check
+    if not espData.IsVisible or not self.ESP.Enabled then
+        self:HideESPComponents(espData.Components)
+        return true
+    end
+    
+    -- Get the main part for position reference
+    local mainPart = espData.MainPart
+    if not mainPart then
+        espData.MainPart = self:GetMainPart(espData.Instance)
+        mainPart = espData.MainPart
+    end
+    
+    if not mainPart then
+        self:HideESPComponents(espData.Components)
+        return true
+    end
+    
+    -- Get position and check distance
+    local position = self:GetPartPosition(mainPart)
+    if not position then
+        self:HideESPComponents(espData.Components)
+        return true
+    end
+    
+    -- Cache the position
+    espData.LastPosition = position
+    
+    -- Distance check
+    local distance = self:GetDistanceFromPlayer(position)
+    if distance > self.ESP.MaxDistance then
+        self:HideESPComponents(espData.Components)
+        return true
+    end
+    
+    -- Convert 3D position to screen position
+    local screenPosition, onScreen = worldtoscreenpoint({position.x, position.y, position.z})
+    if not onScreen and self.Performance.OnScreenOnly then
+        self:HideESPComponents(espData.Components)
+        return true
+    end
+    
+    -- Cache screen position
+    espData.LastScreenPosition = screenPosition
+    espData.LastScreenVisible = onScreen
+    
+    -- Calculate box dimensions (optimized for performance)
+    local dimensions = self:CalculateBoxDimensions(espData)
+    if not dimensions then
+        self:HideESPComponents(espData.Components)
+        return true
+    end
+    
+    -- Store original distance for use in alpha calculations
+    dimensions.originalDistance = distance
+    
+    -- Update health (if applicable)
+    if espData.Humanoid then
+        espData.Health, espData.MaxHealth = self:GetHealth(espData.Character)
+    end
+    
+    -- Draw components based on settings and on-screen status
+    if onScreen then
+        -- Draw box
+        self:DrawBox(espData, dimensions)
+        
+        -- Draw health bar if enabled and applicable
+        if self.ESP.HealthBar.Enabled and (espData.TargetType == "Player" or espData.TargetType == "NPC") then
+            self:DrawHealthBar(espData, dimensions)
+        end
+        
+        -- Draw text information
+        self:DrawTextInfo(espData, dimensions)
+        
+        -- Draw skeleton if enabled and it's a player
+        if self.ESP.BoxType == 4 and espData.TargetType == "Player" then
+            self:DrawSkeleton(espData)
+        end
+        
+        -- Draw ground circle if enabled
+        if self.ESP.ShowGroundCircle then
+            self:DrawGroundCircle(espData)
+        end
+    else
+        -- Hide components that require on-screen position
+        if espData.Components.Box then
+            espData.Components.Box.Main.Visible = false
+            if espData.Components.Box.Outline then
+                espData.Components.Box.Outline.Visible = false
+            end
+            
+            for _, corner in pairs(espData.Components.Box.Corners or {}) do
+                corner.Visible = false
+            end
+        end
+        
+        if espData.Components.HealthBar then
+            espData.Components.HealthBar.Outline.Visible = false
+            espData.Components.HealthBar.Fill.Visible = false
+        end
+        
+        for _, text in pairs(espData.Components.Text or {}) do
+            text.Visible = false
+        end
+        
+        if espData.Components.Skeleton then
+            for _, bone in pairs(espData.Components.Skeleton) do
+                bone.Visible = false
+            end
+        end
+        
+        if espData.Components.GroundCircle then
+            for _, line in pairs(espData.Components.GroundCircle) do
+                line.Visible = false
+            end
+        end
+    end
+    
+    -- Always draw tracer if enabled (even for off-screen objects)
+    if self.ESP.Tracers.Enabled then
+        self:DrawTracer(espData, dimensions)
+    else if espData.Components.Tracer then
+            espData.Components.Tracer.Visible = false
+        end
+    end
+    
+    -- Update last update time
+    espData.LastUpdateTime = self.Cache.Time
+    
+    return true
 end
 
 -- Update all ESP objects
@@ -452,19 +1555,111 @@ function SevereLib:UpdateESP()
         return
     end
     
+    -- Update statistics
+    self.Debug.Stats.Objects = #self.ActiveESP
+    self.Debug.Stats.OnScreen = 0
+    
+    -- Prioritize updating nearby and on-screen objects
+    local orderedESP = {}
     for i, esp in pairs(self.ActiveESP) do
-        -- Check if instance still exists
-        if esp.Instance and (isdescendantof(esp.Instance, Game) or esp.Instance == Game) then
-            -- Update ESP if visible
-            if esp.IsVisible then
-                self:UpdateESPComponent(esp)
-            else
-                self:HideESPComponents(esp.Components)
-            end
+        -- Simple insertion if we don't have a position yet
+        if not esp.LastPosition then
+            table.insert(orderedESP, esp)
         else
-            -- Instance no longer exists, remove it
-            self:RemoveESPComponents(esp.Components)
+            local distance = self:GetDistanceFromPlayer(esp.LastPosition)
+            
+            -- Prioritize by distance and on-screen status
+            local priority = distance
+            if esp.LastScreenVisible then
+                priority = priority * 0.5
+                self.Debug.Stats.OnScreen = self.Debug.Stats.OnScreen + 1
+            end
+            
+            -- Add to ordered list with priority
+            table.insert(orderedESP, {esp = esp, priority = priority})
+        end
+    end
+    
+    -- Sort by priority if needed
+    if #orderedESP > 10 then
+        table.sort(orderedESP, function(a, b)
+            if type(a) == "table" and type(b) == "table" then
+                return a.priority < b.priority
+            elseif type(a) == "table" then
+                return true
+            elseif type(b) == "table" then
+                return false
+            else
+                return false
+            end
+        end)
+    end
+    
+    -- Process ESP objects with rate limiting based on distance
+    local processed = 0
+    local maxToProcess = self.Performance.MaxActiveESP
+    
+    for i, item in ipairs(orderedESP) do
+        if processed >= maxToProcess then break end
+        
+        local esp
+        if type(item) == "table" and item.esp then
+            esp = item.esp
+        else
+            esp = item
+        end
+        
+        -- Update only if needed based on last update time and visibility
+        local shouldUpdate = true
+        if esp.LastUpdateTime then
+            -- Update frequently if on screen, less frequently if off screen
+            local updateInterval = esp.LastScreenVisible and self.Performance.UpdateInterval or self.Performance.UpdateInterval * 5
+            shouldUpdate = (self.Cache.Time - esp.LastUpdateTime) >= updateInterval
+        end
+        
+        if shouldUpdate then
+            local success = self:UpdateESPElement(esp)
+            
+            -- If update failed (object no longer exists), remove it
+            if not success then
+                self:RemoveESP(esp.Instance)
+            end
+        end
+        
+        processed = processed + 1
+    end
+    
+    -- Draw performance stats if enabled
+    if self.Debug.ShowStats then
+        self:DrawDebugStats()
+    end
+end
+
+-- Cleanup unused ESP objects
+function SevereLib:CleanupUnusedESP()
+    for i = #self.ActiveESP, 1, -1 do
+        local esp = self.ActiveESP[i]
+        
+        -- Check if object still exists
+        local exists = pcall(function() 
+            return esp.Instance and isdescendantof(esp.Instance, Game) 
+        end)
+        
+        if not exists then
+            self:CleanupESPComponents(esp.Components)
             table.remove(self.ActiveESP, i)
+        end
+    end
+    
+    -- Prevent excessive pooled objects
+    for drawingType, pooled in pairs(self.Pool.Available) do
+        if #pooled > 200 then
+            for i = #pooled, 201, -1 do
+                local drawing = table.remove(pooled)
+                if drawing and drawing.Remove then
+                    drawing:Remove()
+                end
+            end
         end
     end
 end
@@ -484,21 +1679,76 @@ function SevereLib:ToggleESP(enabled)
         end
     end
     
+    -- Fire toggle event
+    self.Events.OnToggle:Fire(self.ESP.Enabled)
+    
     return self.ESP.Enabled
 end
 
--- Set ESP max render distance
-function SevereLib:SetESPMaxDistance(distance)
-    self.ESP.MaxDistance = distance or 1000
+-- Draw debug statistics
+function SevereLib:DrawDebugStats()
+    local stats = self.Debug.Stats
+    local text = string.format(
+        "SevereLib Stats:\nFPS: %d\nObjects: %d\nOnScreen: %d\nDrawings: %d/%d",
+        stats.FPS,
+        stats.Objects,
+        stats.OnScreen,
+        self.Pool.Stats.Active,
+        self.Pool.Stats.Created
+    )
+    
+    -- Create debug text if needed
+    if not self.Debug.StatsText then
+        self.Debug.StatsText = Drawing.new("Text")
+        self.Debug.StatsText.Size = 14
+        self.Debug.StatsText.Center = false
+        self.Debug.StatsText.Outline = true
+        self.Debug.StatsText.Position = {10, 10}
+        self.Debug.StatsText.Color = {255, 255, 255}
+        self.Debug.StatsText.Visible = true
+    end
+    
+    self.Debug.StatsText.Text = text
 end
 
 -- Clean up all ESP objects and drawings
 function SevereLib:Cleanup()
+    self.Flags.Unloading = true
+    
+    -- Clean up all active ESP
     for _, esp in pairs(self.ActiveESP) do
-        self:RemoveESPComponents(esp.Components)
+        self:CleanupESPComponents(esp.Components)
     end
     
     self.ActiveESP = {}
+    
+    -- Clean up debug text
+    if self.Debug.StatsText then
+        self.Debug.StatsText:Remove()
+        self.Debug.StatsText = nil
+    end
+    
+    -- Clean up all pooled objects
+    for drawingType, pool in pairs(self.Pool.Available) do
+        for _, drawing in pairs(pool) do
+            if drawing and drawing.Remove then
+                drawing:Remove()
+            end
+        end
+    end
+    
+    for drawingType, pool in pairs(self.Pool.InUse) do
+        for _, drawing in pairs(pool) do
+            if drawing and drawing.Remove then
+                drawing:Remove()
+            end
+        end
+    end
+    
+    -- Reset pool stats
+    self.Pool.Available = {}
+    self.Pool.InUse = {}
+    self.Pool.Stats = {Created = 0, Recycled = 0, Active = 0}
     
     -- Attempt to clear all drawings
     pcall(function()
@@ -509,4 +1759,5 @@ function SevereLib:Cleanup()
 end
 
 -- Return the library
+return SevereLib:Init() 
 return SevereLib:Init() 
