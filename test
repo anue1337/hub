@@ -4,7 +4,7 @@
     Foco em estabilidade e performance para sistemas ESP
 ]]
 
--- Remover a dependência do script.Parent
+-- Implementação básica do ImprovedBoxes
 local ImprovedBoxes = {
     BoxTypes = {
         CORNERS = 1,
@@ -18,9 +18,8 @@ local ImprovedBoxes = {
         DefaultCornerSize = 0.3
     },
     DrawBoxESP = function(instance, config)
-        -- Implementação básica do DrawBoxESP
         local objects = {}
-        -- Aqui você pode implementar a lógica de desenho das caixas
+        -- Implementação básica do DrawBoxESP
         return objects
     end,
     HideAll = function()
@@ -32,36 +31,34 @@ local SevereLib = {}
 
 -- Cache para evitar chamadas repetidas
 SevereLib.Cache = {
-            LocalPlayer = nil,
-            Camera = nil,
+    LocalPlayer = nil,
+    Camera = nil,
     ESPObjects = {},
     DrawingObjects = {},
-    PlayerCache = {}, -- Cache para rastrear jogadores e seus objetos ESP
-    LastCheck = 0, -- Tempo da última verificação de limpeza
-    DeadPlayers = {}, -- Cache de jogadores mortos para rápida limpeza
-    PlayerCharacters = {} -- Mapeia jogadores para seus personagens para verificar mudanças
+    PlayerCache = {},
+    LastCheck = 0,
+    DeadPlayers = {},
+    PlayerCharacters = {}
 }
 
 -- Configurações
 SevereLib.Settings = {
-    UpdateRate = 1/60, -- Taxa de atualização padrão para o ESP
-    MaxESPDistance = 1000, -- Distância máxima para renderizar ESP
+    UpdateRate = 1/60,
+    MaxESPDistance = 1000,
     DefaultESPColor = {255, 255, 255},
     DefaultTracerColor = {255, 0, 0},
     DefaultBoxColor = {0, 255, 0},
     DefaultTextColor = {255, 255, 255},
     DefaultCircleColor = {255, 255, 0},
     DefaultTextSize = 13,
-    DefaultFont = 2, -- Plex
+    DefaultFont = 2,
     DefaultCircleRadius = 3,
     DefaultBoxThickness = 1,
     DefaultTracerThickness = 1,
     DefaultTextOutlined = true,
-    CleanupInterval = 1, -- Intervalo em segundos para verificar e limpar objetos ESP inválidos (reduzido)
-    PlayerCheckInterval = 0.5, -- Intervalo para verificar novos jogadores (reduzido)
-    DeadCheckInterval = 0.2, -- Intervalo para verificar jogadores mortos (novo)
-    
-    -- Configurações do ImprovedBoxes
+    CleanupInterval = 1,
+    PlayerCheckInterval = 0.5,
+    DeadCheckInterval = 0.2,
     DefaultBoxType = ImprovedBoxes.BoxTypes.CORNERS,
     DefaultBoxFilled = false,
     DefaultBoxTransparency = 1,
@@ -69,53 +66,12 @@ SevereLib.Settings = {
     DefaultCornerSize = ImprovedBoxes.Config.DefaultCornerSize
 }
 
--- Utilitários matemáticos
-SevereLib.Math = {
-    floor = math.floor,
-    ceil = math.ceil,
-    sqrt = math.sqrt,
-    abs = math.abs,
-    clamp = function(x, min, max)
-        return x < min and min or (x > max and max or x)
-    end
-}
-
--- Utilitários de cores
-SevereLib.Color = {
-    RGB = function(r, g, b)
-        return {
-            r = SevereLib.Math.clamp(r, 0, 255),
-            g = SevereLib.Math.clamp(g, 0, 255),
-            b = SevereLib.Math.clamp(b, 0, 255)
-        }
-    end,
-    
-    Rainbow = function(speed)
-        speed = speed or 1
-        local time = tick() * speed
-        local r = SevereLib.Math.abs(math.sin(time) * 255)
-        local g = SevereLib.Math.abs(math.sin(time + 2) * 255)
-        local b = SevereLib.Math.abs(math.sin(time + 4) * 255)
-        return {r, g, b}
-    end,
-    
-    Lerp = function(c1, c2, t)
-        return {
-            SevereLib.Math.floor(c1[1] + (c2[1] - c1[1]) * t),
-            SevereLib.Math.floor(c1[2] + (c2[2] - c1[2]) * t),
-            SevereLib.Math.floor(c1[3] + (c2[3] - c1[3]) * t)
-        }
-    end
-}
-
--- Funções de auxiliares
+-- Funções de utilidade
 SevereLib.Util = {
-    -- Verifica se um objeto é descendente de outro
     IsDescendantOf = function(instance, ancestor)
         return isdescendantof(instance, ancestor)
     end,
     
-    -- Pega todos os filhos de uma instância com uma determinada classe
     GetChildrenOfClass = function(parent, className)
         local results = {}
         for _, child in pairs(getchildren(parent)) do
@@ -126,33 +82,6 @@ SevereLib.Util = {
         return results
     end,
     
-    -- Pega todos os descendentes de uma instância
-    GetDescendants = function(instance)
-        local descendants = {}
-        local function addDescendants(parent)
-            local children = getchildren(parent)
-            for _, child in pairs(children) do
-                table.insert(descendants, child)
-                addDescendants(child)
-            end
-        end
-        addDescendants(instance)
-        return descendants
-    end,
-    
-    -- Pega todos os descendentes de uma instância com uma determinada classe
-    GetDescendantsOfClass = function(instance, className)
-        local results = {}
-        local descendants = SevereLib.Util.GetDescendants(instance)
-        for _, descendant in pairs(descendants) do
-            if getclassname(descendant) == className then
-                table.insert(results, descendant)
-            end
-        end
-        return results
-    end,
-    
-    -- Obtém a distância entre dois vetores
     GetDistance = function(v1, v2)
         local dx, dy, dz
         
@@ -174,10 +103,9 @@ SevereLib.Util = {
             return 0
         end
         
-        return SevereLib.Math.sqrt(dx * dx + dy * dy + dz * dz)
+        return math.sqrt(dx * dx + dy * dy + dz * dz)
     end,
     
-    -- Obtém a distância do jogador local até um vetor ou instância
     GetDistanceFromPlayer = function(instance)
         local player = SevereLib.Player.GetLocalPlayer()
         local character = getcharacter(player)
@@ -198,22 +126,6 @@ SevereLib.Util = {
         return SevereLib.Util.GetDistance(getposition(humanoidRootPart), instancePos)
     end,
     
-    -- Verifica se o mouse está em uma determinada área da tela
-    IsMouseInArea = function(x1, y1, x2, y2)
-        local mouse = getmouseposition()
-        return mouse.x >= x1 and mouse.x <= x2 and mouse.y >= y1 and mouse.y <= y2
-    end,
-    
-    -- Conversão de valor para string formatada
-    FormatNumber = function(number)
-        if number >= 1000 then
-            return string.format("%.1fk", number / 1000)
-        else
-            return tostring(number)
-        end
-    end,
-    
-    -- Verifica se um player ainda existe no jogo
     IsPlayerValid = function(player)
         local playersService = findservice(Game, "Players")
         for _, p in pairs(getchildren(playersService)) do
@@ -224,7 +136,6 @@ SevereLib.Util = {
         return false
     end,
     
-    -- Verifica se um jogador está vivo
     IsPlayerAlive = function(player)
         local character = getcharacter(player)
         if not character then 
@@ -240,7 +151,6 @@ SevereLib.Util = {
         return health > 0
     end,
     
-    -- Verifica se um objeto ainda existe no jogo
     IsInstanceValid = function(instance)
         if not instance then return false end
         
@@ -250,25 +160,11 @@ SevereLib.Util = {
         end)
         
         return success and result
-    end,
-    
-    -- Verifica se o personagem de um jogador mudou
-    HasCharacterChanged = function(player)
-        local oldCharacter = SevereLib.Cache.PlayerCharacters[player]
-        local newCharacter = getcharacter(player)
-        
-        if oldCharacter ~= newCharacter then
-            SevereLib.Cache.PlayerCharacters[player] = newCharacter
-            return true
-        end
-        
-        return false
     end
 }
 
 -- Funções relacionadas ao jogador
 SevereLib.Player = {
-    -- Obtém o jogador local
     GetLocalPlayer = function()
         if SevereLib.Cache.LocalPlayer then
             return SevereLib.Cache.LocalPlayer
@@ -279,13 +175,11 @@ SevereLib.Player = {
         return player
     end,
     
-    -- Obtém o personagem do jogador local
     GetLocalCharacter = function()
         local player = SevereLib.Player.GetLocalPlayer()
         return getcharacter(player)
     end,
     
-    -- Obtém a posição do jogador local
     GetLocalPosition = function()
         local character = SevereLib.Player.GetLocalCharacter()
         if not character then return nil end
@@ -296,18 +190,6 @@ SevereLib.Player = {
         return getposition(rootPart)
     end,
     
-    -- Obtém a saúde do jogador local
-    GetLocalHealth = function()
-        local character = SevereLib.Player.GetLocalCharacter()
-        if not character then return 0, 0 end
-        
-        local humanoid = findfirstchild(character, "Humanoid")
-        if not humanoid then return 0, 0 end
-        
-        return gethealth(humanoid), getmaxhealth(humanoid)
-    end,
-    
-    -- Obtém a câmera 
     GetCamera = function()
         if SevereLib.Cache.Camera then
             return SevereLib.Cache.Camera
@@ -317,30 +199,6 @@ SevereLib.Player = {
         local camera = findfirstchild(workspace, "Camera")
         SevereLib.Cache.Camera = camera
         return camera
-    end,
-    
-    -- Obtém a posição da câmera
-    GetCameraPosition = function()
-        local camera = SevereLib.Player.GetCamera()
-        if not camera then return nil end
-        
-        return getposition(camera)
-    end,
-    
-    -- Obtém todos os jogadores não-locais
-    GetAllPlayers = function()
-        local players = {}
-        local playersService = findservice(Game, "Players")
-        local localPlayer = SevereLib.Player.GetLocalPlayer()
-        local localPlayerName = getname(localPlayer)
-        
-        for _, player in pairs(getchildren(playersService)) do
-            if getname(player) ~= localPlayerName then
-                table.insert(players, player)
-            end
-        end
-        
-        return players
     end
 }
 
@@ -348,11 +206,10 @@ SevereLib.Player = {
 SevereLib.ESP = {
     Running = false,
     Objects = {},
-    PlayerObjects = {}, -- Mapeia players para seus objetos ESP
-    LastPlayerCheck = 0, -- Último tempo que checamos por novos jogadores
-    LastDeadCheck = 0, -- Último tempo que checamos por jogadores mortos
+    PlayerObjects = {},
+    LastPlayerCheck = 0,
+    LastDeadCheck = 0,
     
-    -- Cria um novo objeto de desenho
     CreateDrawingObject = function(type, properties)
         local obj = Drawing.new(type)
         if properties then
@@ -364,7 +221,6 @@ SevereLib.ESP = {
         return obj
     end,
     
-    -- Remove um objeto de desenho
     RemoveDrawingObject = function(obj)
         if obj then
             obj.Visible = false
@@ -378,7 +234,6 @@ SevereLib.ESP = {
         end
     end,
     
-    -- Cria um novo objeto ESP
     CreateESPObject = function(instance, config)
         config = config or {}
         
@@ -399,15 +254,12 @@ SevereLib.ESP = {
             TracerThickness = config.TracerThickness or SevereLib.Settings.DefaultTracerThickness,
             TextOutlined = config.TextOutlined == nil and true or config.TextOutlined,
             Enabled = config.Enabled == nil and true or config.Enabled,
-            Player = config.Player, -- Referência ao jogador para rastreamento
-            LastUpdated = tick(), -- Tempo da última atualização
             BoxType = config.BoxType or SevereLib.Settings.DefaultBoxType,
             BoxFilled = config.BoxFilled or SevereLib.Settings.DefaultBoxFilled,
             BoxTransparency = config.BoxTransparency or SevereLib.Settings.DefaultBoxTransparency,
             BoxFillTransparency = config.BoxFillTransparency or SevereLib.Settings.DefaultBoxFillTransparency,
             CornerSize = config.CornerSize or SevereLib.Settings.DefaultCornerSize,
             
-            -- Objetos de desenho
             Text = SevereLib.ESP.CreateDrawingObject("Text", {
                 Text = "",
                 Size = config.TextSize or SevereLib.Settings.DefaultTextSize,
@@ -426,42 +278,15 @@ SevereLib.ESP = {
                 Visible = false
             }),
             
-            Box = nil,
-            Tracer = nil,
-            HealthBar = nil,
-            
-            -- Funções do objeto
             Update = function(self)
                 if not self.Enabled or not self.Instance then
                     self:Hide()
-                    return false -- Retornar false indica que a atualização falhou
+                    return false
                 end
                 
-                -- Se este for um ESP de jogador, verificar se o jogador está morto
-                if self.Player then
-                    if not SevereLib.Util.IsPlayerValid(self.Player) then
-                        self:Hide()
-                        return false -- Jogador não existe mais
-                    end
-                    
-                    -- Verificar se o jogador está morto
-                    if not SevereLib.Util.IsPlayerAlive(self.Player) then
-                        self:Hide()
-                        SevereLib.Cache.DeadPlayers[self.Player] = true
-                        return false -- Jogador está morto
-                    end
-                    
-                    -- Verificar se o personagem do jogador mudou
-                    if SevereLib.Util.HasCharacterChanged(self.Player) then
-                        self:Hide()
-                        return false -- O personagem mudou
-                    end
-                end
-                
-                -- Verificar se a instância ainda é válida
                 if not SevereLib.Util.IsInstanceValid(self.Instance) then
                     self:Hide()
-                    return false -- Instância não é mais válida
+                    return false
                 end
                 
                 local camera = SevereLib.Player.GetCamera()
@@ -470,7 +295,7 @@ SevereLib.ESP = {
                     return false
                 end
                 
-                local cameraPos = SevereLib.Player.GetCameraPosition()
+                local cameraPos = getposition(camera)
                 if not cameraPos then
                     self:Hide()
                     return false
@@ -482,15 +307,12 @@ SevereLib.ESP = {
                     return false
                 end
                 
-                self.LastUpdated = tick() -- Atualizar o timestamp
-                
                 local distance = SevereLib.Util.GetDistance(cameraPos, instancePos)
                 if distance > self.MaxDistance then
                     self:Hide()
-                    return true -- A instância é válida, só está fora de alcance
+                    return true
                 end
                 
-                -- Usar ImprovedBoxes para desenhar a caixa ESP
                 local espObjects = ImprovedBoxes.DrawBoxESP(self.Instance, {
                     BoxType = self.BoxType,
                     Color = self.Color,
@@ -505,14 +327,13 @@ SevereLib.ESP = {
                     CornerSize = self.CornerSize
                 })
                 
-                -- Atualizar objetos de desenho
                 for _, obj in ipairs(espObjects) do
                     if not table.find(SevereLib.Cache.DrawingObjects, obj) then
                         table.insert(SevereLib.Cache.DrawingObjects, obj)
                     end
                 end
                 
-                return true -- Atualização bem-sucedida
+                return true
             end,
             
             Hide = function(self)
@@ -533,38 +354,23 @@ SevereLib.ESP = {
                     if self.HealthBar then SevereLib.ESP.RemoveDrawingObject(self.HealthBar) end
                 end)
                 
-                -- Remover da lista de objetos
                 for i, obj in pairs(SevereLib.ESP.Objects) do
                     if obj == self then
                         table.remove(SevereLib.ESP.Objects, i)
                         break
                     end
                 end
-                
-                -- Remover do mapeamento de jogadores
-                if self.Player then
-                    SevereLib.ESP.PlayerObjects[self.Player] = nil
-                end
             end
         }
         
         table.insert(SevereLib.ESP.Objects, espObject)
-        
-        -- Se for um ESP de jogador, armazenar no mapeamento
-        if config.Player then
-            SevereLib.ESP.PlayerObjects[config.Player] = espObject
-            SevereLib.Cache.PlayerCharacters[config.Player] = getcharacter(config.Player)
-        end
-        
         return espObject
     end,
     
-    -- Adiciona um objeto ESP
     Add = function(instance, config)
         return SevereLib.ESP.CreateESPObject(instance, config)
     end,
     
-    -- Remove um objeto ESP
     Remove = function(instance)
         for i, obj in pairs(SevereLib.ESP.Objects) do
             if obj.Instance == instance then
@@ -574,18 +380,6 @@ SevereLib.ESP = {
         end
     end,
     
-    -- Remove um objeto ESP para um jogador específico
-    RemovePlayer = function(player)
-        local espObject = SevereLib.ESP.PlayerObjects[player]
-        if espObject then
-            espObject:Remove()
-            SevereLib.ESP.PlayerObjects[player] = nil
-            SevereLib.Cache.DeadPlayers[player] = nil
-            SevereLib.Cache.PlayerCharacters[player] = nil
-        end
-    end,
-    
-    -- Limpa todos os objetos ESP
     Clear = function()
         for _, obj in pairs(SevereLib.ESP.Objects) do
             obj:Remove()
@@ -596,166 +390,6 @@ SevereLib.ESP = {
         SevereLib.Cache.PlayerCharacters = {}
     end,
     
-    -- Verifica e limpa objetos ESP inválidos
-    CleanupInvalid = function()
-        local currentTime = tick()
-        
-        -- Verificar a cada X segundos
-        if currentTime - SevereLib.Cache.LastCheck < SevereLib.Settings.CleanupInterval then
-            return
-        end
-        
-        SevereLib.Cache.LastCheck = currentTime
-        
-        -- Lista de objetos a remover
-        local toRemove = {}
-        local deadCount = 0
-        
-        for i, obj in pairs(SevereLib.ESP.Objects) do
-            -- Verifica se a instância ainda é válida ou já foi limpa
-            if not obj.Instance or not SevereLib.Util.IsInstanceValid(obj.Instance) then
-                table.insert(toRemove, obj)
-            end
-            
-            -- Verifica se o objeto não foi atualizado há muito tempo
-            if currentTime - obj.LastUpdated > 5 then
-                table.insert(toRemove, obj)
-            end
-        end
-        
-        -- Remover objetos inválidos
-        for _, obj in pairs(toRemove) do
-            obj:Remove()
-        end
-        
-        -- Se algum objeto foi removido, fazer log
-        if #toRemove > 0 then
-            print("SevereLib: Removidos " .. #toRemove .. " objetos ESP inválidos")
-        end
-    end,
-    
-    -- Verifica jogadores mortos
-    CheckDeadPlayers = function()
-        local currentTime = tick()
-        
-        -- Verificar a cada X segundos
-        if currentTime - SevereLib.ESP.LastDeadCheck < SevereLib.Settings.DeadCheckInterval then
-            return
-        end
-        
-        SevereLib.ESP.LastDeadCheck = currentTime
-        
-        -- Limpar jogadores mortos do cache que não existem mais
-        for player, _ in pairs(SevereLib.Cache.DeadPlayers) do
-            if not SevereLib.Util.IsPlayerValid(player) then
-                SevereLib.ESP.RemovePlayer(player)
-                SevereLib.Cache.DeadPlayers[player] = nil
-            else
-                -- Verificar se o jogador respawnou
-                if SevereLib.Util.IsPlayerAlive(player) then
-                    SevereLib.Cache.DeadPlayers[player] = nil
-                    
-                    -- Recriar o ESP para o jogador
-                    if SevereLib.ESP.PlayerObjects[player] then
-                        SevereLib.ESP.RemovePlayer(player)
-                    end
-                    
-                    SevereLib.ESP.SetupPlayerESP(findservice(Game, "Players"), {})
-                end
-            end
-        end
-        
-        -- Verificar jogadores vivos que morreram
-        for player, espObj in pairs(SevereLib.ESP.PlayerObjects) do
-            if not SevereLib.Util.IsPlayerAlive(player) then
-                espObj:Hide()
-                SevereLib.Cache.DeadPlayers[player] = true
-            end
-        end
-    end,
-    
-    -- Verifica novos jogadores
-    CheckNewPlayers = function()
-        local currentTime = tick()
-        
-        -- Verificar a cada X segundos
-        if currentTime - SevereLib.ESP.LastPlayerCheck < SevereLib.Settings.PlayerCheckInterval then
-            return
-        end
-        
-        SevereLib.ESP.LastPlayerCheck = currentTime
-        
-        local playersService = findservice(Game, "Players")
-        local localPlayer = SevereLib.Player.GetLocalPlayer()
-        
-        -- Verificar jogadores novos
-        for _, player in pairs(getchildren(playersService)) do
-            if player ~= localPlayer and not SevereLib.ESP.PlayerObjects[player] and not SevereLib.Cache.DeadPlayers[player] then
-                -- Tentar configurar ESP para este jogador
-                pcall(function()
-                    SevereLib.ESP.SetupForPlayer(player)
-                end)
-            end
-        end
-    end,
-    
-    -- Configurar ESP para um jogador específico
-    SetupForPlayer = function(player, config)
-        config = config or {}
-        
-        -- Não configurar para jogadores mortos ou já com ESP
-        if SevereLib.Cache.DeadPlayers[player] or SevereLib.ESP.PlayerObjects[player] then
-            return
-        end
-        
-        local character = getcharacter(player)
-        if not character then return end
-        
-        -- Verificar se o jogador está vivo
-        if not SevereLib.Util.IsPlayerAlive(player) then
-            SevereLib.Cache.DeadPlayers[player] = true
-            return
-        end
-        
-        local rootPart = findfirstchild(character, "HumanoidRootPart")
-        if not rootPart then return end
-        
-        local playerName = getname(player)
-        local displayName = getdisplayname and getdisplayname(player) or playerName
-        
-        -- Obter cor da equipe se disponível
-        local teamColor = {255, 255, 255}
-        local team = getteam and getteam(player) or nil
-        
-        if team then
-            local teamColorObj = getteamcolour and getteamcolour(team) or nil
-            if teamColorObj then
-                teamColor = {teamColorObj.r * 255, teamColorObj.g * 255, teamColorObj.b * 255}
-            end
-        end
-        
-        -- Adicionar ESP ao jogador
-        local espObject = SevereLib.ESP.Add(rootPart, {
-            Name = displayName,
-            ShowBox = config.ShowBox == nil and true or config.ShowBox,
-            ShowTracer = config.ShowTracer == nil and true or config.ShowTracer,
-            ShowHealthBar = config.ShowHealthBar == nil and true or config.ShowHealthBar,
-            MaxDistance = config.MaxDistance or 1000,
-            Color = config.Color or teamColor,
-            Player = player, -- Referência ao jogador para rastreamento
-            
-            -- Configurações do ImprovedBoxes
-            BoxType = config.BoxType or SevereLib.Settings.DefaultBoxType,
-            BoxFilled = config.BoxFilled or SevereLib.Settings.DefaultBoxFilled,
-            BoxTransparency = config.BoxTransparency or SevereLib.Settings.DefaultBoxTransparency,
-            BoxFillTransparency = config.BoxFillTransparency or SevereLib.Settings.DefaultBoxFillTransparency,
-            CornerSize = config.CornerSize or SevereLib.Settings.DefaultCornerSize
-        })
-        
-        return espObject
-    end,
-    
-    -- Inicia o loop de renderização do ESP
     Start = function()
         if SevereLib.ESP.Running then return end
         
@@ -763,34 +397,16 @@ SevereLib.ESP = {
         
         spawn(function()
             while SevereLib.ESP.Running do
-                -- Verificar novos jogadores
-                pcall(function()
-                    SevereLib.ESP.CheckNewPlayers()
-                end)
-                
-                -- Verificar jogadores mortos
-                pcall(function()
-                    SevereLib.ESP.CheckDeadPlayers()
-                end)
-                
-                -- Atualizar objetos ESP existentes
                 for _, obj in pairs(SevereLib.ESP.Objects) do
                     pcall(function()
                         obj:Update()
                     end)
                 end
-                
-                -- Limpar objetos inválidos periodicamente
-                pcall(function()
-                    SevereLib.ESP.CleanupInvalid()
-                end)
-                
                 wait(SevereLib.Settings.UpdateRate)
             end
         end)
     end,
     
-    -- Para o loop de renderização do ESP
     Stop = function()
         SevereLib.ESP.Running = false
         for _, obj in pairs(SevereLib.ESP.Objects) do
@@ -798,45 +414,21 @@ SevereLib.ESP = {
         end
     end,
     
-    -- Configura o ESP para jogadores
-    SetupPlayerESP = function(playerFolder, config)
-        config = config or {}
-        
-        -- Configurar ESP para todos os jogadores atuais
-        for _, player in pairs(getchildren(playerFolder)) do
-            local localPlayer = SevereLib.Player.GetLocalPlayer()
-            if player ~= localPlayer then
-                pcall(function()
-                    SevereLib.ESP.SetupForPlayer(player, config)
-                end)
-            end
-        end
-    end,
-    
-    -- Atualiza o ESP para um jogador específico
-    UpdatePlayerESP = function(player, config)
-        local espObject = SevereLib.ESP.PlayerObjects[player]
-        
-        if espObject then
-            -- Atualizar propriedades existentes
-            if config.Color then espObject.Color = config.Color end
-            if config.ShowBox ~= nil then espObject.ShowBox = config.ShowBox end
-            if config.ShowTracer ~= nil then espObject.ShowTracer = config.ShowTracer end
-            if config.ShowDistance ~= nil then espObject.ShowDistance = config.ShowDistance end
-            if config.MaxDistance then espObject.MaxDistance = config.MaxDistance end
-            if config.Name then espObject.Name = config.Name end
-            
-            -- Atualizar propriedades dos objetos de desenho
-            if config.Color then
-                espObject.Text.Color = config.Color
-                espObject.Circle.Color = config.Color
-                if espObject.Box then espObject.Box.Color = config.Color end
-                if espObject.Tracer then espObject.Tracer.Color = config.Color end
-            end
-            
-            if config.TextSize then
-                espObject.TextSize = config.TextSize
-                espObject.Text.Size = config.TextSize
+    UpdatePlayerESP = function(instance, config)
+        for _, obj in pairs(SevereLib.ESP.Objects) do
+            if obj.Instance == instance then
+                if config.Color then obj.Color = config.Color end
+                if config.ShowBox ~= nil then obj.ShowBox = config.ShowBox end
+                if config.ShowTracer ~= nil then obj.ShowTracer = config.ShowTracer end
+                if config.ShowDistance ~= nil then obj.ShowDistance = config.ShowDistance end
+                if config.MaxDistance then obj.MaxDistance = config.MaxDistance end
+                if config.Name then obj.Name = config.Name end
+                if config.BoxType then obj.BoxType = config.BoxType end
+                if config.BoxFilled ~= nil then obj.BoxFilled = config.BoxFilled end
+                if config.BoxTransparency then obj.BoxTransparency = config.BoxTransparency end
+                if config.BoxFillTransparency then obj.BoxFillTransparency = config.BoxFillTransparency end
+                if config.CornerSize then obj.CornerSize = config.CornerSize end
+                break
             end
         end
     end
@@ -857,7 +449,6 @@ SevereLib.Cleanup = function()
     SevereLib.Cache.DrawingObjects = {}
     SevereLib.Cache.DeadPlayers = {}
     SevereLib.Cache.PlayerCharacters = {}
-    print("SevereLib: Cleanup completed")
 end
 
 return SevereLib 
