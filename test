@@ -277,16 +277,22 @@ function svl.BoxESP(params)
     
     assert(type(box_color) == "table" and #box_color == 3, "[SVL Error] BoxESP: Color Argument needs to be a table with 3 RGB values!")
     
-    -- Tentar encontrar o HumanoidRootPart diretamente
-    local torso
-    if getclassname and getclassname(target) == "HumanoidRootPart" then
-        torso = target
-    else
-        torso = findfirstchild(target, "HumanoidRootPart")
-    end
+    -- Tentar encontrar o HumanoidRootPart
+    local torso = findfirstchild(target, "HumanoidRootPart")
     
+    -- Fornecer informações adicionais para debug
     if not torso then 
-        warn("[SVL Error] BoxESP: Cannot find HumanoidRootPart in target!")
+        warn("[SVL Error] BoxESP: Cannot find HumanoidRootPart in target! Target name: " .. tostring(getname(target)))
+        
+        -- Imprimir filhos do target para debug
+        local children = getchildren(target)
+        if children then
+            warn("Children of target:")
+            for _, child in ipairs(children) do
+                warn(" - " .. tostring(getname(child)))
+            end
+        end
+        
         return 
     end
     
