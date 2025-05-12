@@ -42,12 +42,9 @@ if not _G.svlib then
             Performance = {
                 MaxESPDistance = 1000,
                 MaxDrawObjects = 200,
-                UpdateRate = 0.05, -- 20 FPS default (anti-crash setting)
-                CleanRate = 1.0, -- 1 segundo entre limpezas
-                EnableAntiCrash = true, -- Sempre ativado por padrão
-                ObjectLimit = true, -- Limitar objetos por personagem
-                MaxObjectsPerCharacter = 20, -- Limite de objetos por personagem
-                ReuseObjects = true, -- Reutilizar objetos existentes em vez de criar novos
+                UpdateRate = 0.05, -- 20 FPS default
+                StableMode = true, -- Novo modo estável que evita criação/destruição excessiva de objetos
+                EnableAntiCrash = true,
             },
         },
         
@@ -55,17 +52,13 @@ if not _G.svlib then
         Cache = {
             PlayerData = {},
             DrawingObjects = {},
-            CharacterESP = {}, -- Cache for character ESP objects
-            DrawingPool = {}, -- Pool de objetos para reutilização
-            LastUpdate = 0,
+            ESPObjects = {}, -- ESP objects organized by player name
             UpdateInProgress = false,
-            CleanupInProgress = false,
             ThreadActive = false,
             LocalPlayer = nil,
             Camera = nil,
             ScreenSize = {x = 0, y = 0},
-            LastCleanup = 0,
-            FrameCount = 0,
+            DebugMode = true, -- Ativar depuração por padrão
         },
         
         -- Stats for debugging
@@ -73,9 +66,7 @@ if not _G.svlib then
             FrameTime = 0,
             ObjectsDrawn = 0,
             LastUpdate = 0,
-            Crashes = 0,
-            MaxObjects = 0,
-            PoolSize = 0,
+            FPS = 0,
         },
     }
 end
@@ -89,6 +80,13 @@ local Game = Game
 ----------------------------------
 -- Utility Functions
 ----------------------------------
+
+-- Debug function
+function svlib.Debug(message)
+    if svlib.Cache.DebugMode then
+        print("[SEVERE LIB DEBUG] " .. message)
+    end
+end
 
 -- Get screen dimensions
 function svlib.UpdateScreenSize()
@@ -141,103 +139,6 @@ function svlib.Game(...)
     return current
 end
 
--- Get descendants
-function svlib.GetDescendants(instance)
-    local result = {}
-    local function addDescendants(parent)
-        local children = getchildren(parent)
-        for _, child in ipairs(children) do
-            table.insert(result, child)
-            addDescendants(child)
-        end
-    end
-    
-    addDescendants(instance)
-    return result
-end
-
--- Check if a part is valid and not corrupted
-function svlib.IsValidPart(part)
-    if not part then return false end
-    
-    local success, className = pcall(function() 
-        return getclassname(part) 
-    end)
-    
-    if not success or not className then return false end
-    
-    local validClasses = {
-        ["Part"] = true,
-        ["MeshPart"] = true,
-        ["TrussPart"] = true,
-        ["WedgePart"] = true,
-    }
-    
-    return validClasses[className] or false
-end
-
--- Get descendants of class
-function svlib.GetDescendantsOfClass(instance, className)
-    local result = {}
-    
-    for _, descendant in ipairs(svlib.GetDescendants(instance)) do
-        local success, classType = pcall(function() 
-            return getclassname(descendant) 
-        end)
-        
-        if success and classType == className then
-            table.insert(result, descendant)
-        end
-    end
-    
-    return result
-end
-
--- Find closest part in a model
-function svlib.GetClosestPart(model)
-    local parts = {}
-    local validClasses = {
-        ["Part"] = true,
-        ["MeshPart"] = true,
-        ["TrussPart"] = true,
-        ["WedgePart"] = true,
-    }
-    
-    local success, descendants = pcall(function()
-        return svlib.GetDescendants(model)
-    end)
-    
-    if not success or not descendants then
-        return nil
-    end
-    
-    for _, descendant in ipairs(descendants) do
-        local className = getclassname(descendant)
-        if validClasses[className] then
-            table.insert(parts, descendant)
-        end
-    end
-    
-    local closestDistance = math.huge
-    local closestPart = nil
-    
-    for _, part in ipairs(parts) do
-        local posSuccess, pos = pcall(function() 
-            return getposition(part) 
-        end)
-        
-        if posSuccess and pos then
-            local distance = svlib.GetDistanceFromPlayer(pos)
-            if distance < closestDistance then
-                closestDistance = distance
-                closestPart = part
-            end
-        end
-    end
-    
-    return closestPart
-end
-
 ----------------------------------
 -- Player Functions
 ----------------------------------
@@ -250,40 +151,10 @@ function svlib.GetLocalPlayer()
     return svlib.Cache.LocalPlayer
 end
 
--- Get local character
-function svlib.GetLocalCharacter()
-    local player = svlib.GetLocalPlayer()
-    return getcharacter(player)
-end
-
--- Get player by name
-function svlib.GetPlayer(name)
-    local players = svlib.GetService("Players")
-    local children = getchildren(players)
-    
-    for _, player in ipairs(children) do
-        if getname(player) == name then
-            return player
-        end
-    end
-    
-    return nil
-end
-
 -- Get all players
 function svlib.GetPlayers()
     local players = svlib.GetService("Players")
     return getchildren(players)
-end
-
--- Check if player is an enemy
-function svlib.IsEnemy(player)
-    local localPlayer = svlib.GetLocalPlayer()
-    local localTeam = getteam(localPlayer)
-    local playerTeam = getteam(player)
-    
-    if not localTeam or not playerTeam then return true end
-    return localTeam ~= playerTeam
 end
 
 -- Get humanoid health
@@ -302,477 +173,243 @@ function svlib.GetHealth(humanoid)
 end
 
 ----------------------------------
--- Drawing Functions
+-- Drawing Functions - Simplificado
 ----------------------------------
 
--- Initialize a new cached drawing object
-function svlib.NewDrawing(drawingType, properties)
-    -- Check if we exceed max objects (anti-crash)
-    if svlib.Config.Performance.EnableAntiCrash and #svlib.Cache.DrawingObjects >= svlib.Config.Performance.MaxDrawObjects then
-        return nil
-    end
-    
-    -- Create the drawing object
-    local success, drawing = pcall(function()
-        return Drawing.new(drawingType)
-    end)
-    
-    if not success or not drawing then
-        svlib.Stats.Crashes = svlib.Stats.Crashes + 1
-        return nil
-    end
-    
-    -- Set the properties
-    for property, value in pairs(properties or {}) do
-        pcall(function() drawing[property] = value end)
-    end
-    
-    -- Add to cache for management
-    table.insert(svlib.Cache.DrawingObjects, drawing)
-    
-    -- Update stats
-    if #svlib.Cache.DrawingObjects > svlib.Stats.MaxObjects then
-        svlib.Stats.MaxObjects = #svlib.Cache.DrawingObjects
-    end
-    
-    -- Return the drawing object
-    return drawing
-end
-
--- Get object from pool or create new
-function svlib.GetDrawingObject(drawingType, properties)
-    -- Verificar limites de objetos
-    if svlib.Config.Performance.EnableAntiCrash and #svlib.Cache.DrawingObjects >= svlib.Config.Performance.MaxDrawObjects then
-        -- Tente limpar alguns objetos primeiro
-        svlib.CleanupInvalidDrawings()
-        
-        -- Se ainda estiver acima do limite, não criar novo objeto
-        if #svlib.Cache.DrawingObjects >= svlib.Config.Performance.MaxDrawObjects then
-            return nil
-        end
-    end
-    
-    local drawing = nil
-    
-    -- Tentar reutilizar um objeto do pool
-    if svlib.Config.Performance.ReuseObjects and #svlib.Cache.DrawingPool > 0 then
-        for i, poolObj in ipairs(svlib.Cache.DrawingPool) do
-            -- Verificar se o objeto é do tipo certo e válido
-            local success, isValid = pcall(function() 
-                return poolObj.Visible ~= nil
-            end)
-            
-            if success and isValid then
-                -- Encontramos um objeto válido no pool
-                drawing = poolObj
-                table.remove(svlib.Cache.DrawingPool, i)
-                break
-            end
-        end
-    end
-    
-    -- Se não encontrou no pool, criar novo
-    if not drawing then
-        local success, newDrawing = pcall(function()
-            return Drawing.new(drawingType)
-        end)
-        
-        if not success or not newDrawing then
-            return nil
-        end
-        
-        drawing = newDrawing
-    end
+-- Cria ou obtém um objeto de desenho
+function svlib.DrawingObject(drawingType, properties)
+    local obj = Drawing.new(drawingType)
     
     -- Aplicar propriedades
-    for property, value in pairs(properties or {}) do
-        pcall(function() drawing[property] = value end)
+    for prop, value in pairs(properties or {}) do
+        pcall(function() obj[prop] = value end)
     end
     
-    -- Adicionar à lista ativa
-    table.insert(svlib.Cache.DrawingObjects, drawing)
+    -- Adicionar ao cache
+    table.insert(svlib.Cache.DrawingObjects, obj)
     
-    -- Update stats
-    if #svlib.Cache.DrawingObjects > svlib.Stats.MaxObjects then
-        svlib.Stats.MaxObjects = #svlib.Cache.DrawingObjects
-    end
-    
-    return drawing
+    return obj
 end
 
--- Clear all drawing objects
-function svlib.ClearDrawings(immediate)
-    if svlib.Cache.CleanupInProgress and not immediate then return end
-    svlib.Cache.CleanupInProgress = true
-    
-    -- Se não for uma limpeza imediata, fazer gradualmente
-    local objectsToRemove = {}
-    
-    for i, drawing in ipairs(svlib.Cache.DrawingObjects) do
-        -- Se for limpeza imediata, remover tudo. Senão, limitar a 50 objetos por vez
-        if immediate or i <= 50 then
-            table.insert(objectsToRemove, {index = i, obj = drawing})
-        end
-    end
-    
-    -- Sort in reverse order to avoid index shifting when removing
-    table.sort(objectsToRemove, function(a, b) return a.index > b.index end)
-    
-    for _, data in ipairs(objectsToRemove) do
-        -- Em vez de destruir, mover para o pool para reutilização
-        if svlib.Config.Performance.ReuseObjects and data.obj and data.obj.Visible ~= nil then
-            -- Esconder o objeto e adicionar ao pool
-            pcall(function() 
-                data.obj.Visible = false
-                table.insert(svlib.Cache.DrawingPool, data.obj)
-            end)
-        else
-            -- Destruir se não estiver reutilizando ou o objeto for inválido
-            pcall(function() 
-                if data.obj and data.obj.Remove then 
-                    data.obj:Remove() 
-                end
-            end)
-        end
-        
-        -- Remover da lista ativa
-        table.remove(svlib.Cache.DrawingObjects, data.index)
-    end
-    
-    -- Se não for limpeza imediata e ainda houver objetos, programar outra limpeza
-    if not immediate and #svlib.Cache.DrawingObjects > 0 then
-        spawn(function()
-            wait(0.1) -- Esperar um pouco antes da próxima rodada
-            svlib.Cache.CleanupInProgress = false
-            svlib.ClearDrawings(false)
-        end)
-    else
-        svlib.Cache.CharacterESP = {}
-        svlib.Cache.CleanupInProgress = false
-    end
-    
-    -- Atualizar estatísticas do pool
-    svlib.Stats.PoolSize = #svlib.Cache.DrawingPool
-end
-
--- Remove a specific drawing object
-function svlib.RemoveDrawing(drawing)
-    for i, obj in ipairs(svlib.Cache.DrawingObjects) do
-        if obj == drawing then
-            pcall(function() obj:Remove() end)
-            table.remove(svlib.Cache.DrawingObjects, i)
-            break
-        end
-    end
-end
-
--- Clear invalid drawing objects only (memory optimization)
-function svlib.CleanupInvalidDrawings()
-    if svlib.Cache.CleanupInProgress then return end
-    svlib.Cache.CleanupInProgress = true
-    
-    local invalidObjects = {}
-    
-    for i, drawing in ipairs(svlib.Cache.DrawingObjects) do
-        local isValid = pcall(function() return drawing.Visible ~= nil end)
-        if not isValid then
-            table.insert(invalidObjects, i)
-        end
-    end
-    
-    -- Sort in reverse order to avoid index shifting when removing
-    table.sort(invalidObjects, function(a, b) return a > b end)
-    
-    for _, index in ipairs(invalidObjects) do
+-- Limpar todos os objetos de desenho
+function svlib.ClearAllDrawings()
+    for _, obj in ipairs(svlib.Cache.DrawingObjects) do
         pcall(function() 
-            local obj = svlib.Cache.DrawingObjects[index]
-            if obj and obj.Remove then obj:Remove() end
-        end)
-        table.remove(svlib.Cache.DrawingObjects, index)
-    end
-    
-    -- Also cleanup character ESP cache for characters that no longer exist
-    local charactersToRemove = {}
-    for character, espData in pairs(svlib.Cache.CharacterESP) do
-        if not espData or not character then
-            table.insert(charactersToRemove, character)
-        else
-            local exists = pcall(function() 
-                return isdescendantof(character, svlib.GetService("Workspace")) 
-            end)
-            
-            if not exists then
-                -- Remove all drawing objects for this character
-                for _, obj in pairs(espData) do
-                    if type(obj) == "table" then
-                        for _, drawing in pairs(obj) do
-                            pcall(function() 
-                                if drawing and drawing.Remove then 
-                                    drawing:Remove() 
-                                end 
-                            end)
-                        end
-                    elseif obj and obj.Remove then
-                        pcall(function() obj:Remove() end)
-                    end
-                end
-                
-                table.insert(charactersToRemove, character)
+            if obj and obj.Remove then
+                obj:Remove()
             end
-        end
+        end)
     end
     
-    -- Remove invalid characters from cache
-    for _, character in ipairs(charactersToRemove) do
-        svlib.Cache.CharacterESP[character] = nil
-    end
-    
-    svlib.Cache.CleanupInProgress = false
-end
-
--- Draw a 2D box
-function svlib.Draw2DBox(position, size, color, thickness)
-    local box = svlib.NewDrawing("Square", {
-        Position = {position.x - size.x/2, position.y - size.y/2},
-        Size = {size.x, size.y},
-        Color = color or svlib.Config.Colors.Primary,
-        Thickness = thickness or 1,
-        Filled = false,
-        Visible = true
-    })
-    return box
-end
-
--- Draw a health bar
-function svlib.DrawHealthBar(position, size, health, maxHealth)
-    local background = svlib.NewDrawing("Square", {
-        Position = {position.x, position.y},
-        Size = {size.x, size.y},
-        Color = {0, 0, 0},
-        Filled = true,
-        Visible = true
-    })
-    
-    local healthRatio = math.min(1, health / maxHealth)
-    local healthColor = {
-        255 * (1 - healthRatio),
-        255 * healthRatio,
-        0
-    }
-    
-    local fill = svlib.NewDrawing("Square", {
-        Position = {position.x, position.y},
-        Size = {size.x * healthRatio, size.y},
-        Color = healthColor,
-        Filled = true,
-        Visible = true
-    })
-    
-    return {
-        Background = background,
-        Fill = fill
-    }
-end
-
--- Draw text
-function svlib.DrawText(position, text, size, color, center)
-    local textObj = svlib.NewDrawing("Text", {
-        Position = {position.x, position.y},
-        Text = text,
-        Size = size or 13,
-        Color = color or svlib.Config.Colors.Primary,
-        Center = center or false,
-        Outline = true,
-        OutlineColor = {0, 0, 0},
-        Visible = true
-    })
-    return textObj
-end
-
--- Draw line/tracer
-function svlib.DrawLine(from, to, color, thickness)
-    local line = svlib.GetDrawingObject("Line", {
-        From = {from.x, from.y},
-        To = {to.x, to.y},
-        Color = color or svlib.Config.Colors.Primary,
-        Thickness = thickness or 1,
-        Visible = true
-    })
-    return line
+    svlib.Cache.DrawingObjects = {}
+    svlib.Cache.ESPObjects = {}
+    svlib.Debug("Todos os objetos de desenho foram limpos")
 end
 
 ----------------------------------
--- ESP Functions
+-- ESP Functions - Reimplementado
 ----------------------------------
 
--- Create box ESP for a character
-function svlib.CreateESP(character)
-    if not character then
-        print("Character inválido para ESP")
-        return nil 
+-- Criar objeto ESP para um personagem
+function svlib.CreatePlayerESP(player)
+    if not player then return nil end
+    
+    -- Ignorar jogador local
+    local localPlayer = svlib.GetLocalPlayer()
+    if player == localPlayer then return nil end
+    
+    -- Verificar se já existe ESP para este jogador
+    local playerName = getname(player)
+    if svlib.Cache.ESPObjects[playerName] then
+        return svlib.Cache.ESPObjects[playerName]
     end
     
-    -- Check if ESP already exists for this character
-    if svlib.Cache.CharacterESP[character] then
-        return svlib.Cache.CharacterESP[character]
+    -- Obter personagem
+    local character = nil
+    pcall(function() character = getcharacter(player) end)
+    if not character then return nil end
+    
+    -- Verificar partes importantes
+    local humanoid = findfirstchildofclass(character, "Humanoid")
+    local rootPart = findfirstchild(character, "HumanoidRootPart")
+    local head = findfirstchild(character, "Head")
+    
+    if not humanoid or not rootPart or not head then
+        svlib.Debug("Partes importantes não encontradas para " .. playerName)
+        return nil
     end
     
-    local success, humanoid = pcall(function() 
-        return findfirstchildofclass(character, "Humanoid") 
-    end)
-    
-    if not success or not humanoid then
-        print("Humanoid não encontrado para ESP")
-        return nil 
-    end
-    
-    local rootSuccess, rootPart = pcall(function() 
-        return findfirstchild(character, "HumanoidRootPart") 
-    end)
-    
-    if not rootSuccess or not rootPart then
-        print("HumanoidRootPart não encontrado para ESP")
-        return nil 
-    end
-    
-    local headSuccess, head = pcall(function() 
-        return findfirstchild(character, "Head") 
-    end)
-    
-    if not headSuccess or not head then
-        print("Head não encontrado para ESP")
-        return nil 
-    end
-    
-    -- Obter posições e verificar distância
+    -- Verificar distância
     local characterPos = getposition(rootPart)
     local distance = svlib.GetDistanceFromPlayer(characterPos)
     
-    -- Check if character is within max ESP distance
     if distance > svlib.Config.Performance.MaxESPDistance then
         return nil
     end
     
-    -- Ajustar procedimento de conversão para tela
-    local screenSize = svlib.UpdateScreenSize()
-    
-    -- Get head position and convert to screen coordinates
+    -- Obter posições na tela
     local headPos = getposition(head)
-    local worldToScreenResult, onScreen = worldtoscreenpoint({headPos.x, headPos.y + 2, headPos.z})
-    if not onScreen then
-        print("Cabeça fora da tela para ESP")
-        return nil
-    end
-    
-    local topPos = {x = worldToScreenResult.x, y = worldToScreenResult.y}
-    
-    -- Get root position and convert to screen coordinates
     local rootPos = getposition(rootPart)
-    worldToScreenResult, onScreen = worldtoscreenpoint({rootPos.x, rootPos.y - 3, rootPos.z})
-    if not onScreen then
-        print("Pés fora da tela para ESP")
+    
+    -- Converter para coordenadas de tela
+    local topScreenPos, topVisible = worldtoscreenpoint({headPos.x, headPos.y + 2, headPos.z})
+    local bottomScreenPos, bottomVisible = worldtoscreenpoint({rootPos.x, rootPos.y - 3, rootPos.z})
+    
+    if not topVisible or not bottomVisible then
         return nil
     end
     
-    local bottomPos = {x = worldToScreenResult.x, y = worldToScreenResult.y}
+    -- Criar objetos ESP
+    local espObjects = {
+        BoxLines = {},
+        Healthbar = nil,
+        NameText = nil,
+        DistanceText = nil,
+        TracerLine = nil,
+        Character = character,
+        LastUpdate = time()
+    }
     
-    -- Calculate box dimensions
-    local height = bottomPos.y - topPos.y
-    if height <= 0 then height = 10 end -- Garantir altura mínima
-    
+    -- Dimensões da caixa
+    local height = math.max(10, bottomScreenPos.y - topScreenPos.y)
     local width = height / 2
-    
-    -- Create ESP components based on config
-    local espComponents = {}
     
     -- Box
     if svlib.Config.ESP.BoxType == "Corners" then
-        local corners = {}
-        local cornerSize = height / 4
+        -- Top left corner
+        table.insert(espObjects.BoxLines, svlib.DrawingObject("Line", {
+            From = {topScreenPos.x - width/2, topScreenPos.y},
+            To = {topScreenPos.x - width/2 + width/4, topScreenPos.y},
+            Color = svlib.Config.ESP.BoxColor,
+            Thickness = 1,
+            Visible = true
+        }))
         
-        -- Top left
-        table.insert(corners, svlib.DrawLine({x = topPos.x - width/2, y = topPos.y}, 
-                                            {x = topPos.x - width/2 + cornerSize, y = topPos.y},
-                                            svlib.Config.ESP.BoxColor, 1))
+        table.insert(espObjects.BoxLines, svlib.DrawingObject("Line", {
+            From = {topScreenPos.x - width/2, topScreenPos.y},
+            To = {topScreenPos.x - width/2, topScreenPos.y + height/4},
+            Color = svlib.Config.ESP.BoxColor,
+            Thickness = 1,
+            Visible = true
+        }))
         
-        table.insert(corners, svlib.DrawLine({x = topPos.x - width/2, y = topPos.y}, 
-                                            {x = topPos.x - width/2, y = topPos.y + cornerSize},
-                                            svlib.Config.ESP.BoxColor, 1))
+        -- Top right corner
+        table.insert(espObjects.BoxLines, svlib.DrawingObject("Line", {
+            From = {topScreenPos.x + width/2, topScreenPos.y},
+            To = {topScreenPos.x + width/2 - width/4, topScreenPos.y},
+            Color = svlib.Config.ESP.BoxColor,
+            Thickness = 1,
+            Visible = true
+        }))
         
-        -- Top right
-        table.insert(corners, svlib.DrawLine({x = topPos.x + width/2, y = topPos.y}, 
-                                            {x = topPos.x + width/2 - cornerSize, y = topPos.y},
-                                            svlib.Config.ESP.BoxColor, 1))
+        table.insert(espObjects.BoxLines, svlib.DrawingObject("Line", {
+            From = {topScreenPos.x + width/2, topScreenPos.y},
+            To = {topScreenPos.x + width/2, topScreenPos.y + height/4},
+            Color = svlib.Config.ESP.BoxColor,
+            Thickness = 1,
+            Visible = true
+        }))
         
-        table.insert(corners, svlib.DrawLine({x = topPos.x + width/2, y = topPos.y}, 
-                                            {x = topPos.x + width/2, y = topPos.y + cornerSize},
-                                            svlib.Config.ESP.BoxColor, 1))
+        -- Bottom left corner
+        table.insert(espObjects.BoxLines, svlib.DrawingObject("Line", {
+            From = {bottomScreenPos.x - width/2, bottomScreenPos.y},
+            To = {bottomScreenPos.x - width/2 + width/4, bottomScreenPos.y},
+            Color = svlib.Config.ESP.BoxColor,
+            Thickness = 1,
+            Visible = true
+        }))
         
-        -- Bottom left
-        table.insert(corners, svlib.DrawLine({x = bottomPos.x - width/2, y = bottomPos.y}, 
-                                            {x = bottomPos.x - width/2 + cornerSize, y = bottomPos.y},
-                                            svlib.Config.ESP.BoxColor, 1))
+        table.insert(espObjects.BoxLines, svlib.DrawingObject("Line", {
+            From = {bottomScreenPos.x - width/2, bottomScreenPos.y},
+            To = {bottomScreenPos.x - width/2, bottomScreenPos.y - height/4},
+            Color = svlib.Config.ESP.BoxColor,
+            Thickness = 1,
+            Visible = true
+        }))
         
-        table.insert(corners, svlib.DrawLine({x = bottomPos.x - width/2, y = bottomPos.y}, 
-                                            {x = bottomPos.x - width/2, y = bottomPos.y - cornerSize},
-                                            svlib.Config.ESP.BoxColor, 1))
+        -- Bottom right corner
+        table.insert(espObjects.BoxLines, svlib.DrawingObject("Line", {
+            From = {bottomScreenPos.x + width/2, bottomScreenPos.y},
+            To = {bottomScreenPos.x + width/2 - width/4, bottomScreenPos.y},
+            Color = svlib.Config.ESP.BoxColor,
+            Thickness = 1,
+            Visible = true
+        }))
         
-        -- Bottom right
-        table.insert(corners, svlib.DrawLine({x = bottomPos.x + width/2, y = bottomPos.y}, 
-                                            {x = bottomPos.x + width/2 - cornerSize, y = bottomPos.y},
-                                            svlib.Config.ESP.BoxColor, 1))
-        
-        table.insert(corners, svlib.DrawLine({x = bottomPos.x + width/2, y = bottomPos.y}, 
-                                            {x = bottomPos.x + width/2, y = bottomPos.y - cornerSize},
-                                            svlib.Config.ESP.BoxColor, 1))
-        
-        espComponents.Box = corners
+        table.insert(espObjects.BoxLines, svlib.DrawingObject("Line", {
+            From = {bottomScreenPos.x + width/2, bottomScreenPos.y},
+            To = {bottomScreenPos.x + width/2, bottomScreenPos.y - height/4},
+            Color = svlib.Config.ESP.BoxColor,
+            Thickness = 1,
+            Visible = true
+        }))
     elseif svlib.Config.ESP.BoxType == "2D" then
-        espComponents.Box = svlib.Draw2DBox({x = topPos.x, y = topPos.y + height/2}, 
-                                           {x = width, y = height}, 
-                                           svlib.Config.ESP.BoxColor, 1)
+        -- Box completa
+        espObjects.BoxLines = svlib.DrawingObject("Square", {
+            Position = {topScreenPos.x - width/2, topScreenPos.y},
+            Size = {width, height},
+            Color = svlib.Config.ESP.BoxColor,
+            Thickness = 1,
+            Filled = false,
+            Visible = true
+        })
     end
     
     -- Healthbar
-    if svlib.Config.ESP.HealthbarEnabled and humanoid then
+    if svlib.Config.ESP.HealthbarEnabled then
         local healthData = svlib.GetHealth(humanoid)
+        local healthRatio = math.min(1, healthData.Health / healthData.MaxHealth)
         
-        espComponents.Healthbar = svlib.DrawHealthBar(
-            {x = topPos.x - width/2 - 5, y = topPos.y},
-            {x = 3, y = height},
-            healthData.Health,
-            healthData.MaxHealth
-        )
+        -- Background
+        espObjects.HealthbarBG = svlib.DrawingObject("Square", {
+            Position = {topScreenPos.x - width/2 - 5, topScreenPos.y},
+            Size = {3, height},
+            Color = {0, 0, 0},
+            Filled = true,
+            Visible = true
+        })
+        
+        -- Fill
+        espObjects.Healthbar = svlib.DrawingObject("Square", {
+            Position = {topScreenPos.x - width/2 - 5, topScreenPos.y + height * (1 - healthRatio)},
+            Size = {3, height * healthRatio},
+            Color = {255 * (1 - healthRatio), 255 * healthRatio, 0},
+            Filled = true,
+            Visible = true
+        })
     end
     
-    -- Nametag
+    -- Name
     if svlib.Config.ESP.NametagEnabled then
-        local player = nil
-        for _, plr in ipairs(svlib.GetPlayers()) do
-            local success, char = pcall(function() return getcharacter(plr) end)
-            if success and char == character then
-                player = plr
-                break
-            end
-        end
-        
-        if player then
-            local success, name = pcall(function() return getname(player) end)
-            if success then
-                espComponents.Nametag = svlib.DrawText({x = topPos.x, y = topPos.y - 20}, name, 13, svlib.Config.ESP.BoxColor, true)
-            end
-        end
+        espObjects.NameText = svlib.DrawingObject("Text", {
+            Text = playerName,
+            Position = {topScreenPos.x, topScreenPos.y - 20},
+            Color = svlib.Config.ESP.BoxColor,
+            Size = 13,
+            Center = true,
+            Outline = true,
+            OutlineColor = {0, 0, 0},
+            Visible = true
+        })
     end
     
     -- Distance
     if svlib.Config.ESP.DistanceEnabled then
-        local distanceText = string.format("%d", distance)
-        espComponents.Distance = svlib.DrawText({x = bottomPos.x, y = bottomPos.y + 5}, distanceText, 13, svlib.Config.ESP.BoxColor, true)
+        espObjects.DistanceText = svlib.DrawingObject("Text", {
+            Text = tostring(math.floor(distance)),
+            Position = {bottomScreenPos.x, bottomScreenPos.y + 5},
+            Color = svlib.Config.ESP.BoxColor,
+            Size = 13,
+            Center = true,
+            Outline = true,
+            OutlineColor = {0, 0, 0},
+            Visible = true
+        })
     end
     
     -- Tracer
     if svlib.Config.ESP.TracerEnabled then
-        local tracerStart = {x = screenSize.x / 2, y = screenSize.y}
+        local tracerStart = {x = svlib.Cache.ScreenSize.x / 2, y = svlib.Cache.ScreenSize.y}
         
         if svlib.Config.ESP.TracerOrigin == "Top" then
             tracerStart.y = 0
@@ -782,145 +419,322 @@ function svlib.CreateESP(character)
             tracerStart.y = mouse.y
         end
         
-        espComponents.Tracer = svlib.DrawLine(tracerStart, {x = bottomPos.x, y = bottomPos.y}, svlib.Config.ESP.BoxColor, 1)
+        espObjects.TracerLine = svlib.DrawingObject("Line", {
+            From = {tracerStart.x, tracerStart.y},
+            To = {bottomScreenPos.x, bottomScreenPos.y},
+            Color = svlib.Config.ESP.BoxColor,
+            Thickness = 1,
+            Visible = true
+        })
     end
     
-    -- Store ESP components in cache for this character
-    svlib.Cache.CharacterESP[character] = espComponents
+    -- Armazenar objetos ESP por nome do jogador
+    svlib.Cache.ESPObjects[playerName] = espObjects
     
-    return espComponents
+    return espObjects
 end
 
--- Update ESP for a specific character
-function svlib.UpdateCharacterESP(character)
-    if not character then 
-        print("Character inválido para ESP")
-        return false 
+-- Atualizar ESP para um jogador
+function svlib.UpdatePlayerESP(player)
+    if not player then return false end
+    
+    -- Ignorar jogador local
+    local localPlayer = svlib.GetLocalPlayer()
+    if player == localPlayer then return false end
+    
+    -- Verificar se existe ESP para este jogador
+    local playerName = getname(player)
+    local espObjects = svlib.Cache.ESPObjects[playerName]
+    
+    -- Se não existe, criar novo
+    if not espObjects then
+        svlib.CreatePlayerESP(player)
+        return true
     end
     
-    -- Check if character is still valid
-    local success, exists = pcall(function() 
-        return isdescendantof(character, svlib.GetService("Workspace")) 
-    end)
+    -- Verificar se o personagem ainda é válido
+    local character = nil
+    pcall(function() character = getcharacter(player) end)
     
-    if not success or not exists then
-        -- Character no longer exists, remove ESP
-        if svlib.Cache.CharacterESP[character] then
-            for _, component in pairs(svlib.Cache.CharacterESP[character]) do
-                if type(component) == "table" then
-                    for _, obj in pairs(component) do
-                        pcall(function() if obj and obj.Remove then obj:Remove() end end)
-                    end
-                elseif component and component.Remove then
-                    pcall(function() component:Remove() end)
-                end
-            end
-            
-            svlib.Cache.CharacterESP[character] = nil
+    if not character or character ~= espObjects.Character then
+        -- Personagem mudou ou não é mais válido, remover ESP antigo
+        svlib.RemovePlayerESP(playerName)
+        
+        -- Tentar criar novo se o personagem for válido
+        if character then
+            svlib.CreatePlayerESP(player)
         end
+        
+        return true
+    end
+    
+    -- Verificar partes importantes
+    local humanoid = findfirstchildofclass(character, "Humanoid")
+    local rootPart = findfirstchild(character, "HumanoidRootPart")
+    local head = findfirstchild(character, "Head")
+    
+    if not humanoid or not rootPart or not head then
+        svlib.RemovePlayerESP(playerName)
         return false
     end
     
-    -- Remove old ESP and create new one to update
-    if svlib.Cache.CharacterESP[character] then
-        for _, component in pairs(svlib.Cache.CharacterESP[character]) do
-            if type(component) == "table" then
-                for _, obj in pairs(component) do
-                    pcall(function() if obj and obj.Remove then obj:Remove() end end)
-                end
-            elseif component and component.Remove then
-                pcall(function() component:Remove() end)
-            end
+    -- Verificar distância
+    local characterPos = getposition(rootPart)
+    local distance = svlib.GetDistanceFromPlayer(characterPos)
+    
+    if distance > svlib.Config.Performance.MaxESPDistance then
+        -- Ocultar ESP ao invés de remover (para evitar piscadas)
+        svlib.SetPlayerESPVisible(playerName, false)
+        return true
+    else {
+        -- Mostrar ESP se estava oculto
+        svlib.SetPlayerESPVisible(playerName, true)
+    }
+    
+    -- Obter posições na tela
+    local headPos = getposition(head)
+    local rootPos = getposition(rootPart)
+    
+    -- Converter para coordenadas de tela
+    local topScreenPos, topVisible = worldtoscreenpoint({headPos.x, headPos.y + 2, headPos.z})
+    local bottomScreenPos, bottomVisible = worldtoscreenpoint({rootPos.x, rootPos.y - 3, rootPos.z})
+    
+    if not topVisible or not bottomVisible then
+        -- Ocultar ESP ao invés de remover (para evitar piscadas)
+        svlib.SetPlayerESPVisible(playerName, false)
+        return true
+    } else {
+        -- Mostrar ESP se estava oculto
+        svlib.SetPlayerESPVisible(playerName, true)
+    }
+    
+    -- Dimensões da caixa
+    local height = math.max(10, bottomScreenPos.y - topScreenPos.y)
+    local width = height / 2
+    
+    -- Atualizar linhas da caixa
+    if svlib.Config.ESP.BoxType == "Corners" then
+        if type(espObjects.BoxLines) == "table" and #espObjects.BoxLines >= 8 then
+            -- Top left corner
+            pcall(function()
+                espObjects.BoxLines[1].From = {topScreenPos.x - width/2, topScreenPos.y}
+                espObjects.BoxLines[1].To = {topScreenPos.x - width/2 + width/4, topScreenPos.y}
+                
+                espObjects.BoxLines[2].From = {topScreenPos.x - width/2, topScreenPos.y}
+                espObjects.BoxLines[2].To = {topScreenPos.x - width/2, topScreenPos.y + height/4}
+                
+                -- Top right corner
+                espObjects.BoxLines[3].From = {topScreenPos.x + width/2, topScreenPos.y}
+                espObjects.BoxLines[3].To = {topScreenPos.x + width/2 - width/4, topScreenPos.y}
+                
+                espObjects.BoxLines[4].From = {topScreenPos.x + width/2, topScreenPos.y}
+                espObjects.BoxLines[4].To = {topScreenPos.x + width/2, topScreenPos.y + height/4}
+                
+                -- Bottom left corner
+                espObjects.BoxLines[5].From = {bottomScreenPos.x - width/2, bottomScreenPos.y}
+                espObjects.BoxLines[5].To = {bottomScreenPos.x - width/2 + width/4, bottomScreenPos.y}
+                
+                espObjects.BoxLines[6].From = {bottomScreenPos.x - width/2, bottomScreenPos.y}
+                espObjects.BoxLines[6].To = {bottomScreenPos.x - width/2, bottomScreenPos.y - height/4}
+                
+                -- Bottom right corner
+                espObjects.BoxLines[7].From = {bottomScreenPos.x + width/2, bottomScreenPos.y}
+                espObjects.BoxLines[7].To = {bottomScreenPos.x + width/2 - width/4, bottomScreenPos.y}
+                
+                espObjects.BoxLines[8].From = {bottomScreenPos.x + width/2, bottomScreenPos.y}
+                espObjects.BoxLines[8].To = {bottomScreenPos.x + width/2, bottomScreenPos.y - height/4}
+            end)
         end
-        svlib.Cache.CharacterESP[character] = nil
+    elseif svlib.Config.ESP.BoxType == "2D" then
+        pcall(function()
+            espObjects.BoxLines.Position = {topScreenPos.x - width/2, topScreenPos.y}
+            espObjects.BoxLines.Size = {width, height}
+        end)
     end
     
-    -- Create new ESP
-    local result = svlib.CreateESP(character)
-    return result ~= nil
+    -- Atualizar barra de vida
+    if svlib.Config.ESP.HealthbarEnabled and espObjects.Healthbar and espObjects.HealthbarBG then
+        local healthData = svlib.GetHealth(humanoid)
+        local healthRatio = math.min(1, healthData.Health / healthData.MaxHealth)
+        
+        pcall(function()
+            espObjects.HealthbarBG.Position = {topScreenPos.x - width/2 - 5, topScreenPos.y}
+            espObjects.HealthbarBG.Size = {3, height}
+            
+            espObjects.Healthbar.Position = {topScreenPos.x - width/2 - 5, topScreenPos.y + height * (1 - healthRatio)}
+            espObjects.Healthbar.Size = {3, height * healthRatio}
+            espObjects.Healthbar.Color = {255 * (1 - healthRatio), 255 * healthRatio, 0}
+        end)
+    end
+    
+    -- Atualizar nome
+    if svlib.Config.ESP.NametagEnabled and espObjects.NameText then
+        pcall(function()
+            espObjects.NameText.Position = {topScreenPos.x, topScreenPos.y - 20}
+        end)
+    end
+    
+    -- Atualizar distância
+    if svlib.Config.ESP.DistanceEnabled and espObjects.DistanceText then
+        pcall(function()
+            espObjects.DistanceText.Text = tostring(math.floor(distance))
+            espObjects.DistanceText.Position = {bottomScreenPos.x, bottomScreenPos.y + 5}
+        end)
+    end
+    
+    -- Atualizar traçador
+    if svlib.Config.ESP.TracerEnabled and espObjects.TracerLine then
+        local tracerStart = {x = svlib.Cache.ScreenSize.x / 2, y = svlib.Cache.ScreenSize.y}
+        
+        if svlib.Config.ESP.TracerOrigin == "Top" then
+            tracerStart.y = 0
+        elseif svlib.Config.ESP.TracerOrigin == "Mouse" then
+            local mouse = getmouseposition()
+            tracerStart.x = mouse.x
+            tracerStart.y = mouse.y
+        end
+        
+        pcall(function()
+            espObjects.TracerLine.From = {tracerStart.x, tracerStart.y}
+            espObjects.TracerLine.To = {bottomScreenPos.x, bottomScreenPos.y}
+        end)
+    end
+    
+    -- Atualizar timestamp
+    espObjects.LastUpdate = time()
+    
+    return true
 end
 
--- Update ESP for all characters with smart drawing (only redraw when needed)
-function svlib.UpdateESP()
-    -- Skip if update is already in progress to prevent overlapping
-    if svlib.Cache.UpdateInProgress or not svlib.Config.ESP.Enabled then return end
-    svlib.Cache.UpdateInProgress = true
+-- Definir visibilidade do ESP de um jogador
+function svlib.SetPlayerESPVisible(playerName, visible)
+    local espObjects = svlib.Cache.ESPObjects[playerName]
+    if not espObjects then return end
     
-    -- Incrementar contagem de frames para limitar a limpeza
-    svlib.Cache.FrameCount = svlib.Cache.FrameCount + 1
-    
-    -- Fazer limpeza periódica (a cada 50 frames)
-    if svlib.Cache.FrameCount >= 50 then
-        svlib.Cache.FrameCount = 0
-        svlib.CleanupInvalidDrawings()
+    -- Atualizar visibilidade de todos os componentes
+    local function updateVisibility(obj)
+        if obj and type(obj) == "table" then
+            if obj.Visible ~= nil then
+                pcall(function() obj.Visible = visible end)
+            else
+                for _, subObj in pairs(obj) do
+                    if subObj and subObj.Visible ~= nil then
+                        pcall(function() subObj.Visible = visible end)
+                    end
+                end
+            end
+        end
     end
     
-    -- Get local player
+    updateVisibility(espObjects.BoxLines)
+    updateVisibility(espObjects.Healthbar)
+    updateVisibility(espObjects.HealthbarBG)
+    updateVisibility(espObjects.NameText)
+    updateVisibility(espObjects.DistanceText)
+    updateVisibility(espObjects.TracerLine)
+end
+
+-- Remover ESP de um jogador
+function svlib.RemovePlayerESP(playerName)
+    local espObjects = svlib.Cache.ESPObjects[playerName]
+    if not espObjects then return end
+    
+    -- Remover todos os objetos de desenho
+    local function removeObject(obj)
+        if obj and type(obj) == "table" then
+            if obj.Remove then
+                pcall(function() obj:Remove() end)
+                
+                -- Remover da lista de objetos
+                for i, drawObj in ipairs(svlib.Cache.DrawingObjects) do
+                    if drawObj == obj then
+                        table.remove(svlib.Cache.DrawingObjects, i)
+                        break
+                    end
+                end
+            else
+                for _, subObj in pairs(obj) do
+                    if subObj and subObj.Remove then
+                        pcall(function() subObj:Remove() end)
+                        
+                        -- Remover da lista de objetos
+                        for i, drawObj in ipairs(svlib.Cache.DrawingObjects) do
+                            if drawObj == subObj then
+                                table.remove(svlib.Cache.DrawingObjects, i)
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    removeObject(espObjects.BoxLines)
+    removeObject(espObjects.Healthbar)
+    removeObject(espObjects.HealthbarBG)
+    removeObject(espObjects.NameText)
+    removeObject(espObjects.DistanceText)
+    removeObject(espObjects.TracerLine)
+    
+    -- Remover da lista de ESPs
+    svlib.Cache.ESPObjects[playerName] = nil
+end
+
+-- Atualizar todos os ESPs
+function svlib.UpdateAllESPs()
+    if svlib.Cache.UpdateInProgress then return end
+    svlib.Cache.UpdateInProgress = true
+    
     local localPlayer = svlib.GetLocalPlayer()
     if not localPlayer then 
         svlib.Cache.UpdateInProgress = false
         return 
     end
     
-    -- Get all characters
-    local characters = {}
-    local players = svlib.GetPlayers()
+    -- Atualizar dimensões da tela
+    svlib.UpdateScreenSize()
     
+    -- Obter todos os jogadores
+    local players = svlib.GetPlayers()
+    local playerNames = {}
+    
+    -- Processar cada jogador
     for _, player in ipairs(players) do
         if player ~= localPlayer then
-            local success, character = pcall(function() return getcharacter(player) end)
-            if success and character then
-                table.insert(characters, character)
+            local playerName = nil
+            pcall(function() playerName = getname(player) end)
+            
+            if playerName then
+                -- Salvar nome para verificação posterior
+                table.insert(playerNames, playerName)
+                
+                -- Atualizar ESP para este jogador
+                svlib.UpdatePlayerESP(player)
             end
         end
     end
     
-    -- Update existing ESP or create new ones
-    for _, character in ipairs(characters) do
-        -- Check if character is still valid before updating
-        local success, exists = pcall(function() 
-            return isdescendantof(character, svlib.GetService("Workspace")) 
-        end)
+    -- Verificar jogadores que foram removidos do jogo
+    for playerName in pairs(svlib.Cache.ESPObjects) do
+        local found = false
+        for _, name in ipairs(playerNames) do
+            if name == playerName then
+                found = true
+                break
+            end
+        end
         
-        if success and exists then
-            -- Não atualizar o ESP a cada frame para o mesmo personagem
-            -- Verificar se já tem ESP e se foi atualizado recentemente
-            local hasESP = svlib.Cache.CharacterESP[character] ~= nil
-            
-            if not hasESP then
-                svlib.CreateESP(character)
-            elseif svlib.Cache.FrameCount % 3 == 0 then
-                -- Atualizar apenas 1/3 dos personagens a cada frame para suavizar
-                svlib.UpdateCharacterESP(character)
-            end
-        elseif svlib.Cache.CharacterESP[character] then
-            -- Character não existe mais, mover objetos para o pool em vez de destruir
-            for _, component in pairs(svlib.Cache.CharacterESP[character]) do
-                if type(component) == "table" then
-                    for _, obj in pairs(component) do
-                        if obj and obj.Visible ~= nil then
-                            pcall(function() 
-                                obj.Visible = false
-                                table.insert(svlib.Cache.DrawingPool, obj)
-                            end)
-                        end
-                    end
-                elseif component and component.Visible ~= nil then
-                    pcall(function() 
-                        component.Visible = false 
-                        table.insert(svlib.Cache.DrawingPool, component)
-                    end)
-                end
-            end
-            
-            svlib.Cache.CharacterESP[character] = nil
+        if not found then
+            svlib.RemovePlayerESP(playerName)
         end
     end
     
-    -- Update stats
+    -- Atualizar estatísticas
     svlib.Stats.ObjectsDrawn = #svlib.Cache.DrawingObjects
     svlib.Stats.FrameTime = time() - svlib.Stats.LastUpdate
     svlib.Stats.LastUpdate = time()
+    svlib.Stats.FPS = svlib.Stats.FrameTime > 0 and math.floor(1 / svlib.Stats.FrameTime) or 0
     
     svlib.Cache.UpdateInProgress = false
 end
@@ -1000,93 +814,74 @@ function svlib.UpdateAimbot()
 end
 
 ----------------------------------
--- Core Loop Function
+-- Core Functions - Simplificado
 ----------------------------------
 
--- Run cleanup routine periodically
-function svlib.ScheduleCleanup()
-    spawn(function()
-        while true do
-            -- Run cleanup every few seconds
-            wait(svlib.Config.Performance.CleanRate)
-            
-            if svlib.Config.ESP.Enabled then
-                svlib.CleanupInvalidDrawings()
-            end
-        end
-    end)
-end
-
--- Optimized main loop with error handling
+-- Run main loop
 function svlib.RunMainLoop()
     -- Parar loop anterior se existir
     svlib.StopMainLoop()
+    wait(0.1) -- Pequena pausa para garantir que thread anterior parou
     
-    -- Iniciar novo loop
+    print("Iniciando loop principal")
     svlib.Cache.ThreadActive = true
     
-    -- Thread principal separada
+    -- Thread principal - usar pcall para evitar quebras
     spawn(function()
         while svlib.Cache.ThreadActive do
             pcall(function()
                 if svlib.Config.ESP.Enabled then
-                    svlib.UpdateESP()
-                elseif #svlib.Cache.DrawingObjects > 0 then
-                    -- Limpar desenhos se ESP estiver desativado
-                    svlib.ClearDrawings(false)
+                    svlib.UpdateAllESPs()
                 end
-            end)
-            
-            -- Usar taxa de atualização estável
-            wait(svlib.Config.Performance.UpdateRate)
-        end
-    end)
-    
-    -- Thread separada para aimbot (reduz interferência)
-    spawn(function()
-        while svlib.Cache.ThreadActive do
-            pcall(function()
+                
                 if svlib.Config.Aimbot.Enabled then
                     svlib.UpdateAimbot()
                 end
             end)
             
-            -- Taxa de atualização mais rápida para o aimbot
-            wait(0.01)
+            -- Use taxa de atualização estável
+            wait(svlib.Config.Performance.UpdateRate)
         end
     end)
     
-    -- Thread separada para limpeza preventiva (não bloqueante)
+    -- Thread de monitoramento para garantir que ESP continue funcionando
     spawn(function()
         while svlib.Cache.ThreadActive do
-            wait(3) -- Limpeza a cada 3 segundos
+            wait(3) -- Verificar a cada 3 segundos
             
-            -- Limitar o número de objetos criados para evitar sobrecarga
-            if #svlib.Cache.DrawingObjects > svlib.Config.Performance.MaxDrawObjects * 0.8 then
-                -- Se estiver próximo do limite, fazer uma limpeza parcial
-                svlib.CleanupInvalidDrawings()
+            -- Se o ESP está habilitado mas não há objetos desenhados, tentar reiniciar
+            if svlib.Config.ESP.Enabled and svlib.Stats.ObjectsDrawn == 0 then
+                print("ESP parece estar sem objetos! Tentando reiniciar...")
+                
+                -- Forçar recriação dos objetos ESP
+                svlib.ClearAllDrawings()
+                
+                -- Garantir que ESP esteja habilitado
+                svlib.Config.ESP.Enabled = true
             end
         end
     end)
 end
 
--- Stop current loop
+-- Stop main loop
 function svlib.StopMainLoop()
+    print("Parando loop principal...")
     svlib.Cache.ThreadActive = false
 end
 
 -- Initialize the library
 function svlib.Init()
-    print("Severe Library initialized!")
+    print("Inicializando Severe Library")
     
-    -- Garantir que o anti-crash esteja ativado
+    -- Reset de configurações para garantir funcionamento
+    svlib.Config.Performance.UpdateRate = 0.05
     svlib.Config.Performance.EnableAntiCrash = true
+    
+    -- Limpar desenhos existentes
+    svlib.ClearAllDrawings()
     
     -- Atualizar tamanho da tela
     svlib.UpdateScreenSize()
-    
-    -- Limpar desenhos existentes
-    svlib.ClearDrawings(true)
     
     -- Iniciar loop principal
     svlib.RunMainLoop()
