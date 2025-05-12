@@ -1,582 +1,661 @@
---[[
-    Severe Library v1.0.0
-    A comprehensive utility library for script development with built-in ESP capabilities
-]]
+--// RobloxLib //--
 
-local SevereLib = {}
-SevereLib.__index = SevereLib
+--// Presets para facilitar o uso
+local Game = Game or {}
+local Workspace = Game:FindService("Workspace")
+local Players = Game:FindService("Players")
+local LocalPlayer = getlocalplayer()
+local Mouse = getmouseposition()
 
--- Internal variables
-local drawingNew = Drawing.new
-local mathFloor, mathSqrt = math.floor, math.sqrt
-local camera = workspace:FindFirstChild('Camera')
-local localPlayer = game:GetService("Players").LocalPlayer
-local stop = false
-local espObjects = {
-    players = {},
-    items = {},
-    entities = {},
-    custom = {}
+local Screen = {
+    x = getscreendimensions().x,
+    y = getscreendimensions().y
 }
 
--- Console Functions
-SevereLib.Console = {}
-
--- Shows the Severe console for debugging
-function SevereLib.Console:Show()
-    -- Implementation depends on GUI system
-    print("[Severe] Console shown")
-    return true
+--// Iniciando a biblioteca
+if _G.rbl == nil then
+    _G.rbl = {
+        --// Console Vars
+        Location = {1000, 150}, -- Dinâmico
+        Size = {Screen.x / 2.95, Screen.y / 1.21}, -- Estático
+        FontColor = {255,255,255}, -- Estático + [Alterável]
+        MainColor = {25,25,25}, -- Estático + [Alterável]
+        BackgroundColor = {15,15,15}, -- Estático + [Alterável]
+        AccentColor = {255,100,255}, -- Estático + [Alterável]
+        OutlineColor = {40,40,40}, -- Estático + [Alterável]
+        Black = {0,0,0}, -- Estático
+        
+        ErrorColor = {255,100,100},
+        
+        Open = true,
+        Hovering = false,
+        Dragging = false,
+        WinMouseOffset = nil,
+        
+        StoredLogs = {},
+        
+        --// Rainbow
+        CurrentRainbowColor = {255,255,255},
+        RainbowHue = 0,
+    };
 end
 
--- Print to Severe console with optional formatting
-function SevereLib.Console:Print(...)
-    local args = {...}
-    local message = ""
+--// Rainbow Tick
+function rbl_updateRainbow()
+    if rbl.RainbowHue > 1530 then
+        rbl.RainbowHue = 0  
+    else
+        rbl.RainbowHue = rbl.RainbowHue + 3
+    end
+
+    if rbl.RainbowHue <= 255 then
+        rbl.CurrentRainbowColor = {255, rbl.RainbowHue, 0}
+    elseif rbl.RainbowHue <= 510 then
+        rbl.CurrentRainbowColor = {510 - rbl.RainbowHue, 255, 0}
+    elseif rbl.RainbowHue <= 765 then
+        rbl.CurrentRainbowColor = {0, 255, rbl.RainbowHue - 510}
+    elseif rbl.RainbowHue <= 1020 then
+        rbl.CurrentRainbowColor = {0, 1020 - rbl.RainbowHue, 255}
+    elseif rbl.RainbowHue <= 1275 then
+        rbl.CurrentRainbowColor = {rbl.RainbowHue - 1020, 0, 255}
+    elseif rbl.RainbowHue <= 1530 then
+        rbl.CurrentRainbowColor = {255, 0, 1530 - rbl.RainbowHue}
+    end
+end
+
+--// Funções Básicas
+function rbl.GetCoords(wts)
+    assert(type(wts) == "table" and #wts == 2, "[RBL Error] GetCoords: First Argument needs to be a table with 2 values!")
+    return {(Screen.x / (1920 / wts[1])), (Screen.y / (1017 / wts[2]))}
+end
+
+function rbl.isMouseInArea(area)
+    assert(type(area) == "table" and #area == 4, "[RBL Error] isMouseInArea: First Argument needs to be a table with 4 values!")
+    local mouse = getmouseposition()
+    if mouse.x > area[1] and mouse.y > area[2] and mouse.x < area[3] and mouse.y < area[4] then
+        return true
+    else
+        return false
+    end
+end
+
+function rbl.GetDistance(v1, v2)
+    local pos1 = {}
+    local pos2 = {}
     
-    for i, v in ipairs(args) do
-        if type(v) == "table" then
-            message = message .. table.concat(v, ", ")
+    -- Processar v1
+    if type(v1) == "table" then
+        if v1['x'] ~= nil and v1['y'] ~= nil and v1['z'] ~= nil then
+            pos1 = v1
         else
-            message = message .. tostring(v)
+            assert(type(v1) == "table" and #v1 == 3, "[RBL Error] GetDistance: First Argument needs to be a table with 3 values!")
+            pos1 = {x = v1[1], y = v1[2], z = v1[3]}
         end
-        
-        if i < #args then
-            message = message .. " "
-        end
-    end
-    
-    print("[Severe] " .. message)
-    return true
-end
-
--- Show error in Severe console
-function SevereLib.Console:Error(message)
-    warn("[Severe] ERROR: " .. tostring(message))
-    return true
-end
-
--- General Functions
--- Navigate through game instances easily (similar to DXLib.Game)
-function SevereLib:Game(...)
-    local args = {...}
-    local current = game
-    
-    for _, path in ipairs(args) do
-        current = current:FindFirstChild(path)
-        if not current then
-            return nil
-        end
-    end
-    
-    return current
-end
-
--- Get closest part from parts collection to the origin point
-function SevereLib:GetClosestPart(origin, parts)
-    if not origin or not parts then return nil end
-    
-    local closest, distance = nil, math.huge
-    
-    for _, part in ipairs(parts) do
-        local partPos = part.Position
-        local dist = (partPos - origin).Magnitude
-        
-        if dist < distance then
-            closest = part
-            distance = dist
-        end
-    end
-    
-    return closest, distance
-end
-
--- Get all descendants of an instance
-function SevereLib:GetDescendants(instance)
-    if not instance then return {} end
-    return instance:GetDescendants()
-end
-
--- Get descendants of a specific class from an instance
-function SevereLib:GetDescendantsOfClass(instance, className)
-    if not instance or not className then return {} end
-    
-    local results = {}
-    
-    for _, desc in ipairs(instance:GetDescendants()) do
-        if desc:IsA(className) then
-            table.insert(results, desc)
-        end
-    end
-    
-    return results
-end
-
--- Calculate distance between two Vector3 positions
-function SevereLib:GetDistance(pos1, pos2)
-    if not pos1 or not pos2 then return 0 end
-    
-    local dx, dy, dz = pos1.X - pos2.X, pos1.Y - pos2.Y, pos1.Z - pos2.Z
-    return mathSqrt(dx * dx + dy * dy + dz * dz)
-end
-
--- Calculate distance from a position to the local player
-function SevereLib:GetDistanceFromPlayer(position)
-    if not position or not localPlayer.Character then return 0 end
-    
-    local rootPart = localPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not rootPart then return 0 end
-    
-    return SevereLib:GetDistance(rootPart.Position, position)
-end
-
--- Get local player character
-function SevereLib:GetLocalCharacter()
-    if not localPlayer then return nil end
-    return localPlayer.Character
-end
-
--- Get local player
-function SevereLib:GetLocalPlayer()
-    return localPlayer
-end
-
--- Get player by name or display name
-function SevereLib:GetPlayer(name)
-    if not name then return nil end
-    
-    for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
-        if player.Name:lower() == name:lower() or player.DisplayName:lower() == name:lower() then
-            return player
-        end
-    end
-    
-    return nil
-end
-
--- Check if mouse is in a rectangular area of the screen
-function SevereLib:IsMouseInArea(x1, y1, x2, y2)
-    local mouse = game:GetService("UserInputService"):GetMouseLocation()
-    return mouse.X >= x1 and mouse.X <= x2 and mouse.Y >= y1 and mouse.Y <= y2
-end
-
--- Convert JSON string to table
-function SevereLib:JsonToTable(jsonString)
-    if not jsonString then return {} end
-    
-    local success, result = pcall(function()
-        return game:GetService("HttpService"):JSONDecode(jsonString)
-    end)
-    
-    if success then
-        return result
+    elseif type(v1) == "number" then
+        pos1 = getposition(v1)
     else
-        SevereLib.Console:Error("Failed to parse JSON: " .. result)
-        return {}
+        error("[RBL Error] GetDistance: First Argument needs to be a table or number!")
+        return
     end
-end
-
--- Convert table to JSON string
-function SevereLib:TableToJson(tbl)
-    if not tbl then return "{}" end
     
-    local success, result = pcall(function()
-        return game:GetService("HttpService"):JSONEncode(tbl)
-    end)
-    
-    if success then
-        return result
+    -- Processar v2
+    if type(v2) == "table" then
+        if v2['x'] ~= nil and v2['y'] ~= nil and v2['z'] ~= nil then
+            pos2 = v2
+        else
+            assert(type(v2) == "table" and #v2 == 3, "[RBL Error] GetDistance: Second Argument needs to be a table with 3 values!")
+            pos2 = {x = v2[1], y = v2[2], z = v2[3]}
+        end
+    elseif type(v2) == "number" then
+        pos2 = getposition(v2)
     else
-        SevereLib.Console:Error("Failed to encode JSON: " .. result)
-        return "{}"
+        error("[RBL Error] GetDistance: Second Argument needs to be a table or number!")
+        return
     end
+
+    local a = (pos1.x-pos2.x)*(pos1.x-pos2.x)
+    local b = (pos1.y-pos2.y)*(pos1.y-pos2.y)
+    local c = (pos1.z-pos2.z)*(pos1.z-pos2.z)
+
+    return math.floor(math.sqrt(a+b+c)+0.5)
 end
 
--- ESP Functions
-SevereLib.ESP = {}
-
--- Create new drawing object with specified properties
-local function createDrawingObject(class, props)
-    local obj = drawingNew(class)
+function rbl.GetDistanceFromPlayer(v)
+    local localChar = getcharacter(getlocalplayer())
+    if not localChar then return 9999 end
     
-    for property, value in pairs(props) do
-        obj[property] = value
-    end
+    local part = findfirstchild(localChar, "HumanoidRootPart")
+    if not part then return 9999 end
     
-    return obj
+    local playerPos = getposition(part)
+    return rbl.GetDistance(v, playerPos)
 end
 
--- Create ESP visual elements for an object
-local function createEspElements(color, radius, showTracer)
-    local elements = {
-        text = createDrawingObject('Text', {
-            Text = '', 
-            Size = 14, 
-            Font = 2, 
-            Color = color,
-            Center = true, 
-            Outline = true, 
-            Visible = false, 
-            Transparency = 1
-        }),
-        circle = createDrawingObject('Circle', {
-            Radius = radius or 5, 
-            Thickness = 1, 
-            NumSides = 12, 
-            Filled = true,
-            Color = color, 
-            Transparency = 0.8, 
-            Visible = false
-        })
+--// Drawing Functions
+function rbl.HealthBar(params)
+    -- Validação de parâmetros
+    assert(params.TargetPosition, "[RBL Error] HealthBar: TargetPosition required!")
+    assert(params.HP, "[RBL Error] HealthBar: HP required!")
+    
+    -- Ajustar parâmetros default
+    local size = params.Size or {120, 5}
+    local size_x = size[1]
+    local size_y = size[2]
+    local maxhp = params.MaxHP or 100
+    local scale = params.Scale or false
+    local offset = params.Offset or {0,0}
+    local hp = params.HP
+    
+    -- Processar posição
+    local pos = {}
+    if params.TargetPosition.x and params.TargetPosition.y and params.TargetPosition.z then
+        pos = {params.TargetPosition.x, params.TargetPosition.y, params.TargetPosition.z}
+    elseif params.TargetPosition[1] and params.TargetPosition[2] and params.TargetPosition[3] then
+        pos = {params.TargetPosition[1], params.TargetPosition[2], params.TargetPosition[3]}
+    else
+        error("[RBL Error] HealthBar: TargetPosition needs to contain 3 number values!")
+        return
+    end
+
+    -- Converter posição 3D para tela
+    local wts = worldtoscreenpoint(pos)
+    if not wts then return end
+
+    local x = wts.x
+    local y = wts.y
+
+    -- Criar os objetos de desenho
+    local background = Drawing.new("Square")
+    background.Position = {x - (size_x/2) + offset[1], y + offset[2]}
+    background.Size = {size_x, size_y}
+    background.Color = {0, 0, 0}
+    background.Filled = true
+    background.Visible = true
+
+    local healthFill = Drawing.new("Square")
+    local temp = ((size_x - 2) / (maxhp/math.max(0, math.min(maxhp, hp))))
+    healthFill.Position = {x - ((size_x/2) - 1) + offset[1], y - 1 + offset[2]}
+    healthFill.Size = {temp, size_y - 2}
+    healthFill.Color = {255 - 255 / (maxhp / hp), 255 / (maxhp / hp), 0}
+    healthFill.Filled = true
+    healthFill.Visible = true
+    
+    return {background, healthFill} -- Retornar os objetos para que possam ser removidos depois
+end
+
+--// Box3D Function
+function rbl.Box3d(pos1, pos2, box_color)
+    assert(type(pos1) == "table" and #pos1 == 3, "[RBL Error] Box3d: First Argument needs to be a table with 3 position values!")
+    assert(type(pos2) == "table" and #pos2 == 3, "[RBL Error] Box3d: Second Argument needs to be a table with 3 position values!")
+    assert(type(box_color) == "table" and #box_color == 3, "[RBL Error] Box3d: Third Argument needs to be a table with 3 RGB values!")
+    
+    local size = {
+        pos1[1] - pos2[1],
+        pos1[2] - pos2[2],
+        pos1[3] - pos2[3]
     }
     
-    if showTracer then
-        elements.tracer = createDrawingObject('Line', {
-            Thickness = 1,
-            Color = color,
-            Transparency = 0.6,
-            Visible = false
-        })
+    local center = {
+        (pos1[1] + pos2[1]) / 2,
+        (pos1[2] + pos2[2]) / 2,
+        (pos1[3] + pos2[3]) / 2
+    }
+    
+    -- Criar os 8 pontos do cubo 3D
+    local points = {
+        {center[1] - size[1]/2, center[2] - size[2]/2, center[3] - size[3]/2}, -- 1: Bottom-Back-Left
+        {center[1] + size[1]/2, center[2] - size[2]/2, center[3] - size[3]/2}, -- 2: Bottom-Back-Right
+        {center[1] + size[1]/2, center[2] + size[2]/2, center[3] - size[3]/2}, -- 3: Top-Back-Right
+        {center[1] - size[1]/2, center[2] + size[2]/2, center[3] - size[3]/2}, -- 4: Top-Back-Left
+        {center[1] - size[1]/2, center[2] - size[2]/2, center[3] + size[3]/2}, -- 5: Bottom-Front-Left
+        {center[1] + size[1]/2, center[2] - size[2]/2, center[3] + size[3]/2}, -- 6: Bottom-Front-Right
+        {center[1] + size[1]/2, center[2] + size[2]/2, center[3] + size[3]/2}, -- 7: Top-Front-Right
+        {center[1] - size[1]/2, center[2] + size[2]/2, center[3] + size[3]/2}  -- 8: Top-Front-Left
+    }
+    
+    -- Converter pontos 3D para 2D
+    local points2D = {}
+    for i, point in ipairs(points) do
+        local wts = worldtoscreenpoint(point)
+        if wts then
+            points2D[i] = {wts.x, wts.y}
+        else
+            return -- Se algum ponto não estiver visível, não desenha a caixa
+        end
+    end
+    
+    -- Criar linhas de desenho para cada aresta
+    local lines = {}
+    
+    -- Face traseira
+    table.insert(lines, createLine(points2D[1], points2D[2], box_color))
+    table.insert(lines, createLine(points2D[2], points2D[3], box_color))
+    table.insert(lines, createLine(points2D[3], points2D[4], box_color))
+    table.insert(lines, createLine(points2D[4], points2D[1], box_color))
+    
+    -- Face frontal
+    table.insert(lines, createLine(points2D[5], points2D[6], box_color))
+    table.insert(lines, createLine(points2D[6], points2D[7], box_color))
+    table.insert(lines, createLine(points2D[7], points2D[8], box_color))
+    table.insert(lines, createLine(points2D[8], points2D[5], box_color))
+    
+    -- Conexões
+    table.insert(lines, createLine(points2D[1], points2D[5], box_color))
+    table.insert(lines, createLine(points2D[2], points2D[6], box_color))
+    table.insert(lines, createLine(points2D[3], points2D[7], box_color))
+    table.insert(lines, createLine(points2D[4], points2D[8], box_color))
+    
+    return lines -- Retornar as linhas para que possam ser removidas depois
+end
+
+-- Função auxiliar para criar linhas
+function createLine(point1, point2, color)
+    local line = Drawing.new("Line")
+    line.From = {point1[1], point1[2]}
+    line.To = {point2[1], point2[2]}
+    line.Color = color
+    line.Thickness = 1
+    line.Visible = true
+    return line
+end
+
+--// BoxESP Function
+function rbl.BoxESP(params)
+    local target = params.Target or nil
+    local box_color = params.Color or {255,255,255}
+    local healthbar = params.Healthbar or false
+    local distance = params.Distance or false
+    local nametag = params.Nametag or false
+    local tracer = params.Tracer or false
+    local tracertype = params.TracerType or 1 --// 1 = near-bottom, 2 = bottom, 3 = top, 4 = mouse
+    local box_type = params.BoxType or 1 --// 1 = corners, 2 = 2d box, 3 = 3d box
+
+    assert(type(target) == "number" and getchildren(target), "[RBL Error] BoxESP: Target Argument needs to be a valid instance!")
+    assert(type(box_color) == "table" and #box_color == 3, "[RBL Error] BoxESP: Color Argument needs to be a table with 3 RGB values!")
+    
+    local torso = findfirstchild(target, "HumanoidRootPart")
+    if not torso then return end
+    
+    local rootPos = getposition(torso)
+    
+    local HeadPosY = rootPos.y + 2.5
+    local LegPosY = rootPos.y - 3.5
+
+    local Top = worldtoscreenpoint({rootPos.x, HeadPosY, rootPos.z})
+    local Bottom = worldtoscreenpoint({rootPos.x, LegPosY, rootPos.z})
+    
+    if not Top or not Bottom then return end
+    
+    local height = Top.y - Bottom.y
+    local width = (height / 2) / 1.2
+    
+    local elements = {}
+    
+    -- Desenhar caixa
+    if box_type == 1 then -- cantos
+        -- Superior esquerdo
+        table.insert(elements, createLine({Top.x + width + 2, Top.y}, {Top.x + (width/2) + 2, Top.y}, box_color))
+        table.insert(elements, createLine({Top.x + width + 2, Top.y}, {Top.x + width + 2, Top.y - (height/4)}, box_color))
+        
+        -- Superior direito
+        table.insert(elements, createLine({Bottom.x - width, Top.y}, {Bottom.x - (width/2), Top.y}, box_color))
+        table.insert(elements, createLine({Bottom.x - width, Top.y}, {Bottom.x - width, Top.y - (height/4)}, box_color))
+        
+        -- Inferior esquerdo
+        table.insert(elements, createLine({Top.x + width + 2, Bottom.y}, {Top.x + (width/2) + 2, Bottom.y}, box_color))
+        table.insert(elements, createLine({Top.x + width + 2, Bottom.y}, {Top.x + width + 2, Bottom.y + (height/4)}, box_color))
+        
+        -- Inferior direito
+        table.insert(elements, createLine({Bottom.x - width, Bottom.y}, {Bottom.x - (width/2), Bottom.y}, box_color))
+        table.insert(elements, createLine({Bottom.x - width, Bottom.y}, {Bottom.x - width, Bottom.y + (height/4)}, box_color))
+        
+    elseif box_type == 2 then -- caixa 2d
+        local box = Drawing.new("Square")
+        box.Position = {Bottom.x - width, Top.y}
+        box.Size = {width * 2, Bottom.y - Top.y}
+        box.Color = box_color
+        box.Thickness = 1
+        box.Filled = false
+        box.Visible = true
+        table.insert(elements, box)
+        
+    elseif box_type == 3 then -- caixa 3d
+        local boxElements = rbl.Box3d(
+            {rootPos.x - 2, HeadPosY, rootPos.z - 2},
+            {rootPos.x + 2, LegPosY, rootPos.z + 2},
+            box_color
+        )
+        if boxElements then
+            for _, element in ipairs(boxElements) do
+                table.insert(elements, element)
+            end
+        end
+    end
+    
+    -- Healthbar (opcional)
+    if healthbar then
+        local humanoid = findfirstchild(target, "Humanoid")
+        if humanoid then
+            local hp = gethealth(humanoid)
+            local maxhp = getmaxhealth(humanoid)
+            
+            local tl = {Top.x + width - 5, Top.y + 1}
+            local br = {Top.x + width - 1, Bottom.y - 1}
+            
+            -- Fundo preto
+            local hbg = Drawing.new("Square")
+            hbg.Position = {tl[1] - 1, tl[2] - 1}
+            hbg.Size = {br[1] - tl[1] + 2, br[2] - tl[2] + 2}
+            hbg.Color = box_color
+            hbg.Filled = false
+            hbg.Visible = true
+            table.insert(elements, hbg)
+            
+            -- Fundo interno preto
+            local hbgInner = Drawing.new("Square")
+            hbgInner.Position = {tl[1], tl[2]}
+            hbgInner.Size = {br[1] - tl[1], br[2] - tl[2]}
+            hbgInner.Color = {0, 0, 0}
+            hbgInner.Filled = true
+            hbgInner.Visible = true
+            table.insert(elements, hbgInner)
+            
+            -- Barra de vida
+            local addon = (height + 2) / (maxhp/math.max(0, math.min(maxhp, hp)))
+            local hbFill = Drawing.new("Square")
+            hbFill.Position = {tl[1] + 1, br[2] - addon}
+            hbFill.Size = {br[1] - tl[1] - 2, addon + 1}
+            hbFill.Color = {255 - 255 / (maxhp / hp), 255 / (maxhp / hp), 0}
+            hbFill.Filled = true
+            hbFill.Visible = true
+            table.insert(elements, hbFill)
+        end
+    end
+    
+    -- Distância (opcional)
+    if distance then
+        local dist = tostring(rbl.GetDistanceFromPlayer(rootPos))
+        local text = Drawing.new("Text")
+        text.Text = dist
+        text.Position = {Bottom.x - (dist:len() * 4), Bottom.y + 5}
+        text.Color = box_color
+        text.Size = 13
+        text.Center = true
+        text.Visible = true
+        table.insert(elements, text)
+    end
+    
+    -- Nametag (opcional)
+    if nametag then
+        local name = getname(target)
+        local text = Drawing.new("Text")
+        text.Text = name
+        text.Position = {Top.x - (name:len() * 2), Top.y - 20}
+        text.Color = box_color
+        text.Size = 13
+        text.Center = true
+        text.Visible = true
+        table.insert(elements, text)
+    end
+    
+    -- Tracer (opcional)
+    if tracer then
+        local loc
+        local screen = getscreendimensions()
+        
+        if tracertype == 1 then
+            loc = {screen.x / 2, screen.y / 1.1}
+        elseif tracertype == 2 then
+            loc = {screen.x / 2, screen.y}
+        elseif tracertype == 3 then
+            loc = {screen.x / 2, 1}
+        elseif tracertype == 4 then
+            local mouse = getmouseposition()
+            loc = {mouse.x, mouse.y}
+        end
+        
+        local line = Drawing.new("Line")
+        line.From = {loc[1], loc[2]}
+        line.To = {Top.x + width + (((Bottom.x - width) - (Top.x + width)) / 2), Bottom.y}
+        line.Color = box_color
+        line.Thickness = 1
+        line.Visible = true
+        table.insert(elements, line)
     end
     
     return elements
 end
 
--- Update ESP elements based on camera position and target position
-local function updateEspObject(espObject, camPos, maxDistance, drawDistance)
-    local rootPart = espObject.root
+--// Função para console
+function rbl.ShowConsole()
+    local mouse = getmouseposition()
     
-    if not rootPart then
-        return false
-    end
-    
-    local screenPos, isOnScreen = workspace.CurrentCamera:WorldToScreenPoint(rootPart.Position)
-    local distance = mathFloor((rootPart.Position - camPos).Magnitude)
-    
-    if isOnScreen and distance <= maxDistance then
-        local displayName = drawDistance 
-            and espObject.name .. ' [' .. tostring(distance) .. 'm]' 
-            or espObject.name
-        
-        espObject.text.Text = displayName
-        espObject.text.Position = Vector2.new(screenPos.X, screenPos.Y + 10)
-        espObject.text.Color = espObject.custom_color
-        espObject.text.Visible = true
-        
-        espObject.circle.Position = Vector2.new(screenPos.X, screenPos.Y)
-        espObject.circle.Color = espObject.custom_color
-        espObject.circle.Visible = true
-        
-        if espObject.tracer then
-            espObject.tracer.From = Vector2.new(workspace.CurrentCamera.ViewportSize.X / 2, workspace.CurrentCamera.ViewportSize.Y)
-            espObject.tracer.To = Vector2.new(screenPos.X, screenPos.Y)
-            espObject.tracer.Color = espObject.custom_color
-            espObject.tracer.Visible = true
+    if rbl.isMouseInArea({rbl.Location[1] + rbl.Size[1] - 27, rbl.Location[2] + 3, rbl.Location[1] + rbl.Size[1] - 5, rbl.Location[2] + 19}) then
+        if isleftclicked() then
+            rbl.Open = not rbl.Open
         end
-        
-        return true
+        rbl.Hovering = true
     else
-        espObject.text.Visible = false
-        espObject.circle.Visible = false
-        
-        if espObject.tracer then
-            espObject.tracer.Visible = false
-        end
-        
-        return false
+        rbl.Hovering = false
     end
-end
 
--- Main ESP update function
-local function updateEsp()
-    while not stop do
-        local camPos = workspace.CurrentCamera.CFrame.Position
+    -- Lógica de arrastar
+    if isleftpressed() then
+        if rbl.Dragging or rbl.isMouseInArea({rbl.Location[1] - 5, rbl.Location[2] - 10, rbl.Location[1] + rbl.Size[1] + 5, rbl.Location[2] + 30}) then
+            if not rbl.Dragging then rbl.Dragging = true end 
+
+            if rbl.WinMouseOffset == nil then
+                rbl.WinMouseOffset = {mouse.x - rbl.Location[1], mouse.y - rbl.Location[2]}
+            end
+            rbl.Location = {mouse.x - rbl.WinMouseOffset[1], mouse.y - rbl.WinMouseOffset[2]}
+        end
+    else
+        rbl.Dragging = false
+        rbl.WinMouseOffset = nil
+    end
+    
+    -- Interface do console
+    local consoleElements = {}
+    
+    if rbl.Open then
+        -- Criar elementos do console via Drawing API
+        local outline = Drawing.new("Square")
+        outline.Position = {rbl.Location[1] - 1, rbl.Location[2] - 1}
+        outline.Size = {rbl.Size[1] + 2, rbl.Size[2] + 2}
+        outline.Color = rbl.Black
+        outline.Filled = true
+        outline.Visible = true
+        table.insert(consoleElements, outline)
         
-        for espType, objects in pairs(espObjects) do
-            local config = SevereLib.ESP.Config[espType] or SevereLib.ESP.Config.default
-            
-            if config.enabled then
-                for index, object in pairs(objects) do
-                    if not object.root or not object.root:IsDescendantOf(workspace) then
-                        -- Clean up if object no longer exists
-                        if object.text then object.text:Remove() end
-                        if object.circle then object.circle:Remove() end
-                        if object.tracer then object.tracer:Remove() end
-                        objects[index] = nil
-                    else
-                        updateEspObject(object, camPos, config.maxDistance, config.drawDistance)
-                    end
-                end
+        local accent = Drawing.new("Square")
+        accent.Position = {rbl.Location[1], rbl.Location[2]}
+        accent.Size = {rbl.Size[1], rbl.Size[2]}
+        accent.Color = rbl.AccentColor
+        accent.Filled = true
+        accent.Visible = true
+        table.insert(consoleElements, accent)
+        
+        local mainOuter = Drawing.new("Square")
+        mainOuter.Position = {rbl.Location[1] + 1, rbl.Location[2] + 1}
+        mainOuter.Size = {rbl.Size[1] - 2, rbl.Size[2] - 2}
+        mainOuter.Color = rbl.MainColor
+        mainOuter.Filled = true
+        mainOuter.Visible = true
+        table.insert(consoleElements, mainOuter)
+        
+        local mainInner = Drawing.new("Square")
+        mainInner.Position = {rbl.Location[1] + 5, rbl.Location[2] + 20}
+        mainInner.Size = {rbl.Size[1] - 10, rbl.Size[2] - 25}
+        mainInner.Color = rbl.BackgroundColor
+        mainInner.Filled = true
+        mainInner.Visible = true
+        table.insert(consoleElements, mainInner)
+        
+        local mainInnerOutline = Drawing.new("Square")
+        mainInnerOutline.Position = {rbl.Location[1] + 5, rbl.Location[2] + 20}
+        mainInnerOutline.Size = {rbl.Size[1] - 10, rbl.Size[2] - 25}
+        mainInnerOutline.Color = rbl.OutlineColor
+        mainInnerOutline.Filled = false
+        mainInnerOutline.Visible = true
+        table.insert(consoleElements, mainInnerOutline)
+        
+        local title = Drawing.new("Text")
+        title.Text = "RobloxLib Console | Mouse: " .. mouse.x .. ", " .. mouse.y
+        title.Position = {rbl.Location[1], rbl.Location[2]}
+        title.Color = rbl.FontColor
+        title.Size = 13
+        title.Visible = true
+        table.insert(consoleElements, title)
+        
+        -- Mostrar logs
+        for i, v in pairs(rbl.StoredLogs) do
+            local logText = Drawing.new("Text")
+            if string.sub(v, 1, 9) == "ERROR_TAG" then
+                logText.Color = rbl.ErrorColor
+                logText.Text = string.sub(v, 10, -1)
             else
-                -- Hide all objects of this type if disabled
-                for _, object in pairs(objects) do
-                    if object.text then object.text.Visible = false end
-                    if object.circle then object.circle.Visible = false end
-                    if object.tracer then object.tracer.Visible = false end
-                end
+                logText.Color = rbl.FontColor
+                logText.Text = v
             end
+            logText.Position = {rbl.Location[1] + 10, rbl.Location[2] + 25 + (i-1)*18}
+            logText.Size = 13
+            logText.Visible = true
+            table.insert(consoleElements, logText)
         end
+    else
+        -- Versão minimizada do console
+        local minimizedOutline = Drawing.new("Square")
+        minimizedOutline.Position = {rbl.Location[1] + 300, rbl.Location[2] - 1}
+        minimizedOutline.Size = {rbl.Size[1] - 300 + 1, 23}
+        minimizedOutline.Color = rbl.Black
+        minimizedOutline.Filled = true
+        minimizedOutline.Visible = true
+        table.insert(consoleElements, minimizedOutline)
         
-        wait(1/60) -- Update at 60fps
-    end
-    
-    -- Clean up all drawings when stopped
-    for _, objects in pairs(espObjects) do
-        for _, object in pairs(objects) do
-            if object.text then object.text:Remove() end
-            if object.circle then object.circle:Remove() end
-            if object.tracer then object.tracer:Remove() end
-        end
-    end
-end
-
--- Default ESP configuration
-SevereLib.ESP.Config = {
-    default = {
-        enabled = true,
-        maxDistance = 1000,
-        drawDistance = true,
-        color = {255, 255, 255},
-        radius = 5,
-        showTracer = false
-    },
-    players = {
-        enabled = true,
-        maxDistance = 1000,
-        drawDistance = true,
-        color = {255, 0, 0},
-        radius = 5,
-        showTracer = true,
-        showTeam = false
-    },
-    items = {
-        enabled = true,
-        maxDistance = 400,
-        drawDistance = true,
-        color = {235, 237, 143},
-        radius = 5,
-        showTracer = false
-    },
-    entities = {
-        enabled = true,
-        maxDistance = 500,
-        drawDistance = true,
-        color = {0, 255, 0},
-        radius = 5,
-        showTracer = false
-    },
-    custom = {
-        enabled = true,
-        maxDistance = 1000,
-        drawDistance = true,
-        color = {0, 255, 255},
-        radius = 5,
-        showTracer = false
-    }
-}
-
--- BoxESP - Create an ESP box, name, tracer for target
-function SevereLib.ESP:BoxESP(options)
-    if not options or not options.Target then
-        SevereLib.Console:Error("BoxESP requires a Target parameter")
-        return nil
-    end
-    
-    local target = options.Target
-    local espType = options.Type or "custom"
-    local config = SevereLib.ESP.Config[espType] or SevereLib.ESP.Config.default
-    
-    -- Get target root part
-    local rootPart
-    if target:IsA("Model") then
-        rootPart = target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("PrimaryPart")
+        local minimizedAccent = Drawing.new("Square")
+        minimizedAccent.Position = {rbl.Location[1] + 301, rbl.Location[2]}
+        minimizedAccent.Size = {rbl.Size[1] - 301 - 1, 22}
+        minimizedAccent.Color = rbl.AccentColor
+        minimizedAccent.Filled = true
+        minimizedAccent.Visible = true
+        table.insert(consoleElements, minimizedAccent)
         
-        if not rootPart then
-            for _, child in ipairs(target:GetChildren()) do
-                if child:IsA("BasePart") then
-                    rootPart = child
-                    break
-                end
-            end
-        end
-    elseif target:IsA("BasePart") then
-        rootPart = target
+        local minimizedMain = Drawing.new("Square")
+        minimizedMain.Position = {rbl.Location[1] + 302, rbl.Location[2] + 1}
+        minimizedMain.Size = {rbl.Size[1] - 303, 20}
+        minimizedMain.Color = rbl.MainColor
+        minimizedMain.Filled = true
+        minimizedMain.Visible = true
+        table.insert(consoleElements, minimizedMain)
+        
+        local minimizedTitle = Drawing.new("Text")
+        minimizedTitle.Text = "RobloxLib Console"
+        minimizedTitle.Position = {rbl.Location[1] + 305, rbl.Location[2] + 2}
+        minimizedTitle.Color = rbl.FontColor
+        minimizedTitle.Size = 13
+        minimizedTitle.Visible = true
+        table.insert(consoleElements, minimizedTitle)
     end
     
-    if not rootPart then
-        SevereLib.Console:Error("BoxESP target must have a valid part")
-        return nil
+    -- Botão de toggle
+    local toggleBg = Drawing.new("Square")
+    if rbl.Hovering then
+        toggleBg.Color = rbl.AccentColor
+    else
+        toggleBg.Color = rbl.Black
     end
+    toggleBg.Position = {rbl.Location[1] + rbl.Size[1] - 27, rbl.Location[2] + 3}
+    toggleBg.Size = {22, 16}
+    toggleBg.Filled = true
+    toggleBg.Visible = true
+    table.insert(consoleElements, toggleBg)
     
-    -- Set up color
-    local color = options.Color or config.color
-    if type(color) == "table" and #color >= 3 then
-        color = Color3.fromRGB(color[1], color[2], color[3])
-    end
+    local toggleInner = Drawing.new("Square")
+    toggleInner.Position = {rbl.Location[1] + rbl.Size[1] - 26, rbl.Location[2] + 4}
+    toggleInner.Size = {20, 14}
+    toggleInner.Color = rbl.OutlineColor
+    toggleInner.Filled = true
+    toggleInner.Visible = true
+    table.insert(consoleElements, toggleInner)
     
-    -- Create ESP elements
-    local elements = createEspElements(
-        color, 
-        options.Radius or config.radius,
-        options.Tracer or config.showTracer
-    )
+    local toggleMain = Drawing.new("Square")
+    toggleMain.Position = {rbl.Location[1] + rbl.Size[1] - 25, rbl.Location[2] + 5}
+    toggleMain.Size = {18, 12}
+    toggleMain.Color = rbl.MainColor
+    toggleMain.Filled = true
+    toggleMain.Visible = true
+    table.insert(consoleElements, toggleMain)
     
-    -- Build ESP object
-    local espObject = {
-        root = rootPart,
-        name = options.Name or target.Name,
-        text = elements.text,
-        circle = elements.circle,
-        tracer = elements.tracer,
-        custom_color = color
-    }
+    local toggleText = Drawing.new("Text")
+    toggleText.Text = "_"
+    toggleText.Position = {rbl.Location[1] + rbl.Size[1] - 20, rbl.Location[2] + 1}
+    toggleText.Color = rbl.FontColor
+    toggleText.Size = 13
+    toggleText.Visible = true
+    table.insert(consoleElements, toggleText)
     
-    -- Add to appropriate collection
-    table.insert(espObjects[espType], espObject)
-    
-    return espObject
+    return consoleElements
 end
 
--- Initialize a 2D box ESP (corners only)
-function SevereLib.ESP:Box2D(options)
-    if not options or not options.Target then
-        SevereLib.Console:Error("Box2D requires a Target parameter")
-        return nil
+--// Funções de log
+function rbl.print(...)
+    local message = ""
+    for i, v in pairs({...}) do
+        message = message .. tostring(v) .. " "
     end
     
-    -- Box2D implementation would go here
-    -- Similar to BoxESP but with different visual style
-    -- Using Corner points instead of a full box
-    
-    return SevereLib.ESP:BoxESP({
-        Target = options.Target,
-        Type = options.Type or "custom",
-        Color = options.Color,
-        Name = options.Name,
-        BoxType = 2 -- 2D box style
-    })
-end
-
--- Initialize a 3D box ESP
-function SevereLib.ESP:Box3D(options)
-    if not options or not options.Target then
-        SevereLib.Console:Error("Box3D requires a Target parameter")
-        return nil
+    if #rbl.StoredLogs >= 45 then
+        table.remove(rbl.StoredLogs, 1)
     end
     
-    -- Box3D implementation would go here
-    -- Similar to BoxESP but with 3D box rendering
-    
-    return SevereLib.ESP:BoxESP({
-        Target = options.Target,
-        Type = options.Type or "custom",
-        Color = options.Color,
-        Name = options.Name,
-        BoxType = 3 -- 3D box style
-    })
+    table.insert(rbl.StoredLogs, message)
 end
 
--- Add health bar to ESP object
-function SevereLib.ESP:HealthBar(espObject, humanoid)
-    if not espObject or not humanoid then
-        SevereLib.Console:Error("HealthBar requires both espObject and humanoid")
-        return false
+function rbl.error(...)
+    local message = ""
+    for i, v in pairs({...}) do
+        message = message .. tostring(v) .. " "
     end
     
-    -- HealthBar implementation would go here
-    -- Add health bar visual elements to existing espObject
-    
-    return true
-end
-
--- Start the ESP system
-function SevereLib.ESP:Start()
-    if stop then
-        stop = false
-        spawn(updateEsp)
-        SevereLib.Console:Print("ESP system started")
+    if #rbl.StoredLogs >= 45 then
+        table.remove(rbl.StoredLogs, 1)
     end
-    return true
-end
-
--- Stop the ESP system and clean up
-function SevereLib.ESP:Stop()
-    stop = true
-    SevereLib.Console:Print("ESP system stopped")
-    return true
-end
-
--- Utility function to add players to ESP
-function SevereLib.ESP:AddAllPlayers(options)
-    options = options or {}
-    local players = game:GetService("Players"):GetPlayers()
     
-    for _, player in ipairs(players) do
-        if player ~= localPlayer then
-            spawn(function()
-                local character = player.Character
-                if character then
-                    SevereLib.ESP:BoxESP({
-                        Target = character,
-                        Type = "players",
-                        Name = player.Name,
-                        Color = options.Color,
-                        Tracer = options.Tracer
-                    })
-                end
-            end)
+    table.insert(rbl.StoredLogs, "ERROR_TAG" .. message)
+end
+
+--// Funções utilitárias
+function rbl.GetDescendants(instance)
+    assert(type(instance) == "number" and getchildren(instance), "[RBL Error] GetDescendants: First Argument needs to be a valid instance!")
+    
+    local children = {}
+    for _, child in ipairs(getchildren(instance)) do
+        table.insert(children, child)
+        local descendants = rbl.GetDescendants(child)
+        for _, descendant in ipairs(descendants) do
+            table.insert(children, descendant)
         end
     end
     
-    return true
+    return children
 end
 
--- Utility function to add a custom object to ESP
-function SevereLib.ESP:AddCustomObject(object, name, color, type)
-    if not object then return nil end
-    
-    return SevereLib.ESP:BoxESP({
-        Target = object,
-        Type = type or "custom",
-        Name = name or object.Name,
-        Color = color
-    })
+function rbl.GetLocalPlayerName()
+    return getname(getlocalplayer())
 end
 
--- Create UI Elements
-SevereLib.UI = {}
-
--- Create a new window
-function SevereLib.UI:Window(options)
-    options = options or {}
-    -- UI window implementation would go here
-    -- This would be a placeholder for a UI library implementation
-    SevereLib.Console:Print("Created UI Window: " .. (options.Title or "Untitled"))
-    return {}
+function rbl.GetLocalCharacter()
+    return getcharacter(getlocalplayer())
 end
 
--- Initialize the library
-function SevereLib:Init()
-    SevereLib.Console:Print("Severe Library initialized")
-    return self
-end
+-- Exportar a biblioteca
+_G.rbl = rbl
+print("RobloxLib iniciada com sucesso!")
 
--- Unload the library and clean up
-function SevereLib:Unload()
-    SevereLib.ESP:Stop()
-    stop = true
-    
-    -- Clean up ESP objects
-    for _, objects in pairs(espObjects) do
-        for _, object in pairs(objects) do
-            if object.text then object.text:Remove() end
-            if object.circle then object.circle:Remove() end
-            if object.tracer then object.tracer:Remove() end
-        end
+-- Atualização da cor do arco-íris (a ser chamada em um loop)
+spawn(function()
+    while true do
+        rbl_updateRainbow()
+        wait(0.03)
     end
-    
-    SevereLib.Console:Print("Severe Library unloaded")
-    return true
-end
-
-return SevereLib:Init()
+end)
