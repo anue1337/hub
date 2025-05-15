@@ -1,1768 +1,1622 @@
---// SevereLib - Enhanced Performance-optimized utility library
---// Main focus: ESP functionality with improved visuals and performance
-
-local SevereLib = {
-    -- Cache for frequently used values
-    Cache = {
-        Screen = {x = 0, y = 0},
-        Game = Game,
-        Workspace = nil,
-        LocalPlayer = nil,
-        Camera = nil,
-        Mouse = nil,
-        Time = 0,
-        FrameRate = 0,
-        LastTick = 0,
-        Players = {},
-        TeamColors = {}
-    },
-    
-    -- ESP Settings
-    ESP = {
-        Enabled = true,
-        MaxDistance = 1000,
-        FontSize = 13,
-        FontType = 2, -- Default to Plex
-        ShowDistance = true,
-        ShowHealth = true,
-        ShowName = true,
-        BoxType = 1, -- 1 = Corners, 2 = 2D Box, 3 = 3D Box, 4 = Skeleton
-        BoxThickness = 1,
-        
-        -- Customization options
-        TraceMode = 1, -- 1 = Bottom screen, 2 = Mouse, 3 = Top screen
-        HealthBarMode = 1, -- 1 = Side, 2 = Bottom, 3 = Head
-        
-        -- Extra options
-        ShowTeam = true,
-        ShowChams = false,
-        ShowBoundingBox = false,
-        ShowGroundCircle = false,
-        GroundCircleRadius = 5,
-        GroundCircleSegments = 16,
-        
-        -- Healthbar settings
-        HealthBar = {
-            Enabled = true,
-            Width = 3,
-            Outline = true,
-            GradientColors = true, -- Red to green
-            VerticalOffset = 0
-        },
-        
-        -- Filter settings
-        Filter = {
-            Team = true,
-            Friends = false,
-            NPCs = true
-        },
-        
-        -- Colors
-        Colors = {
-            Default = {255, 255, 255},
-            Team = {0, 255, 0},
-            Enemy = {255, 0, 0},
-            Neutral = {255, 255, 0},
-            Friend = {0, 150, 255},
-            NPC = {255, 150, 0},
-            Items = {0, 255, 255},
-            Highlighted = {255, 0, 255},
-            HealthLow = {255, 0, 0},
-            HealthMid = {255, 255, 0},
-            HealthHigh = {0, 255, 0},
-            Chams = {255, 0, 255, 50}, -- RGBA with alpha
-            Tracer = {255, 255, 255},
-            Names = {255, 255, 255},
-            Distance = {200, 200, 200},
-            Outline = {0, 0, 0}
-        },
-        
-        -- Tracers
-        Tracers = {
-            Enabled = false,
-            Origin = {centered = true, offset_x = 0, offset_y = 0},
-            Thickness = 1,
-            AlphaByDistance = true
-        }
-    },
-    
-    -- Performance settings
-    Performance = {
-        UpdateInterval = 0.01, -- ESP update interval
-        CleanupInterval = 5,
-        MaxActiveESP = 100,
-        CullDistance = 1000,
-        ScreenCheckFrequency = 2, -- How often to check screen dimensions in seconds
-        ObjectCheckFrequency = 0.5, -- How often to process new objects
-        LOD = 2, -- Level of detail (1-3, 3 = highest)
-        EnableObjectPooling = true,
-        AggressiveLOD = true, -- Reduce detail automatically for better performance
-        OnScreenOnly = false -- Only render ESP for on-screen elements
-    },
-    
-    -- Drawing objects pool
-    Pool = {
-        Available = {
-            Text = {},
-            Line = {},
-            Square = {},
-            Circle = {},
-            Triangle = {},
-            Quad = {},
-            Image = {}
-        },
-        InUse = {
-            Text = {},
-            Line = {},
-            Square = {},
-            Circle = {},
-            Triangle = {},
-            Quad = {},
-            Image = {}
-        },
-        Stats = {
-            Created = 0,
-            Recycled = 0,
-            Active = 0
-        }
-    },
-    
-    -- Active ESP objects
-    ActiveESP = {},
-    
-    -- Event handlers
-    Events = {},
-    
-    -- Flags
-    Flags = {
-        Initialized = false,
-        Unloading = false,
-        PendingCleanup = false,
-        RefreshTeamData = true
-    },
-    
-    -- Debug
-    Debug = {
-        Enabled = false,
-        ShowStats = false,
-        LastError = "",
-        Stats = {
-            FPS = 0,
-            Objects = 0,
-            OnScreen = 0,
-            DrawCalls = 0
-        }
-    }
-}
-
--- Create a simple event system
-function SevereLib:CreateEvent()
-    local event = {
-        Listeners = {}
-    }
-    
-    function event:Connect(callback)
-        if type(callback) ~= "function" then return end
-        table.insert(self.Listeners, callback)
-        
-        -- Return a handle to disconnect
-        return {
-            Disconnect = function()
-                for i, cb in pairs(self.Listeners) do
-                    if cb == callback then
-                        table.remove(self.Listeners, i)
-                        break
-                    end
-                end
-            end
-        }
-    end
-    
-    function event:Fire(...)
-        for _, callback in ipairs(self.Listeners) do
-            pcall(callback, ...)
-        end
-    end
-    
-    return event
-end
-
--- Initialize events
-SevereLib.Events.OnRender = SevereLib:CreateEvent()
-SevereLib.Events.OnPlayerAdded = SevereLib:CreateEvent()
-SevereLib.Events.OnPlayerRemoved = SevereLib:CreateEvent()
-SevereLib.Events.OnToggle = SevereLib:CreateEvent()
-
--- Initialize cache
-function SevereLib:Init()
-    if self.Flags.Initialized then
-        return self
-    end
-    
-    -- Cache screen size
-    self.Cache.Screen.x, self.Cache.Screen.y = getscreendimensions()
-    
-    -- Cache game objects
-    self.Cache.Workspace = findfirstchildofclass(Game, "Workspace")
-    self.Cache.LocalPlayer = getlocalplayer()
-    
-    -- Try to find camera in workspace first, fallback to workspace itself
-    local camera = findfirstchild(self.Cache.Workspace, "Camera")
-    if camera then
-        self.Cache.Camera = camera
-    else
-        -- Fallback - use workspace as camera reference point
-        self.Cache.Camera = self.Cache.Workspace
-    end
-    
-    -- Initialize time tracking
-    self.Cache.LastTick = tick()
-    self.Cache.Time = 0
-    
-    self.Flags.Initialized = true
-    
-    -- Start the update loop
-    self:StartUpdateLoop()
-    
-    -- Return the library for chaining
-    return self
-end
-
--- Start the main update loop
-function SevereLib:StartUpdateLoop()
-    spawn(function()
-        while not self.Flags.Unloading do
-            -- Calculate frame time
-            local currentTick = tick()
-            local deltaTime = currentTick - self.Cache.LastTick
-            self.Cache.LastTick = currentTick
-            self.Cache.Time = self.Cache.Time + deltaTime
-            
-            -- Calculate FPS
-            if deltaTime > 0 then
-                self.Cache.FrameRate = 1 / deltaTime
-                self.Debug.Stats.FPS = math.floor(self.Cache.FrameRate + 0.5)
-            end
-            
-            -- Update screen dimensions occasionally
-            if (self.Cache.Time % self.Performance.ScreenCheckFrequency) < deltaTime then
-                self:UpdateScreen()
-            end
-            
-            -- Main ESP update
-            if self.ESP.Enabled then
-                self:UpdateESP()
-                
-                -- Fire render event
-                self.Events.OnRender:Fire(deltaTime)
-            end
-            
-            -- Periodic cleanup
-            if (self.Cache.Time % self.Performance.CleanupInterval) < deltaTime then
-                self:CleanupUnusedESP()
-            end
-            
-            -- Small delay to prevent excessive CPU usage
-            wait(self.Performance.UpdateInterval)
-        end
-    end)
-end
-
--- Update screen dimensions
-function SevereLib:UpdateScreen()
-    self.Cache.Screen.x, self.Cache.Screen.y = getscreendimensions()
-end
-
--- Safe error handling
-function SevereLib:SafeCall(func, ...)
+-- Função para capturar erros e exibi-los de forma mais clara
+local function safeExecute(func, ...)
     local success, result = pcall(func, ...)
     if not success then
-        self.Debug.LastError = tostring(result)
-        if self.Debug.Enabled then
-            print("[SevereLib Error] " .. result)
+        warn("UI Lib Error: " .. tostring(result))
+        if printconsole then
+            printconsole("UI Lib Error: " .. tostring(result), 255, 0, 0)
         end
         return nil
     end
     return result
 end
 
--- Draw object pooling system
-function SevereLib:GetPooledDrawing(drawingType, properties)
-    -- Check if we have a pooled object available
-    if #self.Pool.Available[drawingType] > 0 then
-        -- Get an object from the pool
-        local drawing = table.remove(self.Pool.Available[drawingType])
-        table.insert(self.Pool.InUse[drawingType], drawing)
-        
-        -- Reset properties
-        for prop, value in pairs(properties or {}) do
-            drawing[prop] = value
-        end
-        
-        -- Update stats
-        self.Pool.Stats.Recycled = self.Pool.Stats.Recycled + 1
-        self.Pool.Stats.Active = self.Pool.Stats.Active + 1
-        
-        return drawing
-    else
-        -- Create a new drawing object
-        local drawing = Drawing.new(drawingType)
-        
-        -- Set properties
-        for prop, value in pairs(properties or {}) do
-            drawing[prop] = value
-        end
-        
-        -- Add to in-use pool
-        table.insert(self.Pool.InUse[drawingType], drawing)
-        
-        -- Update stats
-        self.Pool.Stats.Created = self.Pool.Stats.Created + 1
-        self.Pool.Stats.Active = self.Pool.Stats.Active + 1
-        
-        return drawing
-    end
-end
-
--- Return a drawing to the pool
-function SevereLib:ReturnToPool(drawing, drawingType)
-    if not drawing then return end
-    
-    -- Hide the drawing
-    drawing.Visible = false
-    
-    -- Remove from in-use
-    for i, obj in ipairs(self.Pool.InUse[drawingType]) do
-        if obj == drawing then
-            table.remove(self.Pool.InUse[drawingType], i)
-            break
-        end
-    end
-    
-    -- Add to available
-    table.insert(self.Pool.Available[drawingType], drawing)
-    
-    -- Update stats
-    self.Pool.Stats.Active = self.Pool.Stats.Active - 1
-end
-
--- Get a color from the ESP colors table, with optional alpha
-function SevereLib:GetColor(colorName, alpha)
-    local color = self.ESP.Colors[colorName] or self.ESP.Colors.Default
-    
-    if alpha then
-        return {color[1], color[2], color[3], alpha}
-    else
-        return color
-    end
-end
-
--- Get a health-based color gradient (red to yellow to green)
-function SevereLib:GetHealthColor(health, maxHealth)
-    local healthPercentage = health / maxHealth
-    
-    if healthPercentage <= 0.5 then
-        -- Red to Yellow gradient
-        local r = 255
-        local g = math.floor(255 * (healthPercentage * 2))
-        local b = 0
-        return {r, g, b}
-    else
-        -- Yellow to Green gradient
-        local r = math.floor(255 * (1 - (healthPercentage - 0.5) * 2))
-        local g = 255
-        local b = 0
-        return {r, g, b}
-    end
-end
-
---// Utility Functions
-
--- Calculate distance between two positions
-function SevereLib:GetDistance(pos1, pos2)
-    local dx = pos1.x - pos2.x
-    local dy = pos1.y - pos2.y
-    local dz = pos1.z - pos2.z
-    return math.sqrt(dx * dx + dy * dy + dz * dz)
-end
-
--- Calculate distance from local player
-function SevereLib:GetDistanceFromPlayer(position)
-    local character = getcharacter(self.Cache.LocalPlayer)
-    if not character then return 9999 end
-    
-    local rootPart = findfirstchild(character, "HumanoidRootPart")
-    if not rootPart then return 9999 end
-    
-    local playerPos = getposition(rootPart)
-    return self:GetDistance(playerPos, position)
-end
-
--- Check if mouse is in specified area
-function SevereLib:IsMouseInArea(x1, y1, x2, y2)
-    local mousePos = getmouseposition()
-    return mousePos.x > x1 and mousePos.y > y1 and mousePos.x < x2 and mousePos.y < y2
-end
-
--- Get part position from instance
-function SevereLib:GetPartPosition(instance)
-    if not instance then return nil end
-    return getposition(instance)
-end
-
--- Get the main part from a model with improved fallback system
-function SevereLib:GetMainPart(model)
-    if not model then return nil end
-    
-    -- Try getting HumanoidRootPart first (for characters)
-    local rootPart = findfirstchild(model, "HumanoidRootPart")
-    if rootPart then return rootPart end
-    
-    -- Try getting PrimaryPart
-    local primaryPart = getprimarypart(model)
-    if primaryPart then return primaryPart end
-    
-    -- Try common part names in priority order
-    local partNames = {
-        "HumanoidRootPart", "Torso", "UpperTorso", "LowerTorso", 
-        "Head", "Root", "MainPart", "Handle", "Base", "Hitbox"
+-- Wrapper de segurança para o módulo inteiro
+local function createLibrary()
+    local Colors = {
+        ["Accent"] = {50, 255, 67},        -- gamesense green accent
+        ["DarkContrast"] = {21, 21, 20},   -- darker background
+        ["LightContrast"] = {26, 26, 26},  -- lighter background elements
+        ["Border"] = {99, 99, 99},         -- border color
+        ["Selected"] = {255, 255, 255},    -- selected item color
+        ["Text"] = {228, 228, 228},        -- main text color
+        ["DisabledText"] = {110, 110, 110} -- disabled text color
     }
-    
-    for _, name in pairs(partNames) do
-        local part = findfirstchild(model, name)
-        if part then return part end
-    end
-    
-    -- Fallback: search for components by class type
-    local classNames = {"Part", "MeshPart", "UnionOperation", "BasePart"}
-    
-    for _, className in pairs(classNames) do
-        local part = findfirstchildofclass(model, className)
-        if part then return part end
-    end
-    
-    -- Last resort: first child that might be a part
-    for _, child in pairs(getchildren(model)) do
-        local className = getclassname(child)
-        if className == "Part" or className == "MeshPart" or className == "UnionOperation" then
-            return child
+
+    -- Garantir que funções necessárias existam
+    if not getgenv then
+        getgenv = function() 
+            return _G or {}
         end
     end
-    
-    return nil
-end
 
--- Get player's team with better error handling
-function SevereLib:GetPlayerTeam(player)
-    if not player then return nil end
-    
-    local success, team = pcall(function()
-        return getteam(player)
-    end)
-    
-    if success and team then
-        return team
+    if not readfile then
+        readfile = function(file)
+            return ""
+        end
     end
-    
-    return nil
-end
 
--- Get a player's team color
-function SevereLib:GetTeamColor(player)
-    if not player then return self.ESP.Colors.Default end
-    
-    local team = self:GetPlayerTeam(player)
-    if not team then return self.ESP.Colors.Default end
-    
-    -- Check cache first
-    if self.Cache.TeamColors[team] then
-        return self.Cache.TeamColors[team]
-    end
-    
-    -- Get team color and cache it
-    local success, teamColor = pcall(function()
-        return getteamcolour(player)
-    end)
-    
-    if success and teamColor then
-        local color = {
-            math.floor(teamColor.r * 255),
-            math.floor(teamColor.g * 255),
-            math.floor(teamColor.b * 255)
+    if not game then
+        game = {
+            GetService = function() return {} end
         }
-        self.Cache.TeamColors[team] = color
-        return color
     end
-    
-    -- Default color if team color not available
-    return self.ESP.Colors.Default
-end
 
--- Check if player is on same team as local player
-function SevereLib:IsSameTeam(player)
-    if not player then return false end
-    
-    local playerTeam = self:GetPlayerTeam(player)
-    local localTeam = self:GetPlayerTeam(self.Cache.LocalPlayer)
-    
-    if not playerTeam or not localTeam then return false end
-    return playerTeam == localTeam
-end
+    -- Definir VIEWPORT baseado no tamanho da tela
+    local VIEWPORT = {
+        X = getgenv().SCREEN_SIZE and getgenv().SCREEN_SIZE.X or 1920,
+        Y = getgenv().SCREEN_SIZE and getgenv().SCREEN_SIZE.Y or 1080
+    }
 
--- Check if a player is friend
-function SevereLib:IsFriend(player)
-    -- Simple example - in a real implementation, this would check friend status
-    return false
-end
+    local Mouse = {
+        X = 0,
+        Y = 0,
+        Clicked = false,
+        Pressed = false
+    }
 
--- Get player from character model
-function SevereLib:GetPlayerFromCharacter(character)
-    if not character then return nil end
-    
-    local players = findservice(Game, "Players")
-    for _, player in pairs(getchildren(players)) do
-        local playerCharacter = getcharacter(player)
-        if playerCharacter == character then
-            return player
+    -- Funções de segurança para compatibilidade entre ambientes
+    local function findservice(game, serviceName)
+        if typeof(game) == "table" and game.GetService then
+            return game:GetService(serviceName)
+        end
+        return { Name = serviceName }
+    end
+
+    local function getmouselocation(service)
+        if service and service.GetMouseLocation then
+            return service:GetMouseLocation()
+        elseif mousepos then
+            return mousepos()
+        else
+            return { x = 0, y = 0 }
         end
     end
-    
-    return nil
-end
 
--- Get the humanoid from a character
-function SevereLib:GetHumanoid(character)
-    if not character then return nil end
-    
-    -- Try direct lookup first
-    local humanoid = findfirstchild(character, "Humanoid")
-    if humanoid then return humanoid end
-    
-    -- Try finding by class name
-    humanoid = findfirstchildofclass(character, "Humanoid")
-    if humanoid then return humanoid end
-    
-    -- Last resort: look through all descendants
-    for _, child in pairs(getchildren(character)) do
-        if getclassname(child) == "Humanoid" then
-            return child
+    local function isleftclicked()
+        if mouse1click then
+            return mouse1click()
+        elseif mouse1down then
+            return mouse1down()
+        else
+            return false
         end
     end
-    
-    return nil
-end
 
--- Get health information from a character
-function SevereLib:GetHealth(character)
-    if not character then return 100, 100 end
-    
-    local humanoid = self:GetHumanoid(character)
-    if not humanoid then return 100, 100 end
-    
-    local health, maxHealth = 100, 100
-    
-    -- Try to get health values with error handling
-    pcall(function()
-        health = gethealth(humanoid) or 100
-        maxHealth = getmaxhealth(humanoid) or 100
-    end)
-    
-    return health, maxHealth
-end
+    local function isleftpressed()
+        if mouse1press then
+            return mouse1press()
+        elseif mouse1pressed then
+            return mouse1pressed()
+        else
+            return false
+        end
+    end
 
--- Check if a model is an NPC (non-player character)
-function SevereLib:IsNPC(model)
-    if not model then return false end
-    
-    local humanoid = self:GetHumanoid(model)
-    if not humanoid then return false end
-    
-    -- Check if this model belongs to a player
-    local player = self:GetPlayerFromCharacter(model)
-    if player then return false end
-    
-    -- If it has a humanoid but no player, it's likely an NPC
-    return true
-end
+    local function isrightclicked()
+        if mouse2click then
+            return mouse2click
+        else
+            return false
+        end
+    end
 
--- Create an ESP component template based on the target type
-function SevereLib:CreateESPComponentTemplate(targetType)
-    local template = {
-        Text = {
-            Name = {
-                Properties = {
-                    Size = self.ESP.FontSize,
-                    Font = self.ESP.FontType,
-                    Outline = true,
-                    Center = true,
-                    Visible = false
-                },
-                Offset = {0, -15}
-            },
-            Distance = {
-                Properties = {
-                    Size = self.ESP.FontSize * 0.8,
-                    Font = self.ESP.FontType,
-                    Outline = true,
-                    Center = true,
-                    Visible = false
-                },
-                Offset = {0, 0}
-            },
-            Info = {
-                Properties = {
-                    Size = self.ESP.FontSize * 0.8,
-                    Font = self.ESP.FontType,
-                    Outline = true,
-                    Center = true,
-                    Visible = false
-                },
-                Offset = {0, 15}
-            }
-        },
-        Box = {
-            Main = {
-                Properties = {
-                    Thickness = self.ESP.BoxThickness,
-                    Filled = false,
-                    Visible = false
-                }
-            },
-            Corners = {
-                TopLeft = {
-                    Properties = {
-                        Thickness = self.ESP.BoxThickness,
-                        Visible = false
-                    }
-                },
-                TopRight = {
-                    Properties = {
-                        Thickness = self.ESP.BoxThickness,
-                        Visible = false
-                    }
-                },
-                BottomLeft = {
-                    Properties = {
-                        Thickness = self.ESP.BoxThickness,
-                        Visible = false
-                    }
-                },
-                BottomRight = {
-                    Properties = {
-                        Thickness = self.ESP.BoxThickness,
-                        Visible = false
-                    }
-                }
-            },
-            Outline = {
-                Properties = {
-                    Thickness = self.ESP.BoxThickness + 1,
-                    Filled = false,
-                    Visible = false,
-                    Color = self.ESP.Colors.Outline
-                }
-            }
-        },
-        HealthBar = {
-            Outline = {
-                Properties = {
-                    Thickness = 1,
-                    Filled = false,
-                    Visible = false
-                }
-            },
-            Fill = {
-                Properties = {
+    local function getpressedkeys()
+        if getkeysdown then
+            return getkeysdown()
+        elseif keyspressed then
+            return keyspressed()
+        else
+            return {}
+        end
+    end
+
+    local MouseService = findservice(game, "MouseService")
+
+    -- Mock para o objeto Drawing se ele não existir
+    if not Drawing then
+        Drawing = {
+            new = function(objectType)
+                return {
+                    Size = {0, 0},
+                    Position = {0, 0},
+                    Color = {255, 255, 255},
                     Filled = true,
-                    Visible = false
+                    Thickness = 1,
+                    Transparency = 1,
+                    Visible = true,
+                    Text = "",
+                    Font = 5,
+                    Center = false,
+                    Outline = false,
+                    OutlineColor = {0, 0, 0},
+                    Remove = function() end
                 }
-            }
-        },
-        Tracer = {
-            Properties = {
-                Thickness = self.ESP.Tracers.Thickness,
-                Visible = false
-            }
-        },
-        Skeleton = {},
-        GroundCircle = {}
-    }
-    
-    -- Additional configurations based on target type
-    if targetType == "Player" then
-        -- Add player-specific components like skeleton trackers
-        for _, boneName in pairs({"Head", "Torso", "LeftArm", "RightArm", "LeftLeg", "RightLeg"}) do
-            template.Skeleton[boneName] = {
-                Properties = {
-                    Thickness = self.ESP.BoxThickness,
-                    Visible = false
-                }
-            }
-        end
-    elseif targetType == "Item" then
-        -- Simplified setup for items
-        template.Box.Outline = nil
-        template.HealthBar = nil
-        template.Skeleton = nil
-    elseif targetType == "NPC" then
-        -- NPCs may need different skeleton structure based on rig
-    end
-    
-    return template
-end
-
--- Create all ESP components for an object based on template
-function SevereLib:CreateESPComponents(template)
-    local components = {}
-    
-    -- Create text components
-    components.Text = {}
-    for textName, textConfig in pairs(template.Text) do
-        components.Text[textName] = self:GetPooledDrawing("Text", textConfig.Properties)
-    end
-    
-    -- Create box components
-    components.Box = {}
-    components.Box.Main = self:GetPooledDrawing("Square", template.Box.Main.Properties)
-    
-    -- Create box corners if needed
-    if template.Box.Corners then
-        components.Box.Corners = {}
-        for cornerName, cornerConfig in pairs(template.Box.Corners) do
-            components.Box.Corners[cornerName] = self:GetPooledDrawing("Line", cornerConfig.Properties)
-        end
-    end
-    
-    -- Create box outline if needed
-    if template.Box.Outline then
-        components.Box.Outline = self:GetPooledDrawing("Square", template.Box.Outline.Properties)
-    end
-    
-    -- Create health bar if needed
-    if template.HealthBar then
-        components.HealthBar = {}
-        components.HealthBar.Outline = self:GetPooledDrawing("Square", template.HealthBar.Outline.Properties)
-        components.HealthBar.Fill = self:GetPooledDrawing("Square", template.HealthBar.Fill.Properties)
-    end
-    
-    -- Create tracer
-    components.Tracer = self:GetPooledDrawing("Line", template.Tracer.Properties)
-    
-    -- Create skeleton components if needed
-    if template.Skeleton and next(template.Skeleton) then
-        components.Skeleton = {}
-        for boneName, boneConfig in pairs(template.Skeleton) do
-            components.Skeleton[boneName] = self:GetPooledDrawing("Line", boneConfig.Properties)
-        end
-    end
-    
-    -- Create ground circle components if needed
-    if template.GroundCircle and next(template.GroundCircle) then
-        components.GroundCircle = {}
-        for i = 1, self.ESP.GroundCircleSegments do
-            components.GroundCircle[i] = self:GetPooledDrawing("Line", {
-                Thickness = 1,
-                Visible = false
-            })
-        end
-    end
-    
-    return components
-end
-
--- Hide all ESP components
-function SevereLib:HideESPComponents(components)
-    if not components then return end
-    
-    -- Hide text components
-    if components.Text then
-        for _, text in pairs(components.Text) do
-            if text then text.Visible = false end
-        end
-    end
-    
-    -- Hide box components
-    if components.Box then
-        if components.Box.Main then components.Box.Main.Visible = false end
-        if components.Box.Outline then components.Box.Outline.Visible = false end
-        
-        if components.Box.Corners then
-            for _, corner in pairs(components.Box.Corners) do
-                if corner then corner.Visible = false end
             end
-        end
-    end
-    
-    -- Hide health bar
-    if components.HealthBar then
-        if components.HealthBar.Outline then components.HealthBar.Outline.Visible = false end
-        if components.HealthBar.Fill then components.HealthBar.Fill.Visible = false end
-    end
-    
-    -- Hide tracer
-    if components.Tracer then components.Tracer.Visible = false end
-    
-    -- Hide skeleton
-    if components.Skeleton then
-        for _, bone in pairs(components.Skeleton) do
-            if bone then bone.Visible = false end
-        end
-    end
-    
-    -- Hide ground circle
-    if components.GroundCircle then
-        for _, line in pairs(components.GroundCircle) do
-            if line then line.Visible = false end
-        end
-    end
-end
-
--- Return ESP components to the pool (cleanup)
-function SevereLib:CleanupESPComponents(components)
-    if not components then return end
-    
-    -- Clean up text components
-    if components.Text then
-        for textName, text in pairs(components.Text) do
-            if text then
-                self:ReturnToPool(text, "Text")
-            end
-        end
-    end
-    
-    -- Clean up box components
-    if components.Box then
-        if components.Box.Main then
-            self:ReturnToPool(components.Box.Main, "Square")
-        end
-        
-        if components.Box.Outline then
-            self:ReturnToPool(components.Box.Outline, "Square")
-        end
-        
-        if components.Box.Corners then
-            for cornerName, corner in pairs(components.Box.Corners) do
-                if corner then
-                    self:ReturnToPool(corner, "Line")
-                end
-            end
-        end
-    end
-    
-    -- Clean up health bar
-    if components.HealthBar then
-        if components.HealthBar.Outline then
-            self:ReturnToPool(components.HealthBar.Outline, "Square")
-        end
-        
-        if components.HealthBar.Fill then
-            self:ReturnToPool(components.HealthBar.Fill, "Square")
-        end
-    end
-    
-    -- Clean up tracer
-    if components.Tracer then
-        self:ReturnToPool(components.Tracer, "Line")
-    end
-    
-    -- Clean up skeleton
-    if components.Skeleton then
-        for boneName, bone in pairs(components.Skeleton) do
-            if bone then
-                self:ReturnToPool(bone, "Line")
-            end
-        end
-    end
-    
-    -- Clean up ground circle
-    if components.GroundCircle then
-        for i, line in pairs(components.GroundCircle) do
-            if line then
-                self:ReturnToPool(line, "Line")
-            end
-        end
-    end
-end
-
---// ESP Functions
-
--- Add ESP to an object with improved detection and classification
-function SevereLib:AddESP(instance, options)
-    if not instance then return nil end
-    
-    options = options or {}
-    
-    -- Check if already added
-    for i, esp in pairs(self.ActiveESP) do
-        if esp.Instance == instance then
-            return esp
-        end
-    end
-    
-    -- Determine target type
-    local targetType = options.TargetType or "Unknown"
-    local className = getclassname(instance)
-    
-    if className == "Player" then
-        targetType = "Player"
-    elseif className == "Model" then
-        -- Check if it's a player character or NPC
-        local player = self:GetPlayerFromCharacter(instance)
-        if player then
-            targetType = "Player"
-        elseif self:IsNPC(instance) then
-            targetType = "NPC"
-        elseif options.ItemModel then
-            targetType = "Item"
-        end
-    end
-    
-    -- Create template and components based on target type
-    local template = self:CreateESPComponentTemplate(targetType)
-    local components = self:CreateESPComponents(template)
-    
-    -- Create ESP data
-    local espData = {
-        Instance = instance,
-        Name = options.CustomName or getname(instance),
-        MainPart = options.MainPart or self:GetMainPart(instance),
-        Components = components,
-        Color = options.Color,
-        TargetType = targetType,
-        IsVisible = true,
-        Template = template,
-        LastPosition = nil,
-        LastScreenPosition = nil,
-        LastScreenVisible = false,
-        LastUpdateTime = 0,
-        BoundingBox = options.BoundingBox or {min = {x=0, y=0, z=0}, max = {x=0, y=0, z=0}},
-        CustomData = options.CustomData or {}
-    }
-    
-    -- Add player-specific data
-    if targetType == "Player" then
-        espData.Player = instance
-        if className == "Model" then
-            espData.Player = self:GetPlayerFromCharacter(instance)
-            espData.Character = instance
-        else
-            espData.Character = getcharacter(instance)
-        end
-        
-        if espData.Character then
-            espData.Humanoid = self:GetHumanoid(espData.Character)
-            
-            -- Get additional parts for skeleton ESP
-            espData.SkeletonParts = {}
-            local partNames = {"Head", "Torso", "UpperTorso", "LowerTorso", "HumanoidRootPart", 
-                               "LeftArm", "RightArm", "LeftLeg", "RightLeg", 
-                               "LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm",
-                               "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg"}
-            
-            for _, partName in ipairs(partNames) do
-                local part = findfirstchild(espData.Character, partName)
-                if part then
-                    espData.SkeletonParts[partName] = part
-                end
-            end
-            
-            -- Get rig type (R6 or R15)
-            espData.RigType = espData.SkeletonParts["UpperTorso"] and "R15" or "R6"
-        end
-        
-        -- Get team information
-        if espData.Player then
-            espData.Team = self:GetPlayerTeam(espData.Player)
-            espData.IsSameTeam = self:IsSameTeam(espData.Player)
-            espData.IsFriend = self:IsFriend(espData.Player)
-            
-            -- Determine color based on team/friend status
-            if not espData.Color then
-                if espData.IsFriend then
-                    espData.Color = self:GetColor("Friend")
-                elseif espData.IsSameTeam then
-                    espData.Color = self:GetColor("Team")
-                else
-                    espData.Color = self:GetColor("Enemy")
-                end
-            end
-        end
-    elseif targetType == "NPC" then
-        espData.Humanoid = self:GetHumanoid(instance)
-        espData.Color = espData.Color or self:GetColor("NPC")
-    elseif targetType == "Item" then
-        espData.Color = espData.Color or self:GetColor("Items")
-    else
-        espData.Color = espData.Color or self:GetColor("Default")
-    end
-    
-    -- Add to active ESP list
-    table.insert(self.ActiveESP, espData)
-    return espData
-end
-
--- Remove ESP from an object
-function SevereLib:RemoveESP(instance)
-    for i, esp in pairs(self.ActiveESP) do
-        if esp.Instance == instance then
-            self:CleanupESPComponents(esp.Components)
-            table.remove(self.ActiveESP, i)
-            return true
-        end
-    end
-    return false
-end
-
--- Calculate box dimensions based on model size and distance
-function SevereLib:CalculateBoxDimensions(espData)
-    local mainPart = espData.MainPart
-    if not mainPart then return nil end
-    
-    local position = self:GetPartPosition(mainPart)
-    if not position then return nil end
-    
-    local character = espData.Character
-    local screenPosition, onScreen = worldtoscreenpoint({position.x, position.y, position.z})
-    
-    -- Get distance for size scaling
-    local distance = self:GetDistanceFromPlayer(position)
-    local scale = 1
-    
-    -- Base size on character type
-    if espData.TargetType == "Player" or espData.TargetType == "NPC" then
-        if character then
-            -- Attempt to calculate height based on character
-            local head = findfirstchild(character, "Head")
-            local rootPart = findfirstchild(character, "HumanoidRootPart")
-            local humanoid = espData.Humanoid
-            
-            -- Use default dimensions for simplicity, or calculate from the character if possible
-            local height = 5
-            local width = 2
-            
-            if head and rootPart then
-                local headPos = getposition(head)
-                local rootPos = getposition(rootPart)
-                height = math.abs(headPos.y - rootPos.y) * 2
-                width = height * 0.6
-            end
-            
-            -- Get character size with fallback values
-            local sizeMultiplier = 1
-            if humanoid then
-                pcall(function()
-                    local humanoidScaleFactor = getvalue(findfirstchild(humanoid, "BodyHeightScale")) or 1
-                    sizeMultiplier = humanoidScaleFactor
-                end)
-            end
-            
-            -- Calculate box dimensions with scaling for distance
-            local boxHeight = (80 * sizeMultiplier) / (1 + distance * 0.005)
-            local boxWidth = boxHeight * 0.5
-            
-            return {
-                height = boxHeight,
-                width = boxWidth,
-                position = screenPosition
-            }
-        else
-            -- Fallback for non-character players
-            local boxSize = 80 / (1 + distance * 0.005)
-            return {
-                height = boxSize,
-                width = boxSize * 0.6,
-                position = screenPosition
-            }
-        end
-    else
-        -- For non-character objects
-        local boxSize = 40 / (1 + distance * 0.01)
-        return {
-            height = boxSize,
-            width = boxSize,
-            position = screenPosition
         }
     end
-end
 
--- Draw boxes around a target
-function SevereLib:DrawBox(espData, dimensions)
-    if not dimensions or not espData.Components.Box then return end
-    
-    local position = dimensions.position
-    local width = dimensions.width / 2
-    local height = dimensions.height / 2
-    local color = espData.Color
-    
-    -- Update box based on type
-    if self.ESP.BoxType == 1 then
-        -- Corners (4 L shapes)
-        local corners = espData.Components.Box.Corners
-        
-        -- Hide regular box
-        espData.Components.Box.Main.Visible = false
-        
-        -- Calculate corner sizes (25% of total box size)
-        local cornerSize = width * 0.25
-        
-        -- Top Left Corner
-        corners.TopLeft.From = {position.x - width, position.y - height}
-        corners.TopLeft.To = {position.x - width + cornerSize, position.y - height}
-        corners.TopLeft.Color = color
-        corners.TopLeft.Visible = true
-        
-        -- Line connecting corner pieces
-        local cornerLine = self:GetPooledDrawing("Line", {Thickness = corners.TopLeft.Thickness, Visible = true})
-        cornerLine.From = {position.x - width, position.y - height}
-        cornerLine.To = {position.x - width, position.y - height + cornerSize}
-        cornerLine.Color = color
-        
-        -- Top Right Corner
-        corners.TopRight.From = {position.x + width, position.y - height}
-        corners.TopRight.To = {position.x + width - cornerSize, position.y - height}
-        corners.TopRight.Color = color
-        corners.TopRight.Visible = true
-        
-        cornerLine = self:GetPooledDrawing("Line", {Thickness = corners.TopRight.Thickness, Visible = true})
-        cornerLine.From = {position.x + width, position.y - height}
-        cornerLine.To = {position.x + width, position.y - height + cornerSize}
-        cornerLine.Color = color
-        
-        -- Bottom Left Corner
-        corners.BottomLeft.From = {position.x - width, position.y + height}
-        corners.BottomLeft.To = {position.x - width + cornerSize, position.y + height}
-        corners.BottomLeft.Color = color
-        corners.BottomLeft.Visible = true
-        
-        cornerLine = self:GetPooledDrawing("Line", {Thickness = corners.BottomLeft.Thickness, Visible = true})
-        cornerLine.From = {position.x - width, position.y + height}
-        cornerLine.To = {position.x - width, position.y + height - cornerSize}
-        cornerLine.Color = color
-        
-        -- Bottom Right Corner
-        corners.BottomRight.From = {position.x + width, position.y + height}
-        corners.BottomRight.To = {position.x + width - cornerSize, position.y + height}
-        corners.BottomRight.Color = color
-        corners.BottomRight.Visible = true
-        
-        cornerLine = self:GetPooledDrawing("Line", {Thickness = corners.BottomRight.Thickness, Visible = true})
-        cornerLine.From = {position.x + width, position.y + height}
-        cornerLine.To = {position.x + width, position.y + height - cornerSize}
-        cornerLine.Color = color
-    else
-        -- Full box
-        if espData.Components.Box.Outline then
-            espData.Components.Box.Outline.Position = {position.x - width - 1, position.y - height - 1}
-            espData.Components.Box.Outline.Size = {width * 2 + 2, height * 2 + 2}
-            espData.Components.Box.Outline.Visible = true
-        end
-        
-        espData.Components.Box.Main.Position = {position.x - width, position.y - height}
-        espData.Components.Box.Main.Size = {width * 2, height * 2}
-        espData.Components.Box.Main.Color = color
-        espData.Components.Box.Main.Visible = true
-        
-        -- Hide corners
-        for _, corner in pairs(espData.Components.Box.Corners) do
-            corner.Visible = false
-        end
-    end
-end
+    local Library = {}
+    local ActiveWindow = nil
+    local IsDragging = false
+    local DragOffsetX = 0
+    local DragOffsetY = 0
+    local IsVisible = true
+    local IsToggled = false
+    local HoveredButton = nil
+    local Running = true
+    local Watermark = nil
 
--- Draw skeleton for a player character
-function SevereLib:DrawSkeleton(espData)
-    if not espData.Components.Skeleton or not espData.Character or not espData.SkeletonParts then
-        return
-    end
-    
-    local color = espData.Color
-    local parts = espData.SkeletonParts
-    
-    -- Define connection points based on rig type
-    local connections = {}
-    
-    if espData.RigType == "R15" then
-        connections = {
-            {"Head", "UpperTorso"},
-            {"UpperTorso", "LowerTorso"},
-            {"UpperTorso", "LeftUpperArm"},
-            {"LeftUpperArm", "LeftLowerArm"},
-            {"UpperTorso", "RightUpperArm"},
-            {"RightUpperArm", "RightLowerArm"},
-            {"LowerTorso", "LeftUpperLeg"},
-            {"LeftUpperLeg", "LeftLowerLeg"},
-            {"LowerTorso", "RightUpperLeg"},
-            {"RightUpperLeg", "RightLowerLeg"}
-        }
-    else -- R6
-        connections = {
-            {"Head", "Torso"},
-            {"Torso", "LeftArm"},
-            {"Torso", "RightArm"},
-            {"Torso", "LeftLeg"},
-            {"Torso", "RightLeg"}
-        }
-    end
-    
-    -- Draw each bone connection
-    for i, connection in ipairs(connections) do
-        local part1 = parts[connection[1]]
-        local part2 = parts[connection[2]]
+    -- Create watermark
+    local function CreateWatermark()
+        local watermark = {}
         
-        if part1 and part2 then
-            local pos1 = getposition(part1)
-            local pos2 = getposition(part2)
-            
-            local screen1, visible1 = worldtoscreenpoint({pos1.x, pos1.y, pos1.z})
-            local screen2, visible2 = worldtoscreenpoint({pos2.x, pos2.y, pos2.z})
-            
-            if visible1 and visible2 then
-                -- Use or create a line for this bone
-                local boneName = connection[1] .. "_" .. connection[2]
-                local bone = self:GetPooledDrawing("Line", {
-                    Thickness = self.ESP.BoxThickness,
-                    Visible = true
-                })
-                
-                bone.From = {screen1.x, screen1.y}
-                bone.To = {screen2.x, screen2.y}
-                bone.Color = color
-            end
-        end
+        watermark.Background = Drawing.new("Square")
+        watermark.Background.Size = {220, 25}
+        watermark.Background.Position = {VIEWPORT.X - 230, 10}
+        watermark.Background.Color = Colors["DarkContrast"]
+        watermark.Background.Filled = true
+        watermark.Background.Transparency = 1
+        
+        watermark.Border = Drawing.new("Square")
+        watermark.Border.Size = {220, 25}
+        watermark.Border.Position = {VIEWPORT.X - 230, 10}
+        watermark.Border.Color = Colors["Border"]
+        watermark.Border.Filled = false
+        watermark.Border.Thickness = 1
+        watermark.Border.Transparency = 0.8
+        
+        watermark.Text = Drawing.new("Text")
+        watermark.Text.Text = "gamesense | beta"
+        watermark.Text.Size = 16
+        watermark.Text.Font = 5
+        watermark.Text.Color = Colors["Text"]
+        watermark.Text.Outline = true
+        watermark.Text.OutlineColor = {0, 0, 0}
+        watermark.Text.Position = {VIEWPORT.X - 120, 15}
+        watermark.Text.Center = true
+        watermark.Text.Transparency = 1
+        
+        return watermark
     end
-end
 
--- Draw health bar for a character
-function SevereLib:DrawHealthBar(espData, dimensions)
-    if not espData.Components.HealthBar or not espData.Humanoid then return end
-    
-    local health, maxHealth = self:GetHealth(espData.Character)
-    if not health or not maxHealth or maxHealth == 0 then return end
-    
-    local healthPercentage = math.clamp(health / maxHealth, 0, 1)
-    
-    -- Get box dimensions
-    local position = dimensions.position
-    local width = dimensions.width
-    local height = dimensions.height
-    
-    -- Health bar based on ESP settings
-    local barWidth = self.ESP.HealthBar.Width
-    local barHeight = height * 2
-    local barPosition = {
-        x = position.x - width - 5 - barWidth,
-        y = position.y - height
-    }
-    
-    -- Draw outline
-    espData.Components.HealthBar.Outline.Position = {barPosition.x, barPosition.y}
-    espData.Components.HealthBar.Outline.Size = {barWidth, barHeight}
-    espData.Components.HealthBar.Outline.Color = self.ESP.Colors.Outline
-    espData.Components.HealthBar.Outline.Visible = true
-    
-    -- Draw fill
-    espData.Components.HealthBar.Fill.Position = {barPosition.x, barPosition.y + barHeight * (1 - healthPercentage)}
-    espData.Components.HealthBar.Fill.Size = {barWidth, barHeight * healthPercentage}
-    
-    -- Determine color based on health percentage
-    local color
-    if self.ESP.HealthBar.GradientColors then
-        color = self:GetHealthColor(health, maxHealth)
-    else
-        if healthPercentage > 0.75 then
-            color = self.ESP.Colors.HealthHigh
-        elseif healthPercentage > 0.25 then
-            color = self.ESP.Colors.HealthMid
-        else
-            color = self.ESP.Colors.HealthLow
+    function Library:Unload()
+        Running = false
+        if Watermark then
+            if Watermark.Background then Watermark.Background:Remove() end
+            if Watermark.Border then Watermark.Border:Remove() end
+            if Watermark.Text then Watermark.Text:Remove() end
+            Watermark = nil
         end
-    end
-    
-    espData.Components.HealthBar.Fill.Color = color
-    espData.Components.HealthBar.Fill.Visible = true
-end
-
--- Draw text information (name, distance, etc.)
-function SevereLib:DrawTextInfo(espData, dimensions)
-    if not espData.Components.Text then return end
-    
-    local position = dimensions.position
-    local color = espData.Color
-    
-    -- Draw name text
-    if self.ESP.ShowName and espData.Components.Text.Name then
-        local name = espData.Name or getname(espData.Instance)
-        espData.Components.Text.Name.Position = {position.x, position.y - dimensions.height - 15}
-        espData.Components.Text.Name.Text = name
-        espData.Components.Text.Name.Color = self.ESP.Colors.Names or color
-        espData.Components.Text.Name.Visible = true
-    end
-    
-    -- Draw distance text
-    if self.ESP.ShowDistance and espData.Components.Text.Distance then
-        local mainPart = espData.MainPart
-        if mainPart then
-            local pos = self:GetPartPosition(mainPart)
-            local distance = math.floor(self:GetDistanceFromPlayer(pos))
-            
-            espData.Components.Text.Distance.Position = {position.x, position.y + dimensions.height + 5}
-            espData.Components.Text.Distance.Text = distance .. "m"
-            espData.Components.Text.Distance.Color = self.ESP.Colors.Distance or color
-            espData.Components.Text.Distance.Visible = true
-        end
-    end
-    
-    -- Draw additional info text (health, etc.)
-    if espData.Humanoid and espData.Components.Text.Info then
-        local health, maxHealth = self:GetHealth(espData.Character)
-        local infoText = math.floor(health) .. "/" .. math.floor(maxHealth)
-        
-        espData.Components.Text.Info.Position = {position.x, position.y + dimensions.height + 20}
-        espData.Components.Text.Info.Text = infoText
-        espData.Components.Text.Info.Color = self:GetHealthColor(health, maxHealth)
-        espData.Components.Text.Info.Visible = true
-    end
-end
-
--- Draw tracers to objects
-function SevereLib:DrawTracer(espData, dimensions)
-    if not self.ESP.Tracers.Enabled or not espData.Components.Tracer then return end
-    
-    local position = dimensions.position
-    local color = espData.Color
-    
-    -- Determine tracer origin point
-    local origin = {
-        x = self.Cache.Screen.x / 2,
-        y = self.Cache.Screen.y
-    }
-    
-    if self.ESP.TraceMode == 2 then -- Mouse
-        local mousePos = getmouseposition()
-        origin = {x = mousePos.x, y = mousePos.y}
-    elseif self.ESP.TraceMode == 3 then -- Top
-        origin.y = 0
-    end
-    
-    -- Adjust for user-defined offset
-    origin.x = origin.x + self.ESP.Tracers.Origin.offset_x
-    origin.y = origin.y + self.ESP.Tracers.Origin.offset_y
-    
-    -- Calculate alpha based on distance if enabled
-    local alpha = 1
-    if self.ESP.Tracers.AlphaByDistance then
-        local distance = dimensions.originalDistance or 0
-        alpha = math.max(0, math.min(1, 1 - (distance / self.ESP.MaxDistance)))
-    end
-    
-    -- Draw tracer
-    espData.Components.Tracer.From = {origin.x, origin.y}
-    espData.Components.Tracer.To = {position.x, position.y}
-    espData.Components.Tracer.Color = self.ESP.Colors.Tracer or color
-    espData.Components.Tracer.Visible = true
-end
-
--- Draw ground circle under character
-function SevereLib:DrawGroundCircle(espData)
-    if not self.ESP.ShowGroundCircle or not espData.Components.GroundCircle then return end
-    
-    local mainPart = espData.MainPart
-    if not mainPart then return end
-    
-    local position = self:GetPartPosition(mainPart)
-    if not position then return end
-    
-    local color = espData.Color
-    local radius = self.ESP.GroundCircleRadius
-    local segments = self.ESP.GroundCircleSegments
-    
-    -- Set ground height slightly below character
-    local groundY = position.y - 3
-    
-    -- Calculate points around circle
-    for i = 1, segments do
-        local angle1 = ((i - 1) / segments) * math.pi * 2
-        local angle2 = (i / segments) * math.pi * 2
-        
-        local x1 = position.x + math.cos(angle1) * radius
-        local z1 = position.z + math.sin(angle1) * radius
-        
-        local x2 = position.x + math.cos(angle2) * radius
-        local z2 = position.z + math.sin(angle2) * radius
-        
-        local screen1, visible1 = worldtoscreenpoint({x1, groundY, z1})
-        local screen2, visible2 = worldtoscreenpoint({x2, groundY, z2})
-        
-        if visible1 and visible2 and espData.Components.GroundCircle[i] then
-            espData.Components.GroundCircle[i].From = {screen1.x, screen1.y}
-            espData.Components.GroundCircle[i].To = {screen2.x, screen2.y}
-            espData.Components.GroundCircle[i].Color = color
-            espData.Components.GroundCircle[i].Visible = true
-        elseif espData.Components.GroundCircle[i] then
-            espData.Components.GroundCircle[i].Visible = false
-        end
-    end
-end
-
--- Update a specific ESP element
-function SevereLib:UpdateESPElement(espData)
-    if not espData or not espData.Instance then return false end
-    
-    -- Check if the object still exists
-    local exists = pcall(function() return isdescendantof(espData.Instance, Game) end)
-    if not exists then
-        return false
-    end
-    
-    -- Quick visibility check
-    if not espData.IsVisible or not self.ESP.Enabled then
-        self:HideESPComponents(espData.Components)
-        return true
-    end
-    
-    -- Get the main part for position reference
-    local mainPart = espData.MainPart
-    if not mainPart then
-        espData.MainPart = self:GetMainPart(espData.Instance)
-        mainPart = espData.MainPart
-    end
-    
-    if not mainPart then
-        self:HideESPComponents(espData.Components)
-        return true
-    end
-    
-    -- Get position and check distance
-    local position = self:GetPartPosition(mainPart)
-    if not position then
-        self:HideESPComponents(espData.Components)
-        return true
-    end
-    
-    -- Cache the position
-    espData.LastPosition = position
-    
-    -- Distance check
-    local distance = self:GetDistanceFromPlayer(position)
-    if distance > self.ESP.MaxDistance then
-        self:HideESPComponents(espData.Components)
-        return true
-    end
-    
-    -- Convert 3D position to screen position
-    local screenPosition, onScreen = worldtoscreenpoint({position.x, position.y, position.z})
-    if not onScreen and self.Performance.OnScreenOnly then
-        self:HideESPComponents(espData.Components)
-        return true
-    end
-    
-    -- Cache screen position
-    espData.LastScreenPosition = screenPosition
-    espData.LastScreenVisible = onScreen
-    
-    -- Calculate box dimensions (optimized for performance)
-    local dimensions = self:CalculateBoxDimensions(espData)
-    if not dimensions then
-        self:HideESPComponents(espData.Components)
-        return true
-    end
-    
-    -- Store original distance for use in alpha calculations
-    dimensions.originalDistance = distance
-    
-    -- Update health (if applicable)
-    if espData.Humanoid then
-        espData.Health, espData.MaxHealth = self:GetHealth(espData.Character)
-    end
-    
-    -- Draw components based on settings and on-screen status
-    if onScreen then
-        -- Draw box
-        self:DrawBox(espData, dimensions)
-        
-        -- Draw health bar if enabled and applicable
-        if self.ESP.HealthBar.Enabled and (espData.TargetType == "Player" or espData.TargetType == "NPC") then
-            self:DrawHealthBar(espData, dimensions)
-        end
-        
-        -- Draw text information
-        self:DrawTextInfo(espData, dimensions)
-        
-        -- Draw skeleton if enabled and it's a player
-        if self.ESP.BoxType == 4 and espData.TargetType == "Player" then
-            self:DrawSkeleton(espData)
-        end
-        
-        -- Draw ground circle if enabled
-        if self.ESP.ShowGroundCircle then
-            self:DrawGroundCircle(espData)
-        end
-    else
-        -- Hide components that require on-screen position
-        if espData.Components.Box then
-            espData.Components.Box.Main.Visible = false
-            if espData.Components.Box.Outline then
-                espData.Components.Box.Outline.Visible = false
-            end
-            
-            for _, corner in pairs(espData.Components.Box.Corners or {}) do
-                corner.Visible = false
-            end
-        end
-        
-        if espData.Components.HealthBar then
-            espData.Components.HealthBar.Outline.Visible = false
-            espData.Components.HealthBar.Fill.Visible = false
-        end
-        
-        for _, text in pairs(espData.Components.Text or {}) do
-            text.Visible = false
-        end
-        
-        if espData.Components.Skeleton then
-            for _, bone in pairs(espData.Components.Skeleton) do
-                bone.Visible = false
-            end
-        end
-        
-        if espData.Components.GroundCircle then
-            for _, line in pairs(espData.Components.GroundCircle) do
-                line.Visible = false
-            end
-        end
-    end
-    
-    -- Always draw tracer if enabled (even for off-screen objects)
-    if self.ESP.Tracers.Enabled then
-        self:DrawTracer(espData, dimensions)
-    else if espData.Components.Tracer then
-            espData.Components.Tracer.Visible = false
-        end
-    end
-    
-    -- Update last update time
-    espData.LastUpdateTime = self.Cache.Time
-    
-    return true
-end
-
--- Update all ESP objects
-function SevereLib:UpdateESP()
-    if not self.ESP.Enabled then
-        for _, esp in pairs(self.ActiveESP) do
-            self:HideESPComponents(esp.Components)
-        end
-        return
-    end
-    
-    -- Update statistics
-    self.Debug.Stats.Objects = #self.ActiveESP
-    self.Debug.Stats.OnScreen = 0
-    
-    -- Prioritize updating nearby and on-screen objects
-    local orderedESP = {}
-    for i, esp in pairs(self.ActiveESP) do
-        -- Simple insertion if we don't have a position yet
-        if not esp.LastPosition then
-            table.insert(orderedESP, esp)
-        else
-            local distance = self:GetDistanceFromPlayer(esp.LastPosition)
-            
-            -- Prioritize by distance and on-screen status
-            local priority = distance
-            if esp.LastScreenVisible then
-                priority = priority * 0.5
-                self.Debug.Stats.OnScreen = self.Debug.Stats.OnScreen + 1
-            end
-            
-            -- Add to ordered list with priority
-            table.insert(orderedESP, {esp = esp, priority = priority})
-        end
-    end
-    
-    -- Sort by priority if needed
-    if #orderedESP > 10 then
-        table.sort(orderedESP, function(a, b)
-            if type(a) == "table" and type(b) == "table" then
-                -- Check if priority values exist before comparing them
-                if a.priority and b.priority then
-                    return a.priority < b.priority
-                else
-                    -- If either priority is nil, use a fallback comparison
-                    return (a.priority or 9999) < (b.priority or 9999)
+        if ActiveWindow then
+            IsDragging = false
+            IsToggled = false
+            HoveredButton = nil
+            if ActiveWindow.Tabs then
+                for _, Tab in ipairs(ActiveWindow.Tabs) do
+                    if Tab.Button then Tab.Button:Remove() end
+                    if Tab.ButtonBorder then Tab.ButtonBorder:Remove() end
+                    if Tab.ButtonText then Tab.ButtonText:Remove() end
+                    if Tab.SelectedHighlight then Tab.SelectedHighlight:Remove() end
+                    if Tab.Content then
+                        if Tab.Content.LeftSections then
+                            for _, Section in ipairs(Tab.Content.LeftSections) do
+                                if Section.Background then Section.Background:Remove() end
+                                if Section.Border then Section.Border:Remove() end
+                                if Section.Title then Section.Title:Remove() end
+                                if Section.Interfaces then
+                                    for _, Interface in ipairs(Section.Interfaces) do
+                                        if Interface.Type == "Button" then
+                                            if Interface.ButtonBackground then Interface.ButtonBackground:Remove() end
+                                            if Interface.ButtonBorder then Interface.ButtonBorder:Remove() end
+                                            if Interface.ButtonText then Interface.ButtonText:Remove() end
+                                        elseif Interface.Type == "Toggle" then
+                                            if Interface.OuterBox then Interface.OuterBox:Remove() end
+                                            if Interface.InnerBox then Interface.InnerBox:Remove() end
+                                            if Interface.Text then Interface.Text:Remove() end
+                                            if Interface.KeybindBackground then Interface.KeybindBackground:Remove() end
+                                            if Interface.KeybindBorder then Interface.KeybindBorder:Remove() end
+                                            if Interface.KeybindText then Interface.KeybindText:Remove() end
+                                            if Interface.ModeSelectorBackground then Interface.ModeSelectorBackground:Remove() end
+                                            if Interface.ModeSelectorBorder then Interface.ModeSelectorBorder:Remove() end
+                                            if Interface.HoldText then Interface.HoldText:Remove() end
+                                            if Interface.ToggleText then Interface.ToggleText:Remove() end
+                                            if Interface.ModeDivider then Interface.ModeDivider:Remove() end
+                                        elseif Interface.Type == "Slider" then
+                                            if Interface.Background then Interface.Background:Remove() end
+                                            if Interface.Border then Interface.Border:Remove() end
+                                            if Interface.Fill then Interface.Fill:Remove() end
+                                            if Interface.Text then Interface.Text:Remove() end
+                                            if Interface.ValueText then Interface.ValueText:Remove() end
+                                            if Section.SectionTopLine then Section.SectionTopLine:Remove() end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        if Tab.Content.RightSections then
+                            for _, Section in ipairs(Tab.Content.RightSections) do
+                                if Section.Background then Section.Background:Remove() end
+                                if Section.Border then Section.Border:Remove() end
+                                if Section.Title then Section.Title:Remove() end
+                                if Section.Interfaces then
+                                    for _, Interface in ipairs(Section.Interfaces) do
+                                        if Interface.Type == "Button" then
+                                            if Interface.ButtonBackground then Interface.ButtonBackground:Remove() end
+                                            if Interface.ButtonBorder then Interface.ButtonBorder:Remove() end
+                                            if Interface.ButtonText then Interface.ButtonText:Remove() end
+                                        elseif Interface.Type == "Toggle" then
+                                            if Interface.OuterBox then Interface.OuterBox:Remove() end
+                                            if Interface.InnerBox then Interface.InnerBox:Remove() end
+                                            if Interface.Text then Interface.Text:Remove() end
+                                            if Interface.KeybindBackground then Interface.KeybindBackground:Remove() end
+                                            if Interface.KeybindBorder then Interface.KeybindBorder:Remove() end
+                                            if Interface.KeybindText then Interface.KeybindText:Remove() end
+                                            if Interface.ModeSelectorBackground then Interface.ModeSelectorBackground:Remove() end
+                                            if Interface.ModeSelectorBorder then Interface.ModeSelectorBorder:Remove() end
+                                            if Interface.HoldText then Interface.HoldText:Remove() end
+                                            if Interface.ToggleText then Interface.ToggleText:Remove() end
+                                            if Interface.ModeDivider then Interface.ModeDivider:Remove() end
+                                        elseif Interface.Type == "Slider" then
+                                            if Interface.Background then Interface.Background:Remove() end
+                                            if Interface.Border then Interface.Border:Remove() end
+                                            if Interface.Fill then Interface.Fill:Remove() end
+                                            if Interface.Text then Interface.Text:Remove() end
+                                            if Interface.ValueText then Interface.ValueText:Remove() end
+                                            if Section.SectionTopLine then Section.SectionTopLine:Remove() end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
                 end
-            elseif type(a) == "table" then
-                return true
-            elseif type(b) == "table" then
-                return false
+            end
+            if ActiveWindow.WindowBackground then ActiveWindow.WindowBackground:Remove() end
+            if ActiveWindow.Title then ActiveWindow.Title:Remove() end
+            if ActiveWindow.TabBackground then ActiveWindow.TabBackground:Remove() end
+            if ActiveWindow.TabBorder then ActiveWindow.TabBorder:Remove() end
+            if ActiveWindow.WindowBackground2 then ActiveWindow.WindowBackground2:Remove() end
+            if ActiveWindow.Window2Border then ActiveWindow.Window2Border:Remove() end
+            if ActiveWindow.WindowBorder then ActiveWindow.WindowBorder:Remove() end
+            ActiveWindow.Tabs = {}
+            ActiveWindow.TabButtons = {}
+            ActiveWindow.TabContents = {}
+            ActiveWindow = nil
+        end
+        Drawing.clear()
+        Library = nil
+    end
+
+    local function SetVisibility(Object, Visible)
+        if Object and Object.Visible ~= nil then Object.Visible = Visible end
+    end
+
+    local function SetInterfaceVisibility(UI, Visible)
+        for _, Element in pairs(UI) do
+            if Element.Type == "Section" then
+                SetVisibility(Element.Background, Visible)
+                SetVisibility(Element.Border, Visible)
+                SetVisibility(Element.Title, Visible)
+                SetVisibility(Element.SectionTopLine, Visible)
+                Element.Visible = Visible
+                if Element.Interfaces then SetInterfaceVisibility(Element.Interfaces, Visible) end
+            elseif Element.Type == "Button" or Element.Type == "Toggle" or Element.Type == "Slider" then
+                for _, Property in pairs(Element) do
+                    if type(Property) == "table" and Property.Visible ~= nil then SetVisibility(Property, Visible) end
+                end
+                Element.Visible = Visible
             else
-                return false
-            end
-        end)
-    end
-    
-    -- Process ESP objects with rate limiting based on distance
-    local processed = 0
-    local maxToProcess = self.Performance.MaxActiveESP
-    
-    for i, item in ipairs(orderedESP) do
-        if processed >= maxToProcess then break end
-        
-        local esp
-        if type(item) == "table" and item.esp then
-            esp = item.esp
-        else
-            esp = item
-        end
-        
-        -- Update only if needed based on last update time and visibility
-        local shouldUpdate = true
-        if esp.LastUpdateTime then
-            -- Update frequently if on screen, less frequently if off screen
-            local updateInterval = esp.LastScreenVisible and self.Performance.UpdateInterval or self.Performance.UpdateInterval * 5
-            shouldUpdate = (self.Cache.Time - esp.LastUpdateTime) >= updateInterval
-        end
-        
-        if shouldUpdate then
-            local success = self:UpdateESPElement(esp)
-            
-            -- If update failed (object no longer exists), remove it
-            if not success then
-                self:RemoveESP(esp.Instance)
+                if Element.Visible ~= nil then SetVisibility(Element, Visible) end
+                if Element.Interfaces then SetInterfaceVisibility(Element.Interfaces, Visible) end
+                if Element.Background and Element.Background.Visible ~= nil then SetVisibility(Element.Background, Visible) end
+                if Element.Border and Element.Border.Visible ~= nil then SetVisibility(Element.Border, Visible) end
+                if Element.Title and Element.Title.Visible ~= nil then SetVisibility(Element.Title, Visible) end
+                if Element.SelectedHighlight and Element.SelectedHighlight.Visible ~= nil then SetVisibility(Element.SelectedHighlight, false) end
             end
         end
-        
-        processed = processed + 1
     end
-    
-    -- Draw performance stats if enabled
-    if self.Debug.ShowStats then
-        self:DrawDebugStats()
-    end
-end
 
--- Cleanup unused ESP objects
-function SevereLib:CleanupUnusedESP()
-    for i = #self.ActiveESP, 1, -1 do
-        local esp = self.ActiveESP[i]
-        
-        -- Check if object still exists
-        local exists = pcall(function() 
-            return esp.Instance and isdescendantof(esp.Instance, Game) 
-        end)
-        
-        if not exists then
-            self:CleanupESPComponents(esp.Components)
-            table.remove(self.ActiveESP, i)
+    function ToggleUI()
+        IsVisible = not IsVisible
+        if ActiveWindow then
+            local Main = ActiveWindow
+            SetVisibility(Main.WindowBackground, IsVisible)
+            SetVisibility(Main.Title, IsVisible)
+            SetVisibility(Main.TabBackground, IsVisible)
+            SetVisibility(Main.TabBorder, IsVisible)
+            SetVisibility(Main.WindowBackground2, IsVisible)
+            SetVisibility(Main.Window2Border, IsVisible)
+            SetVisibility(Main.WindowBorder, IsVisible)
+            for _, Tab in ipairs(Main.Tabs) do
+                SetVisibility(Tab.Button, IsVisible)
+                SetVisibility(Tab.ButtonBorder, IsVisible)
+                SetVisibility(Tab.ButtonText, IsVisible)
+                local ActiveTab = Tab.Name == Main.ActiveTab
+                SetVisibility(Tab.SelectedHighlight, IsVisible and ActiveTab)
+                SetInterfaceVisibility(Tab.Content.LeftSections, IsVisible and ActiveTab)
+                SetInterfaceVisibility(Tab.Content.RightSections, IsVisible and ActiveTab)
+            end
+            if not IsVisible then
+                IsDragging = false
+                HoveredButton = nil
+            else
+                Main:SelectTab(Main.ActiveTab)
+                Main:UpdateLayout()
+            end
         end
     end
-    
-    -- Prevent excessive pooled objects
-    for drawingType, pooled in pairs(self.Pool.Available) do
-        if #pooled > 200 then
-            for i = #pooled, 201, -1 do
-                local drawing = table.remove(pooled)
-                if drawing and drawing.Remove then
-                    drawing:Remove()
+
+    function Library:Create(Options)
+        local Main = {}
+        local TitleText = Options.Name or "gamesense"
+
+        -- Garantir que VIEWPORT tenha valores válidos
+        if not VIEWPORT or not VIEWPORT.X or not VIEWPORT.Y then
+            VIEWPORT = {
+                X = 1920,
+                Y = 1080
+            }
+        end
+
+        local function SetInitialVisibility(Object)
+            if Object and Object.Visible ~= nil then SetVisibility(Object, IsVisible) end
+        end
+
+        -- Inicializar a posição da janela principal
+        local windowX = (VIEWPORT.X / 2) - 190
+        local windowY = (VIEWPORT.Y / 2) - 218
+
+        Main.WindowBackground = Drawing.new("Square")
+        Main.WindowBackground.Size = {380, 436}
+        Main.WindowBackground.Position = {windowX, windowY}
+        Main.WindowBackground.Color = {21, 21, 20}
+        Main.WindowBackground.Filled = true
+        Main.WindowBackground.Thickness = 2
+        Main.WindowBackground.Transparency = 1
+        SetInitialVisibility(Main.WindowBackground)
+
+        Main.TitleBar = Drawing.new("Square")
+        Main.TitleBar.Size = {380, 44}
+        Main.TitleBar.Position = {windowX, windowY}
+        Main.TitleBar.Color = {94, 94, 94}
+        Main.TitleBar.Filled = true
+        Main.TitleBar.Transparency = 0.9
+        SetInitialVisibility(Main.TitleBar)
+
+        Main.Separator = Drawing.new("Square")
+        Main.Separator.Size = {380, 1}
+        Main.Separator.Position = {windowX, windowY + 44}
+        Main.Separator.Color = {54, 54, 54}
+        Main.Separator.Filled = true
+        SetInitialVisibility(Main.Separator)
+
+        Main.Title = Drawing.new("Text")
+        local formattedTitle = TitleText
+        if string.lower(TitleText):find("gamesense") then
+            -- Não podemos usar tags de HTML aqui porque RichText não é suportado
+            formattedTitle = TitleText -- Usar o texto normal em vez de formatado
+        end
+        Main.Title.Text = formattedTitle
+        Main.Title.Size = 18
+        Main.Title.Font = 5
+        Main.Title.Color = {255, 255, 255}
+        Main.Title.Outline = true
+        Main.Title.OutlineColor = {0, 0, 0}
+        Main.Title.Position = {windowX + 15, windowY + 10}
+        Main.Title.Transparency = 1
+        SetInitialVisibility(Main.Title)
+
+        Main.TabBackground = Drawing.new("Square")
+        Main.TabBackground.Position = {windowX + 10, windowY + 55}
+        Main.TabBackground.Size = {360, 19} -- 380 - 20
+        Main.TabBackground.Color = Colors["DarkContrast"]
+        Main.TabBackground.Filled = true
+        Main.TabBackground.Thickness = 1
+        Main.TabBackground.Transparency = 1
+        SetInitialVisibility(Main.TabBackground)
+
+        Main.TabBorder = Drawing.new("Square")
+        Main.TabBorder.Position = {windowX + 10, windowY + 55}
+        Main.TabBorder.Size = {360, 19}
+        Main.TabBorder.Color = Colors["Border"]
+        Main.TabBorder.Filled = false
+        Main.TabBorder.Thickness = 1
+        Main.TabBorder.Transparency = 1
+        SetInitialVisibility(Main.TabBorder)
+
+        Main.WindowBackground2 = Drawing.new("Square")
+        Main.WindowBackground2.Position = {windowX + 10, windowY + 80}
+        Main.WindowBackground2.Size = {360, 346} -- 380 - 20, 436 - 90
+        Main.WindowBackground2.Color = Colors["DarkContrast"]
+        Main.WindowBackground2.Filled = true
+        Main.WindowBackground2.Thickness = 1
+        Main.WindowBackground2.Transparency = 1
+        SetInitialVisibility(Main.WindowBackground2)
+
+        Main.Window2Border = Drawing.new("Square")
+        Main.Window2Border.Position = {windowX + 10, windowY + 80}
+        Main.Window2Border.Size = {360, 346}
+        Main.Window2Border.Color = Colors["Border"]
+        Main.Window2Border.Filled = false
+        Main.Window2Border.Thickness = 1
+        Main.Window2Border.Transparency = 1
+        SetInitialVisibility(Main.Window2Border)
+
+        Main.WindowBorder = Drawing.new("Square")
+        Main.WindowBorder.Size = {380, 436}
+        Main.WindowBorder.Position = {windowX, windowY}
+        Main.WindowBorder.Color = Colors["Border"]
+        Main.WindowBorder.Filled = false
+        Main.WindowBorder.Thickness = 1
+        Main.WindowBorder.Transparency = 1
+        SetInitialVisibility(Main.WindowBorder)
+
+        Main.Tabs = {}
+        Main.TabButtons = {}
+        Main.TabContents = {}
+        Main.ActiveTab = nil
+
+        function Main:IsHovered(Object)
+            if not IsVisible or not Object or not Object.Visible then return false end
+            local MouseX, MouseY = Mouse.X, Mouse.Y
+            local ObjectPos = Object.Position
+            if not ObjectPos then return false end
+            local ObjectX, ObjectY = ObjectPos[1], ObjectPos[2]
+            if Object.Size then
+                local ObjectSize = Object.Size
+                local ObjectW, ObjectH = ObjectSize[1], ObjectSize[2]
+                return MouseX >= ObjectX and MouseX <= ObjectX + ObjectW and MouseY >= ObjectY and MouseY <= ObjectY + ObjectH
+            elseif Object.TextBounds then
+                local ObjectBounds = Object.TextBounds
+                if type(ObjectBounds) == "table" and ObjectBounds[1] and ObjectBounds[2] then
+                    local ObjectW, ObjectH = ObjectBounds[1], ObjectBounds[2]
+                    if Object.Center then ObjectX = ObjectX - ObjectW / 2 end
+                    ObjectY = ObjectY - ObjectH / 4
+                    return MouseX >= ObjectX and MouseX <= ObjectX + ObjectW and MouseY >= ObjectY and MouseY <= ObjectY + ObjectH
+                end
+            end
+            return false
+        end
+
+        function Main:IsWindowHovered()
+            if not IsVisible then return false end
+            return Main:IsHovered(Main.WindowBackground)
+        end
+
+        function Main:UpdateElementPositions()
+            if not Main.WindowBackground or not Main.WindowBackground.Position then return end
+            
+            local BasePos = Main.WindowBackground.Position
+            local BaseX, BaseY = BasePos[1], BasePos[2]
+            Main.Title.Position = {BaseX + 10, BaseY + 5}
+            Main.TabBackground.Position = {BaseX + 10, BaseY + 55}
+            Main.TabBorder.Position = {Main.TabBackground.Position[1], Main.TabBackground.Position[2]}
+            Main.WindowBackground2.Position = {BaseX + 10, BaseY + 80}
+            Main.Window2Border.Position = {Main.WindowBackground2.Position[1], Main.WindowBackground2.Position[2]}
+            Main.WindowBorder.Position = {BaseX, BaseY}
+            Main:UpdateLayout()
+        end
+
+        function Main:UpdateTabSizes()
+            local TabCount = #Main.Tabs
+            if TabCount == 0 then return end
+            local TabBackgroundPos = Main.TabBackground.Position
+            local TabBackgroundSize = Main.TabBackground.Size
+            local TotalWidth = TabBackgroundSize[1]
+            local StartXBase = TabBackgroundPos[1]
+            local TabY = TabBackgroundPos[2]
+            local TabH = TabBackgroundSize[2]
+            if TotalWidth <= 0 then return end
+            local ExactTabWidth = TotalWidth / TabCount
+            local Epsilon = 0.0001
+            for i, Tab in ipairs(Main.Tabs) do
+                local StartX = StartXBase + (i - 1) * ExactTabWidth
+                local EndX = StartX + ExactTabWidth
+                local RoundedStartX = math.floor(StartX + Epsilon)
+                local RoundedEndX = math.floor(EndX + Epsilon)
+                local RoundedWidth = RoundedEndX - RoundedStartX
+                if i == TabCount then
+                    RoundedEndX = math.floor(StartXBase + TotalWidth + Epsilon)
+                    RoundedWidth = RoundedEndX - RoundedStartX
+                end
+                if RoundedWidth <= 0 then RoundedWidth = 1 end
+                local Button = Tab.Button
+                local ButtonBorder = Tab.ButtonBorder
+                local ButtonText = Tab.ButtonText
+                local Highlight = Tab.SelectedHighlight
+                Button.Position = {RoundedStartX, TabY}
+                Button.Size = {RoundedWidth, TabH}
+                ButtonBorder.Position = {RoundedStartX, TabY}
+                ButtonBorder.Size = {RoundedWidth, TabH}
+                Highlight.Position = {RoundedStartX, TabY}
+                Highlight.Size = {RoundedWidth, TabH}
+                ButtonText.Position = {RoundedStartX + (RoundedWidth / 2), TabY + (TabH / 2) - 7}
+                ButtonText.Center = true
+            end
+        end
+
+        function Main:UpdateLayout()
+            Main:UpdateTabSizes()
+            if not Main.ActiveTab or not Main.TabContents[Main.ActiveTab] then return end
+            local CurrentTabContent = Main.TabContents[Main.ActiveTab]
+            local ParentPos = Main.WindowBackground2.Position
+            local ParentSize = Main.WindowBackground2.Size
+            local ParentWidth = ParentSize[1]
+            local Padding = 5
+            local AvailableWidth = ParentWidth - (Padding * 2) - Padding
+            local ColumnWidth = math.floor(AvailableWidth / 2)
+            local BaseX = ParentPos[1]
+            local BaseY = ParentPos[2]
+            local LeftColumnX = BaseX + Padding
+            local RightColumnX = LeftColumnX + ColumnWidth + Padding
+            local InitialY = BaseY + Padding + 5
+            local CurrentLeftY = InitialY
+            local CurrentRightY = InitialY
+
+            local function UpdateSectionLayout(Section, ColumnX, StartY, Width)
+                local InnerWidth = Width - (Padding * 2)
+                local LineThickness = 1
+                local BorderThickness = Section.Border.Thickness
+
+                SetVisibility(Section.Background, true)
+                SetVisibility(Section.Border, true)
+                SetVisibility(Section.Title, true)
+                SetVisibility(Section.SectionTopLine, true)
+
+                Section.Background.Position = {ColumnX + Padding, StartY}
+                Section.Background.Size = {InnerWidth, 0}
+
+                Section.Border.Position = {ColumnX + Padding - BorderThickness, StartY + Padding - 1}
+                Section.Border.Size = {InnerWidth + BorderThickness * 2, 0}
+
+                Section.SectionTopLine.Position = {ColumnX + Padding, StartY + Padding}
+                Section.SectionTopLine.Size = {InnerWidth, LineThickness}
+                Section.SectionTopLine.Color = Colors["Accent"]
+
+                local TitleHeight = Section.Title.TextBounds and Section.Title.TextBounds[2] or 15
+                Section.Title.Position = {ColumnX + Padding + Padding, StartY + Padding + LineThickness + Padding - 1.5}
+
+                local CurrentInternalY = StartY + Padding + LineThickness + Padding + TitleHeight + Padding
+
+                if Section.Interfaces then
+                    for _, Element in ipairs(Section.Interfaces) do
+                        if Element.Type == "Button" then
+                            local ButtonHeight = 18
+                            local ButtonWidth = InnerWidth - (Padding * 2)
+                            local ButtonX = ColumnX + Padding + Padding
+                            local ButtonY = CurrentInternalY
+                            SetVisibility(Element.ButtonBackground, true)
+                            SetVisibility(Element.ButtonBorder, true)
+                            SetVisibility(Element.ButtonText, true)
+                            Element.ButtonBackground.Position = {ButtonX, ButtonY}
+                            Element.ButtonBorder.Position = {ButtonX, ButtonY}
+                            Element.ButtonText.Position = {ButtonX + math.floor(ButtonWidth / 2), ButtonY + math.floor(ButtonHeight / 2) - 7}
+                            Element.ButtonText.Center = true
+                            Element.ButtonText.Size = 13
+                            CurrentInternalY = CurrentInternalY + ButtonHeight + Padding
+                        elseif Element.Type == "Toggle" then
+                            local ToggleHeight = 16
+                            local ToggleWidth = 16
+                            local TextWidth = InnerWidth - ToggleWidth - Padding
+                            local ToggleX = ColumnX + Padding + Padding
+                            local ToggleY = CurrentInternalY
+                            SetVisibility(Element.OuterBox, true)
+                            SetVisibility(Element.InnerBox, true)
+                            SetVisibility(Element.Text, true)
+                            Element.OuterBox.Position = {ToggleX, ToggleY}
+                            Element.OuterBox.Size = {ToggleWidth, ToggleHeight}
+                            Element.InnerBox.Position = {ToggleX + 1, ToggleY + 1}
+                            Element.InnerBox.Size = {14, 14}
+                            Element.Text.Position = {ToggleX + ToggleWidth + Padding, ToggleY + math.floor(ToggleHeight / 2) - 6}
+                            Element.Text.Center = false
+                            
+                            if Element.KeybindBackground then
+                                local KeybindWidth = 40
+                                local KeybindX = ColumnX + InnerWidth - KeybindWidth + Padding
+                                local KeybindY = ToggleY
+                                SetVisibility(Element.KeybindBackground, true)
+                                SetVisibility(Element.KeybindBorder, true)
+                                SetVisibility(Element.KeybindText, true)
+                                Element.KeybindBackground.Position = {KeybindX - 5, KeybindY}
+                                Element.KeybindBackground.Size = {KeybindWidth, ToggleHeight}
+                                Element.KeybindBorder.Position = {KeybindX - 5, KeybindY}
+                                Element.KeybindBorder.Size = {KeybindWidth, ToggleHeight}
+                                Element.KeybindText.Position = {
+                                    KeybindX - 5 + (KeybindWidth / 2),
+                                    KeybindY + (ToggleHeight / 2) - 6
+                                }
+                                Element.KeybindText.Center = true
+                            end
+                            
+                            CurrentInternalY = CurrentInternalY + ToggleHeight + Padding
+                        elseif Element.Type == "Slider" then
+                            local SliderHeight = 15
+                            local SliderWidth = InnerWidth - (Padding * 2)
+                            local SliderX = ColumnX + Padding + Padding
+                            local SliderY = CurrentInternalY + 14
+                            SetVisibility(Element.Background, true)
+                            SetVisibility(Element.Border, true)
+                            SetVisibility(Element.Fill, true)
+                            SetVisibility(Element.Text, true)
+                            SetVisibility(Element.ValueText, true)
+                            Element.Background.Position = {SliderX, SliderY}
+                            Element.Background.Size = {SliderWidth, SliderHeight}
+                            Element.Border.Position = {SliderX, SliderY}
+                            Element.Border.Size = {SliderWidth, SliderHeight}
+                            Element.Fill.Position = {SliderX, SliderY}
+                            Element.Fill.Size = {((Element.Value - Element.Min) / (Element.Max - Element.Min)) * SliderWidth, SliderHeight}
+                            Element.Text.Position = {SliderX, SliderY - 15}
+                            local SliderCenterX = SliderX + (SliderWidth / 2)
+                            local SliderCenterY = SliderY + (SliderHeight / 2) - 6.5
+                            Element.ValueText.Position = {SliderCenterX, SliderCenterY}
+                            Element.ValueText.Center = true
+                            CurrentInternalY = CurrentInternalY + SliderHeight + Padding + 15
+                        end
+                    end
+                end
+                local TotalSectionHeight = (CurrentInternalY - StartY)
+                Section.Background.Size = {InnerWidth, TotalSectionHeight}
+                Section.Border.Size = {InnerWidth + BorderThickness * 2, TotalSectionHeight + BorderThickness - Padding}
+                Section.CalculatedHeight = TotalSectionHeight
+                return StartY + TotalSectionHeight + Padding
+            end
+
+            for _, Section in ipairs(CurrentTabContent.LeftSections) do
+                if Section.Visible then
+                    CurrentLeftY = UpdateSectionLayout(Section, LeftColumnX, CurrentLeftY, ColumnWidth)
+                else
+                    SetVisibility(Section.Background, false)
+                    SetVisibility(Section.Border, false)
+                    SetVisibility(Section.Title, false)
+                    if Section.Interfaces then SetInterfaceVisibility(Section.Interfaces, false) end
+                end
+            end
+
+            for _, Section in ipairs(CurrentTabContent.RightSections) do
+                if Section.Visible then
+                    CurrentRightY = UpdateSectionLayout(Section, RightColumnX, CurrentRightY, ColumnWidth)
+                else
+                    SetVisibility(Section.Background, false)
+                    SetVisibility(Section.Border, false)
+                    SetVisibility(Section.Title, false)
+                    if Section.Interfaces then SetInterfaceVisibility(Section.Interfaces, false) end
                 end
             end
         end
-    end
-end
 
--- Toggle ESP visibility
-function SevereLib:ToggleESP(enabled)
-    if enabled ~= nil then
-        self.ESP.Enabled = enabled
-    else
-        self.ESP.Enabled = not self.ESP.Enabled
-    end
-    
-    -- Hide all components if disabled
-    if not self.ESP.Enabled then
-        for _, esp in pairs(self.ActiveESP) do
-            self:HideESPComponents(esp.Components)
+        function Main:Tab(Options)
+            local TabName = Options.Name or "Tab " .. (#Main.Tabs + 1)
+            local TabButton = Drawing.new("Square")
+            TabButton.Color = Colors["LightContrast"]
+            TabButton.Filled = true
+            TabButton.Thickness = 1
+            TabButton.Transparency = 1
+            SetInitialVisibility(TabButton)
+            
+            local TabButtonBorder = Drawing.new("Square")
+            TabButtonBorder.Color = Colors["Border"]
+            TabButtonBorder.Filled = false
+            TabButtonBorder.Thickness = 1
+            TabButtonBorder.Transparency = 0.8
+            SetInitialVisibility(TabButtonBorder)
+            
+            local TabButtonText = Drawing.new("Text")
+            TabButtonText.Text = TabName
+            TabButtonText.Size = 13
+            TabButtonText.Font = 5
+            TabButtonText.Color = Colors["Text"]
+            TabButtonText.Outline = true
+            TabButtonText.OutlineColor = {0, 0, 0}
+            TabButtonText.Transparency = 1
+            TabButtonText.Center = true
+            SetInitialVisibility(TabButtonText)
+            
+            local SelectedHighlight = Drawing.new("Square")
+            SelectedHighlight.Color = Colors["Accent"]
+            SelectedHighlight.Transparency = 0.3
+            SelectedHighlight.Filled = true
+            SelectedHighlight.Visible = false
+            local TabContent = {
+                Name = TabName,
+                LeftSections = {},
+                RightSections = {},
+                Visible = false
+            }
+
+            function TabContent:Section(Options)
+                local SectionName = Options.Name or "Section"
+                local Side = Options.Side or "Left"
+                local SectionBackground = Drawing.new("Square")
+                SectionBackground.Color = Colors["DarkContrast"]
+                SectionBackground.Filled = true
+                SectionBackground.Thickness = 1
+                SectionBackground.Transparency = 1
+                SectionBackground.Visible = false
+                
+                local SectionBorder = Drawing.new("Square")
+                SectionBorder.Color = Colors["Border"] 
+                SectionBorder.Filled = false
+                SectionBorder.Thickness = 1
+                SectionBorder.Transparency = 0.8
+                SectionBorder.Visible = false
+                
+                local SectionTitle = Drawing.new("Text")
+                SectionTitle.Text = SectionName
+                SectionTitle.Size = 14
+                SectionTitle.Font = 5
+                SectionTitle.Color = Colors["Text"]
+                SectionTitle.Outline = true
+                SectionTitle.OutlineColor = {0, 0, 0}
+                SectionTitle.Transparency = 1
+                SectionTitle.Center = false
+                SectionTitle.Visible = false
+                
+                local SectionTopLine = Drawing.new("Square")
+                SectionTopLine.Color = Colors["Accent"]
+                SectionTopLine.Filled = true
+                SectionTopLine.Thickness = 1
+                SectionTopLine.Transparency = 1
+                SectionTopLine.Visible = false
+                
+                local Section = {
+                    Type = "Section",
+                    Name = SectionName,
+                    Side = Side,
+                    Background = SectionBackground,
+                    Border = SectionBorder,
+                    Title = SectionTitle,
+                    SectionTopLine = SectionTopLine,
+                    Interfaces = {},
+                    Visible = false,
+                    CalculatedHeight = 0
+                }
+
+                function Section:Button(Options)
+                    local ButtonName = Options.Name or "Button"
+                    local Callback = Options.Callback or function() end
+                    local ButtonBackground = Drawing.new("Square")
+                    ButtonBackground.Color = Colors["LightContrast"]
+                    ButtonBackground.Filled = true
+                    ButtonBackground.Thickness = 1
+                    ButtonBackground.Transparency = 1
+                    ButtonBackground.Visible = self.Visible
+
+                    local ButtonBorder = Drawing.new("Square")
+                    ButtonBorder.Color = Colors["Border"]
+                    ButtonBorder.Filled = false
+                    ButtonBorder.Thickness = 1
+                    ButtonBorder.Transparency = 0.8
+                    ButtonBorder.Visible = self.Visible
+
+                    local ButtonText = Drawing.new("Text")
+                    ButtonText.Text = ButtonName
+                    ButtonText.Size = 13
+                    ButtonText.Font = 5
+                    ButtonText.Color = Colors["Text"]
+                    ButtonText.Outline = true
+                    ButtonText.OutlineColor = {0, 0, 0}
+                    ButtonText.Transparency = 1
+                    ButtonText.Center = true
+                    ButtonText.Visible = self.Visible
+
+                    local Button = {
+                        Type = "Button",
+                        Name = ButtonName,
+                        Callback = Callback,
+                        ButtonBackground = ButtonBackground,
+                        ButtonBorder = ButtonBorder,
+                        ButtonText = ButtonText,
+                        DefaultBorderColor = Colors["Border"],
+                        OriginalBackgroundColor = Colors["LightContrast"],
+                        OriginalBackgroundTransparency = 1,
+                        Visible = self.Visible
+                    }
+                    table.insert(self.Interfaces, Button)
+                    if IsVisible and Main.ActiveTab == TabContent.Name then Main:UpdateLayout() end
+                    return Button
+                end
+
+                function Section:Toggle(Options)
+                    local ToggleName = Options.Name or "Toggle"
+                    local DefaultState = Options.Default or false
+                    local Callback = Options.Callback or function() end
+                    local ToggleOuterBox = Drawing.new("Square")
+                    ToggleOuterBox.Size = {18, 18}
+                    ToggleOuterBox.Filled = false
+                    ToggleOuterBox.Thickness = 1
+                    ToggleOuterBox.Transparency = 1
+                    ToggleOuterBox.Visible = self.Visible
+                    ToggleOuterBox.Color = Colors["Border"]
+                    
+                    local ToggleInnerBox = Drawing.new("Square")
+                    ToggleInnerBox.Size = {16, 16}
+                    ToggleInnerBox.Filled = true
+                    ToggleInnerBox.Thickness = 1
+                    ToggleInnerBox.Transparency = 0.65
+                    ToggleInnerBox.Visible = self.Visible
+                    ToggleInnerBox.Color = DefaultState and Colors["Accent"] or Colors["LightContrast"]
+                    
+                    local ToggleText = Drawing.new("Text")
+                    ToggleText.Text = ToggleName
+                    ToggleText.Size = 13
+                    ToggleText.Font = 5
+                    ToggleText.Color = Colors["Text"]
+                    ToggleText.Outline = true
+                    ToggleText.OutlineColor = {0, 0, 0}
+                    ToggleText.Transparency = 1
+                    ToggleText.Center = false
+                    ToggleText.Visible = self.Visible
+                    
+                    local ToggleState = DefaultState
+                    
+                    local Toggle = {
+                        Type = "Toggle",
+                        Name = ToggleName,
+                        State = ToggleState,
+                        Callback = Callback,
+                        OuterBox = ToggleOuterBox,
+                        InnerBox = ToggleInnerBox,
+                        Text = ToggleText,
+                        DefaultBorderColor = Colors["Border"],
+                        OriginalInnerColor = ToggleState and Colors["Accent"] or Colors["LightContrast"],
+                        Visible = self.Visible,
+                        LastKeyState = false
+                    }
+
+                    function Toggle:SetState(NewState)
+                        self.State = NewState
+                        self.InnerBox.Color = NewState and Colors["Accent"] or Colors["LightContrast"]
+                        self.OriginalInnerColor = self.InnerBox.Color
+                        if self.Callback then spawn(function() self.Callback(NewState) end) end
+                    end
+                    
+                    function Toggle:Keybind(Options)
+                        local KeybindBackground = Drawing.new("Square")
+                        KeybindBackground.Color = Colors["LightContrast"]
+                        KeybindBackground.Filled = true
+                        KeybindBackground.Thickness = 1
+                        KeybindBackground.Transparency = 1
+                        KeybindBackground.Visible = self.Visible
+                        
+                        local KeybindBorder = Drawing.new("Square")
+                        KeybindBorder.Color = Colors["Border"]
+                        KeybindBorder.Filled = false
+                        KeybindBorder.Thickness = 1
+                        KeybindBorder.Transparency = 1
+                        KeybindBorder.Visible = self.Visible
+                        
+                        local KeybindText = Drawing.new("Text")
+                        KeybindText.Text = (Options.Default and not Options.Default:find("Mouse")) and Options.Default or "None"
+                        KeybindText.Size = 12
+                        KeybindText.Font = 5
+                        KeybindText.Color = Colors["Text"]
+                        KeybindText.Outline = true
+                        KeybindText.OutlineColor = {0, 0, 0}
+                        KeybindText.Transparency = 1
+                        KeybindText.Center = true
+                        KeybindText.Visible = self.Visible
+
+                        local ModeSelectorBackground = Drawing.new("Square")
+                        ModeSelectorBackground.Color = Colors["LightContrast"]
+                        ModeSelectorBackground.Filled = true
+                        ModeSelectorBackground.Thickness = 1
+                        ModeSelectorBackground.Transparency = 1
+                        ModeSelectorBackground.Visible = false
+                        ModeSelectorBackground.ZIndex = 999
+
+                        local ModeSelectorBorder = Drawing.new("Square")
+                        ModeSelectorBorder.Color = Colors["Border"]
+                        ModeSelectorBorder.Filled = false
+                        ModeSelectorBorder.Thickness = 1
+                        ModeSelectorBorder.Transparency = 1
+                        ModeSelectorBorder.Visible = false
+                        ModeSelectorBorder.ZIndex = 999
+
+                        local HoldText = Drawing.new("Text")
+                        HoldText.Text = "Hold"
+                        HoldText.Size = 12
+                        HoldText.Font = 5
+                        HoldText.Color = Colors["Text"]
+                        HoldText.Outline = true
+                        HoldText.OutlineColor = {0, 0, 0}
+                        HoldText.Transparency = 1
+                        HoldText.Center = true
+                        HoldText.Visible = false
+                        HoldText.ZIndex = 999
+
+                        local ModeDivider = Drawing.new("Square")
+                        ModeDivider.Color = Colors["Border"]
+                        ModeDivider.Filled = true
+                        ModeDivider.Thickness = 1
+                        ModeDivider.Transparency = 1
+                        ModeDivider.Visible = false
+                        ModeDivider.ZIndex = 999
+                        
+                        local ToggleModeText = Drawing.new("Text")
+                        ToggleModeText.Text = "Toggle"
+                        ToggleModeText.Size = 12
+                        ToggleModeText.Font = 5
+                        ToggleModeText.Color = Colors["Text"]
+                        ToggleModeText.Outline = true
+                        ToggleModeText.OutlineColor = {0, 0, 0}
+                        ToggleModeText.Transparency = 1
+                        ToggleModeText.Center = true
+                        ToggleModeText.Visible = false
+                        ToggleModeText.ZIndex = 999
+                        
+                        Toggle.KeybindBackground = KeybindBackground
+                        Toggle.KeybindBorder = KeybindBorder
+                        Toggle.KeybindText = KeybindText
+                        Toggle.KeybindValue = (Options.Default and not Options.Default:find("Mouse")) and Options.Default or nil
+                        Toggle.KeybindCallback = Options.Callback
+                        Toggle.Listening = false
+                        Toggle.KeybindMode = "Toggle"
+                        Toggle.ModeSelectorBackground = ModeSelectorBackground
+                        Toggle.ModeSelectorBorder = ModeSelectorBorder
+                        Toggle.HoldText = HoldText
+                        Toggle.ToggleModeText = ToggleModeText
+                        Toggle.ModeDivider = ModeDivider
+                        
+                        function Toggle:SetKeybind(Key)
+                            if Key == "Escape" then
+                                self.KeybindValue = nil
+                                self.KeybindText.Text = "None"
+                            elseif Key and not Key:find("Mouse") then
+                                self.KeybindValue = Key
+                                self.KeybindText.Text = Key
+                            end
+                            if self.KeybindCallback then 
+                                spawn(function() self.KeybindCallback(self.KeybindValue, self.KeybindMode) end) 
+                            end
+                        end
+
+                        function Toggle:UpdateModeSelectorPosition()
+                            if self.KeybindBackground.Position and self.KeybindBackground.Size then
+                                local BgPos = self.KeybindBackground.Position
+                                local BgSize = self.KeybindBackground.Size
+                                local SelectorWidth = 60
+                                local SelectorHeight = 30
+                                
+                                self.ModeSelectorBackground.Position = {BgPos[1] + BgSize[1] - SelectorWidth, BgPos[2] - SelectorHeight - 5}
+                                self.ModeSelectorBackground.Size = {SelectorWidth, SelectorHeight}
+                                self.ModeSelectorBorder.Position = self.ModeSelectorBackground.Position
+                                self.ModeSelectorBorder.Size = self.ModeSelectorBackground.Size
+                                
+                                self.HoldText.Position = {
+                                    self.ModeSelectorBackground.Position[1] + (SelectorWidth / 2),
+                                    self.ModeSelectorBackground.Position[2] + (SelectorHeight / 4) - 6
+                                }
+                                
+                                self.ToggleModeText.Position = {
+                                    self.ModeSelectorBackground.Position[1] + (SelectorWidth / 2),
+                                    self.ModeSelectorBackground.Position[2] + (SelectorHeight * 0.75) - 6
+                                }
+                                
+                                self.ModeDivider.Position = {
+                                    self.ModeSelectorBackground.Position[1],
+                                    self.ModeSelectorBackground.Position[2] + (SelectorHeight / 2)
+                                }
+                                self.ModeDivider.Size = {SelectorWidth, 1}
+                            end
+                        end
+
+                        function Toggle:ToggleModeSelector(Visible)
+                            self.ModeSelectorBackground.Visible = Visible
+                            self.ModeSelectorBorder.Visible = Visible
+                            self.HoldText.Visible = Visible
+                            self.ToggleModeText.Visible = Visible
+                            self.ModeDivider.Visible = Visible
+                        end
+                        
+                        spawn(function()
+                            while Running and Toggle.KeybindBackground do
+                                if Toggle.KeybindBackground.Position and Toggle.KeybindBackground.Size then
+                                    local BgPos = Toggle.KeybindBackground.Position
+                                    local BgSize = Toggle.KeybindBackground.Size
+                                    Toggle.KeybindText.Position = {
+                                        BgPos[1] + (BgSize[1] / 2),
+                                        BgPos[2] + (BgSize[2] / 2) - 6
+                                    }
+                                    Toggle:UpdateModeSelectorPosition()
+                                end
+                                wait()
+                            end
+                        end)
+                        
+                        return {
+                            Set = function(Key) Toggle:SetKeybind(Key) end,
+                            Get = function() return Toggle.KeybindValue end,
+                            GetMode = function() return Toggle.KeybindMode end
+                        }
+                    end
+                    
+                    table.insert(self.Interfaces, Toggle)
+                    if IsVisible and Main.ActiveTab == TabContent.Name then Main:UpdateLayout() end
+                    return Toggle
+                end
+
+                function Section:Slider(Options)
+                    local SliderName = Options.Name or "Slider"
+                    local Min = Options.Min or 0
+                    local Max = Options.Max or 100
+                    local Default = math.clamp(Options.Default or ((Max - Min) / 2), Min, Max)
+                    local Units = Options.Units or ""
+                    local Increment = Options.Increment or 1
+                    local Callback = Options.Callback or function() end
+
+                    local SliderBackground = Drawing.new("Square")
+                    SliderBackground.Color = Colors["LightContrast"]
+                    SliderBackground.Filled = true
+                    SliderBackground.Thickness = 1
+                    SliderBackground.Transparency = 1
+                    SliderBackground.Visible = self.Visible
+
+                    local SliderBorder = Drawing.new("Square")
+                    SliderBorder.Color = Colors["Border"]
+                    SliderBorder.Filled = false
+                    SliderBorder.Thickness = 1
+                    SliderBorder.Transparency = 0.8
+                    SliderBorder.Visible = self.Visible
+
+                    local SliderFill = Drawing.new("Square")
+                    SliderFill.Color = Colors["Accent"]
+                    SliderFill.Filled = true
+                    SliderFill.Transparency = 0.65
+                    SliderFill.Visible = self.Visible
+
+                    local SliderText = Drawing.new("Text")
+                    SliderText.Text = SliderName
+                    SliderText.Size = 13
+                    SliderText.Font = 5
+                    SliderText.Color = Colors["Text"]
+                    SliderText.Outline = true
+                    SliderText.OutlineColor = {0, 0, 0}
+                    SliderText.Transparency = 1
+                    SliderText.Center = false
+                    SliderText.Visible = self.Visible
+
+                    local ValueText = Drawing.new("Text")
+                    ValueText.Text = Default .. Units
+                    ValueText.Size = 13
+                    ValueText.Font = 5
+                    ValueText.Color = Colors["Text"]
+                    ValueText.Outline = true
+                    ValueText.OutlineColor = {0, 0, 0}
+                    ValueText.Transparency = 1
+                    ValueText.Center = true
+                    ValueText.Visible = self.Visible
+
+                    local Slider = {
+                        Type = "Slider",
+                        Name = SliderName,
+                        Min = Min,
+                        Max = Max,
+                        Value = Default,
+                        Units = Units,
+                        Increment = Increment,
+                        Callback = Callback,
+                        Background = SliderBackground,
+                        Border = SliderBorder,
+                        Fill = SliderFill,
+                        Text = SliderText,
+                        ValueText = ValueText,
+                        DefaultBorderColor = Colors["Border"],
+                        OriginalBackgroundColor = Colors["LightContrast"],
+                        Visible = self.Visible,
+                        Dragging = false
+                    }
+
+                    function Slider:SetValue(NewValue)
+                        local snappedValue = Min + (math.floor((NewValue - Min) / self.Increment + 0.5) * self.Increment)
+                        self.Value = math.clamp(snappedValue, self.Min, self.Max)
+                        local format = "%.0f%s"
+                        if self.Increment < 1 then
+                            local decimalPlaces = math.max(0, math.ceil(math.abs(math.log10(self.Increment))))
+                            format = "%." .. decimalPlaces .. "f%s"
+                        end
+                        self.ValueText.Text = string.format(format, self.Value, self.Units)
+                        if self.Background.Size then
+                            local BgSize = self.Background.Size
+                            local BgPos = self.Background.Position
+                            local FillWidth = ((self.Value - self.Min) / (self.Max - self.Min)) * BgSize[1]
+                            self.Fill.Size = {FillWidth, BgSize[2]}
+                            local SliderCenterX = BgPos[1] + (BgSize[1] / 2)
+                            local SliderCenterY = BgPos[2] + (BgSize[2] / 2) - 6.5
+                            self.ValueText.Position = {SliderCenterX, SliderCenterY}
+                        end
+                        if self.Callback then spawn(function() self.Callback(self.Value) end) end
+                    end
+
+                    function Slider:UpdateFill()
+                        if not self.Background then return end
+                        local BgPos = self.Background.Position
+                        local BgSize = self.Background.Size
+                        local FillWidth = (BgSize[1] - 4) * (self.Value / (self.Max - self.Min))
+                        self.Fill.Size = {FillWidth, BgSize[2] - 4}
+                        self.Fill.Position = {BgPos[1] + 2, BgPos[2] + 2}
+                        
+                        if self.ValueText then
+                            local ValueString = string.format("%." .. (tonumber(self.Decimals) or 1) .. "f", self.Value)
+                            self.ValueText.Text = ValueString
+                            local SliderCenterX = BgPos[1] + (BgSize[1] / 2)
+                            self.ValueText.Position = {SliderCenterX, BgPos[2] + (BgSize[2] / 2) - 7}
+                            self.ValueText.Center = true
+                        end
+                    end
+
+                    table.insert(self.Interfaces, Slider)
+                    if IsVisible and Main.ActiveTab == TabContent.Name then Main:UpdateLayout() end
+                    return Slider
+                end
+
+                if Side == "Left" then
+                    table.insert(self.LeftSections, Section)
+                else
+                    table.insert(self.RightSections, Section)
+                end
+                if IsVisible and Main.ActiveTab == TabContent.Name then
+                    Section.Visible = true
+                    SetVisibility(SectionBackground, true)
+                    SetVisibility(SectionBorder, true)
+                    SetVisibility(SectionTitle, true)
+                    SetVisibility(SectionTopLine, true)
+                    Main:UpdateLayout()
+                end
+                return Section
+            end
+
+            local Tab = {
+                Name = TabName,
+                Button = TabButton,
+                ButtonBorder = TabButtonBorder,
+                ButtonText = TabButtonText,
+                SelectedHighlight = SelectedHighlight,
+                Content = TabContent
+            }
+            table.insert(Main.Tabs, Tab)
+            Main.TabButtons[TabName] = Tab
+            Main.TabContents[TabName] = TabContent
+            Main:UpdateTabSizes()
+            if #Main.Tabs == 1 and IsVisible then
+                Main:SelectTab(TabName)
+            elseif Main.ActiveTab and IsVisible then
+                Main:SelectTab(Main.ActiveTab)
+            else
+                SetVisibility(TabButton, false)
+                SetVisibility(TabButtonBorder, false)
+                SetVisibility(TabButtonText, false)
+                SetVisibility(SelectedHighlight, false)
+                SetInterfaceVisibility(TabContent.LeftSections, false)
+                SetInterfaceVisibility(TabContent.RightSections, false)
+            end
+            return TabContent
         end
+
+        function Main:SelectTab(TabName)
+            if not Main.TabButtons[TabName] then return end
+            Main.ActiveTab = TabName
+            if not IsVisible then return end
+            for OtherTabName, OtherTab in pairs(Main.TabButtons) do
+                local Selected = OtherTabName == TabName
+                SetVisibility(OtherTab.SelectedHighlight, Selected)
+                OtherTab.Content.Visible = Selected
+                SetInterfaceVisibility(OtherTab.Content.LeftSections, Selected)
+                SetInterfaceVisibility(OtherTab.Content.RightSections, Selected)
+            end
+            Main:UpdateLayout()
+        end
+
+        ActiveWindow = Main
+        
+        spawn(function()
+            wait(1)
+            ToggleUI()
+            wait(0.5)
+            ToggleUI()
+            
+            local notifText = Drawing.new("Text")
+            notifText.Text = "Press P to toggle the UI visibility"
+            notifText.Size = 16
+            notifText.Font = 5
+            notifText.Color = Colors["Text"]
+            notifText.OutlineColor = {0, 0, 0}
+            notifText.Outline = true
+            notifText.Position = {(VIEWPORT.X / 2) - 100, 20}
+            notifText.Center = true
+            notifText.Transparency = 1
+            
+            spawn(function()
+                wait(5)
+                notifText:Remove()
+            end)
+        end)
+        
+        return Main
     end
-    
-    -- Fire toggle event
-    self.Events.OnToggle:Fire(self.ESP.Enabled)
-    
-    return self.ESP.Enabled
+
+    return safeExecute(Library)
 end
 
--- Draw debug statistics
-function SevereLib:DrawDebugStats()
-    local stats = self.Debug.Stats
-    local text = string.format(
-        "SevereLib Stats:\nFPS: %d\nObjects: %d\nOnScreen: %d\nDrawings: %d/%d",
-        stats.FPS,
-        stats.Objects,
-        stats.OnScreen,
-        self.Pool.Stats.Active,
-        self.Pool.Stats.Created
-    )
-    
-    -- Create debug text if needed
-    if not self.Debug.StatsText then
-        self.Debug.StatsText = Drawing.new("Text")
-        self.Debug.StatsText.Size = 14
-        self.Debug.StatsText.Center = false
-        self.Debug.StatsText.Outline = true
-        self.Debug.StatsText.Position = {10, 10}
-        self.Debug.StatsText.Color = {255, 255, 255}
-        self.Debug.StatsText.Visible = true
-    end
-    
-    self.Debug.StatsText.Text = text
-end
+spawn(function()
+    while Running do
+        local MouseLocation = getmouselocation(MouseService)
+        Mouse.X = MouseLocation.x
+        Mouse.Y = MouseLocation.y
+        Mouse.Clicked = isleftclicked()
+        Mouse.Pressed = isleftpressed()
+        HoveredButton = nil
+        local UIClickHandled = false
+        local IsHovered = false
+        local Keys = getpressedkeys()
+        local IsTogglePressed = false
 
--- Clean up all ESP objects and drawings
-function SevereLib:Cleanup()
-    self.Flags.Unloading = true
-    
-    -- Clean up all active ESP
-    for _, esp in pairs(self.ActiveESP) do
-        self:CleanupESPComponents(esp.Components)
-    end
-    
-    self.ActiveESP = {}
-    
-    -- Clean up debug text
-    if self.Debug.StatsText then
-        self.Debug.StatsText:Remove()
-        self.Debug.StatsText = nil
-    end
-    
-    -- Clean up all pooled objects
-    for drawingType, pool in pairs(self.Pool.Available) do
-        for _, drawing in pairs(pool) do
-            if drawing and drawing.Remove then
-                drawing:Remove()
+        -- Create watermark if it doesn't exist
+        if not Watermark and Running then
+            Watermark = CreateWatermark()
+        end
+
+        for _, K in ipairs(Keys) do
+            if K == "P" then
+                IsTogglePressed = true
+                break
             end
         end
-    end
-    
-    for drawingType, pool in pairs(self.Pool.InUse) do
-        for _, drawing in pairs(pool) do
-            if drawing and drawing.Remove then
-                drawing:Remove()
+
+        if IsTogglePressed and not IsToggled then
+            ToggleUI()
+        end
+        IsToggled = IsTogglePressed
+
+        if IsVisible and ActiveWindow then
+            if ActiveWindow:IsWindowHovered() then
+                IsHovered = true
+            end
+            for _, Tab in ipairs(ActiveWindow.Tabs) do
+                if Tab.Button.Visible and ActiveWindow:IsHovered(Tab.Button) then
+                    IsHovered = true
+                    break
+                end
+            end
+
+            local WindowPos = ActiveWindow.WindowBackground.Position
+            local DragAreaYMax = ActiveWindow.TabBackground.Position[2]
+            if Mouse.Clicked and IsHovered and Mouse.Y < DragAreaYMax and not IsDragging then
+                IsDragging = true
+                DragOffsetX = Mouse.X - WindowPos[1]
+                DragOffsetY = Mouse.Y - WindowPos[2]
+                UIClickHandled = true
+            elseif Mouse.Pressed and IsDragging then
+                IsHovered = true
+                local NewX = Mouse.X - DragOffsetX
+                local NewY = Mouse.Y - DragOffsetY
+                ActiveWindow.WindowBackground.Position = {NewX, NewY}
+                ActiveWindow:UpdateElementPositions()
+                UIClickHandled = true
+            elseif not Mouse.Pressed and IsDragging then
+                IsDragging = false
+            end
+
+            if Mouse.Clicked and not IsDragging and not UIClickHandled then
+                for _, Tab in ipairs(ActiveWindow.Tabs) do
+                    if Tab.Button.Visible and ActiveWindow:IsHovered(Tab.Button) then
+                        ActiveWindow:SelectTab(Tab.Name)
+                        UIClickHandled = true
+                        break
+                    end
+                end
+
+                if not UIClickHandled and ActiveWindow.ActiveTab then
+                    local CurrentTabContent = ActiveWindow.TabContents[ActiveWindow.ActiveTab]
+                    if CurrentTabContent then
+                        local function CheckButtonClick(Sections)
+                            for _, Section in ipairs(Sections) do
+                                if Section.Visible and Section.Interfaces then
+                                    for _, Element in ipairs(Section.Interfaces) do
+                                        if Element.Type == "Button" and Element.ButtonBackground.Visible then
+                                            if ActiveWindow:IsHovered(Element.ButtonBackground) then
+                                                Element.ButtonBackground.Color = Colors["Selected"]
+                                                Element.ButtonBackground.Transparency = 0.085
+                                                Element.ButtonBorder.Color = Colors["Accent"]
+                                                local TargetButton = Element
+                                                spawn(function()
+                                                    wait(0.075)
+                                                    if IsVisible and ActiveWindow and TargetButton and TargetButton.ButtonBackground.Visible then
+                                                        TargetButton.ButtonBackground.Color = TargetButton.OriginalBackgroundColor
+                                                        TargetButton.ButtonBackground.Transparency = TargetButton.OriginalBackgroundTransparency
+                                                        TargetButton.ButtonBorder.Color = ActiveWindow:IsHovered(TargetButton.ButtonBackground) and Colors["Accent"] or TargetButton.DefaultBorderColor
+                                                    end
+                                                end)
+                                                if Element.Callback then spawn(Element.Callback) end
+                                                UIClickHandled = true
+                                                return
+                                            end
+                                        elseif Element.Type == "Toggle" and Element.OuterBox.Visible then
+                                            local TogglePos = Element.OuterBox.Position
+                                            local ToggleSize = Element.OuterBox.Size
+                                            local ToggleX = TogglePos[1]
+                                            local ToggleY = TogglePos[2]
+                                            local ToggleWidth = ToggleSize[1]
+                                            local ToggleHeight = ToggleSize[2]
+                                            local TextPos = Element.Text.Position
+                                            local TextX = TextPos[1]
+                                            local TextBounds = Element.Text.TextBounds
+                                            local TextBoundsX = TextBounds and TextBounds[1] or 0
+                                            local IsToggleHovered = Mouse.X >= ToggleX and Mouse.X <= TextX + TextBoundsX and Mouse.Y >= ToggleY and Mouse.Y <= ToggleY + ToggleHeight
+                                            
+                                            if Element.KeybindBackground then
+                                                local KeybindPos = Element.KeybindBackground.Position
+                                                local KeybindSize = Element.KeybindBackground.Size
+                                                local KeybindX = KeybindPos[1]
+                                                local KeybindWidth = KeybindSize[1]
+                                                local IsKeybindHovered = Mouse.X >= KeybindX and Mouse.X <= KeybindX + KeybindWidth and Mouse.Y >= ToggleY and Mouse.Y <= ToggleY + ToggleHeight
+                                                
+                                                if IsKeybindHovered then
+                                                    if Mouse.Clicked then
+                                                        Element.KeybindText.Text = "..."
+                                                        Element.Listening = true
+                                                        UIClickHandled = true
+                                                    elseif isrightclicked() then
+                                                        Element:ToggleModeSelector(not Element.ModeSelectorBackground.Visible)
+                                                        UIClickHandled = true
+                                                    end
+                                                elseif IsToggleHovered and Mouse.Clicked and not IsKeybindHovered then
+                                                    Element:SetState(not Element.State)
+                                                    UIClickHandled = true
+                                                end
+                                            elseif IsToggleHovered and Mouse.Clicked then
+                                                Element:SetState(not Element.State)
+                                                UIClickHandled = true
+                                            end
+                                        elseif Element.Type == "Slider" and Element.Background.Visible then
+                                            if ActiveWindow:IsHovered(Element.Background) then
+                                                if Mouse.Clicked then
+                                                    Element.Dragging = true
+                                                    UIClickHandled = true
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        CheckButtonClick(CurrentTabContent.LeftSections)
+                        CheckButtonClick(CurrentTabContent.RightSections)
+                    end
+                end
+            end
+
+            if ActiveWindow.ActiveTab then
+                local CurrentTabContent = ActiveWindow.TabContents[ActiveWindow.ActiveTab]
+                if CurrentTabContent then
+                    local function UpdateButtonVisuals(Sections)
+                        for _, Section in ipairs(Sections) do
+                            if Section.Visible and Section.Interfaces then
+                                for _, Element in ipairs(Section.Interfaces) do
+                                    if Element.Type == "Button" then
+                                        local Hovered = ActiveWindow:IsHovered(Element.ButtonBackground)
+                                        if Hovered then
+                                            IsHovered = true
+                                            HoveredButton = Element
+                                            Element.ButtonBorder.Color = Colors["Accent"]
+                                        else
+                                            Element.ButtonBorder.Color = Element.DefaultBorderColor
+                                        end
+                                    elseif Element.Type == "Toggle" then
+                                        local TogglePos = Element.OuterBox.Position
+                                        local ToggleSize = Element.OuterBox.Size
+                                        local ToggleX = TogglePos[1]
+                                        local ToggleY = TogglePos[2]
+                                        local ToggleWidth = ToggleSize[1]
+                                        local ToggleHeight = ToggleSize[2]
+                                        local TextPos = Element.Text.Position
+                                        local TextX = TextPos[1]
+                                        local TextBounds = Element.Text.TextBounds
+                                        local TextBoundsX = TextBounds and TextBounds[1] or 0
+                                        local IsToggleHovered = Mouse.X >= ToggleX and Mouse.X <= TextX + TextBoundsX and Mouse.Y >= ToggleY and Mouse.Y <= ToggleY + ToggleHeight
+                                        
+                                        if Element.KeybindBackground then
+                                            local KeybindPos = Element.KeybindBackground.Position
+                                            local KeybindSize = Element.KeybindBackground.Size
+                                            local KeybindX = KeybindPos[1]
+                                            local KeybindWidth = KeybindSize[1]
+                                            local IsKeybindHovered = Mouse.X >= KeybindX and Mouse.X <= KeybindX + KeybindWidth and Mouse.Y >= ToggleY and Mouse.Y <= ToggleY + ToggleHeight
+                                            
+                                            if IsKeybindHovered then
+                                                IsHovered = true
+                                                HoveredButton = Element
+                                                Element.KeybindBorder.Color = Colors["Accent"]
+                                                Element.OuterBox.Color = Element.DefaultBorderColor
+                                            elseif IsToggleHovered then
+                                                IsHovered = true
+                                                HoveredButton = Element
+                                                Element.OuterBox.Color = Colors["Accent"]
+                                                Element.KeybindBorder.Color = Element.DefaultBorderColor
+                                            else
+                                                Element.OuterBox.Color = Element.DefaultBorderColor
+                                                Element.KeybindBorder.Color = Element.DefaultBorderColor
+                                            end
+                                        elseif IsToggleHovered then
+                                            IsHovered = true
+                                            HoveredButton = Element
+                                            Element.OuterBox.Color = Colors["Accent"]
+                                        else
+                                            Element.OuterBox.Color = Element.DefaultBorderColor
+                                        end
+                                    elseif Element.Type == "Slider" then
+                                        local Hovered = ActiveWindow:IsHovered(Element.Background)
+                                        if Hovered or Element.Dragging then
+                                            IsHovered = true
+                                            HoveredButton = Element
+                                            Element.Border.Color = Colors["Accent"]
+                                        else
+                                            Element.Border.Color = Element.DefaultBorderColor
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    UpdateButtonVisuals(CurrentTabContent.LeftSections)
+                    UpdateButtonVisuals(CurrentTabContent.RightSections)
+                end
+            end
+
+            local ActiveSlider = nil
+            if ActiveWindow.ActiveTab then
+                local CurrentTabContent = ActiveWindow.TabContents[ActiveWindow.ActiveTab]
+                if CurrentTabContent then
+                    local function FindDraggingSlider(Sections)
+                        for _, Section in ipairs(Sections) do
+                            if Section.Visible and Section.Interfaces then
+                                for _, Element in ipairs(Section.Interfaces) do
+                                    if Element.Type == "Slider" and Element.Dragging then
+                                        return Element
+                                    end
+                                end
+                            end
+                        end
+                        return nil
+                    end
+                    ActiveSlider = FindDraggingSlider(CurrentTabContent.LeftSections) or FindDraggingSlider(CurrentTabContent.RightSections)
+                end
+            end
+
+            if ActiveSlider and Mouse.Pressed then
+                IsHovered = true
+                UIClickHandled = true
+                local MouseX = Mouse.X
+                local SliderX = ActiveSlider.Background.Position[1]
+                local SliderW = ActiveSlider.Background.Size[1]
+                if SliderW > 0 then
+                    local Ratio = math.clamp((MouseX - SliderX) / SliderW, 0, 1)
+                    local RawValue = ActiveSlider.Min + (ActiveSlider.Max - ActiveSlider.Min) * Ratio
+                    ActiveSlider:SetValue(RawValue)
+                end
+            end
+
+            if not Mouse.Pressed then
+                if ActiveWindow.ActiveTab then
+                    local CurrentTabContent = ActiveWindow.TabContents[ActiveWindow.ActiveTab]
+                    if CurrentTabContent then
+                        local function StopDraggingSliders(Sections)
+                            for _, Section in ipairs(Sections) do
+                                if Section.Visible and Section.Interfaces then
+                                    for _, Element in ipairs(Section.Interfaces) do
+                                        if Element.Type == "Slider" and Element.Dragging then
+                                            Element.Dragging = false
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        StopDraggingSliders(CurrentTabContent.LeftSections)
+                        StopDraggingSliders(CurrentTabContent.RightSections)
+                    end
+                end
+            end
+            
+            if ActiveWindow.ActiveTab then
+                local CurrentTabContent = ActiveWindow.TabContents[ActiveWindow.ActiveTab]
+                if CurrentTabContent then
+                    local function CheckKeybindListening(Sections)
+                        for _, Section in ipairs(Sections) do
+                            if Section.Visible and Section.Interfaces then
+                                for _, Element in ipairs(Section.Interfaces) do
+                                    if Element.Type == "Toggle" and Element.Listening then
+                                        local Keys = getpressedkeys()
+                                        if #Keys > 0 then
+                                            local Key = Keys[1]
+                                            if Key == "Escape" then
+                                                Element.KeybindValue = nil
+                                                Element.KeybindText.Text = "None"
+                                                Element.Listening = false
+                                                if Element.KeybindCallback then
+                                                    spawn(function() Element.KeybindCallback(nil, Element.KeybindMode) end)
+                                                end
+                                            elseif Key ~= "MouseButton1" 
+                                            and Key ~= "MouseButton2" 
+                                            and not Key:find("Mouse") then
+                                                Element.KeybindValue = Key
+                                                Element.KeybindText.Text = Key
+                                                Element.Listening = false
+                                                if Element.KeybindCallback then
+                                                    spawn(function() Element.KeybindCallback(Key, Element.KeybindMode) end)
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+
+                    local function CheckModeSelectorClick(Sections)
+                        for _, Section in ipairs(Sections) do
+                            if Section.Visible and Section.Interfaces then
+                                for _, Element in ipairs(Section.Interfaces) do
+                                    if Element.Type == "Toggle" and Element.ModeSelectorBackground and Element.ModeSelectorBackground.Visible then
+                                        local SelectorPos = Element.ModeSelectorBackground.Position
+                                        local SelectorSize = Element.ModeSelectorBackground.Size
+                                        if Mouse.Clicked then
+                                            if Mouse.X >= SelectorPos.x and Mouse.X <= SelectorPos.x + SelectorSize.x and
+                                               Mouse.Y >= SelectorPos.y and Mouse.Y <= SelectorPos.y + (SelectorSize.y / 2) then
+                                                Element.KeybindMode = "Hold"
+                                                Element:ToggleModeSelector(false)
+                                                UIClickHandled = true
+                                            elseif Mouse.X >= SelectorPos.x and Mouse.X <= SelectorPos.x + SelectorSize.x and
+                                                   Mouse.Y >= SelectorPos.y + (SelectorSize.y / 2) and Mouse.Y <= SelectorPos.y + SelectorSize.y then
+                                                Element.KeybindMode = "Toggle"
+                                                Element:ToggleModeSelector(false)
+                                                UIClickHandled = true
+                                            elseif not (Mouse.X >= SelectorPos.x and Mouse.X <= SelectorPos.x + SelectorSize.x and
+                                                      Mouse.Y >= SelectorPos.y and Mouse.Y <= SelectorPos.y + SelectorSize.y) then
+                                                Element:ToggleModeSelector(false)
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+
+                    local function CheckKeybindStates(Sections)
+                        for _, Section in ipairs(Sections) do
+                            if Section.Visible and Section.Interfaces then
+                                for _, Element in ipairs(Section.Interfaces) do
+                                    if Element.Type == "Toggle" and Element.KeybindValue and not Element.Listening then
+                                        local Keys = getpressedkeys()
+                                        local KeyPressed = false
+                                        for _, K in ipairs(Keys) do
+                                            if K == Element.KeybindValue then
+                                                KeyPressed = true
+                                                break
+                                            end
+                                        end
+                                        
+                                        if Element.KeybindMode == "Hold" then
+                                            Element:SetState(KeyPressed)
+                                        elseif Element.KeybindMode == "Toggle" and KeyPressed and not Element.LastKeyState then
+                                            Element:SetState(not Element.State)
+                                        end
+                                        Element.LastKeyState = KeyPressed
+                                    end
+                                end
+                            end
+                        end
+                    end
+
+                    CheckKeybindListening(CurrentTabContent.LeftSections)
+                    CheckKeybindListening(CurrentTabContent.RightSections)
+                    CheckModeSelectorClick(CurrentTabContent.LeftSections)
+                    CheckModeSelectorClick(CurrentTabContent.RightSections)
+                    CheckKeybindStates(CurrentTabContent.LeftSections)
+                    CheckKeybindStates(CurrentTabContent.RightSections)
+                end
             end
         end
+        wait()
     end
-    
-    -- Reset pool stats
-    self.Pool.Available = {}
-    self.Pool.InUse = {}
-    self.Pool.Stats = {Created = 0, Recycled = 0, Active = 0}
-    
-    -- Attempt to clear all drawings
-    pcall(function()
-        if Drawing and Drawing.clear then
-            Drawing.clear()
-        end
-    end)
-end
+end)
 
--- Return the library
-return SevereLib:Init() 
+return safeExecute(createLibrary)
