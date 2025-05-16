@@ -1784,6 +1784,9 @@ end
 
 -- Função para criar elementos da UI com mais facilidade
 function Library:Create(elementType, position, properties, parent)
+    if type(elementType) ~= "string" then
+        elementType = tostring(elementType)
+    end
     local element = nil
     local elementProperties = properties or {}
     local elementPosition = position or {0, 0}
