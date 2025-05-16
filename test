@@ -1796,8 +1796,14 @@ function Library:Create(elementType, position, properties, parent)
     elementProperties.Hidden = nil
     elementProperties.Parent = nil
     
+    -- Converte para minúsculas sem usar o método lower
+    local elementTypeLower = elementType
+    if type(elementType) == "string" then
+        elementTypeLower = string.lower(elementType)
+    end
+    
     -- Cria o tipo de elemento adequado
-    if elementType:lower() == "square" or elementType:lower() == "frame" then
+    if elementTypeLower == "square" or elementTypeLower == "frame" then
         element = Drawing.new("Square")
         element.Visible = not isHidden
         element.Filled = true
@@ -1806,7 +1812,7 @@ function Library:Create(elementType, position, properties, parent)
         element.Size = {100, 100}
         element.Position = {elementPosition[1], elementPosition[2]}
         element.Transparency = 1
-    elseif elementType:lower() == "text" or elementType:lower() == "textlabel" then
+    elseif elementTypeLower == "text" or elementTypeLower == "textlabel" then
         element = Drawing.new("Text")
         element.Visible = not isHidden
         element.Center = false
@@ -1817,13 +1823,13 @@ function Library:Create(elementType, position, properties, parent)
         element.OutlineColor = ColorUtils:ToColor3(Colors["Outline"])
         element.Position = {elementPosition[1], elementPosition[2]}
         element.Transparency = 1
-    elseif elementType:lower() == "image" then
+    elseif elementTypeLower == "image" then
         element = Drawing.new("Image")
         element.Visible = not isHidden
         element.Size = {100, 100}
         element.Position = {elementPosition[1], elementPosition[2]}
         element.Transparency = 1
-    elseif elementType:lower() == "circle" then
+    elseif elementTypeLower == "circle" then
         element = Drawing.new("Circle")
         element.Visible = not isHidden
         element.Filled = true
@@ -1833,7 +1839,7 @@ function Library:Create(elementType, position, properties, parent)
         element.Radius = 50
         element.Position = {elementPosition[1], elementPosition[2]}
         element.Transparency = 1
-    elseif elementType:lower() == "line" then
+    elseif elementTypeLower == "line" then
         element = Drawing.new("Line")
         element.Visible = not isHidden
         element.Thickness = 1
