@@ -1,14 +1,13 @@
 local Colors = {
-    ["Accent"] = {126, 87, 194},        -- Purple accent color
-    ["DarkContrast"] = {22, 22, 31},    -- Darker background
-    ["LightContrast"] = {28, 28, 38},   -- Lighter background
-    ["Border"] = {40, 40, 60},          -- Subtle border color
-    ["Selected"] = {255, 255, 255},     -- White for selected items
-    ["Text"] = {220, 220, 230},         -- Slightly brighter text
-    ["DisabledText"] = {120, 120, 140}, -- More visible disabled text
-    ["Highlight"] = {140, 100, 215},    -- Highlight color for hovering
-    ["Error"] = {240, 90, 90},          -- Error color
-    ["Success"] = {100, 200, 100}       -- Success color
+    ["Accent"] = {126, 87, 194},       -- Rich purple
+    ["AccentSecondary"] = {149, 117, 205}, -- Lighter purple
+    ["DarkContrast"] = {20, 20, 30},   -- Darker background
+    ["LightContrast"] = {28, 28, 40},  -- Lighter background
+    ["Border"] = {55, 55, 75},         -- Subtle border
+    ["Selected"] = {255, 255, 255},    -- White highlight
+    ["Text"] = {225, 225, 235},        -- Bright text
+    ["SubText"] = {180, 180, 190},     -- Subtitle text
+    ["DisabledText"] = {120, 120, 140} -- Disabled text
 }
 
 local MouseService = findservice(Game, "MouseService")
@@ -38,15 +37,15 @@ function Library:Unload()
         if ActiveWindow.Tabs then
             for _, Tab in ipairs(ActiveWindow.Tabs) do
                 if Tab.Button then Tab.Button:Remove() end
+                if Tab.ButtonBorder then Tab.ButtonBorder:Remove() end
                 if Tab.ButtonText then Tab.ButtonText:Remove() end
                 if Tab.SelectedHighlight then Tab.SelectedHighlight:Remove() end
-                if Tab.SelectedIndicator then Tab.SelectedIndicator:Remove() end
                 if Tab.Content then
                     if Tab.Content.LeftSections then
                         for _, Section in ipairs(Tab.Content.LeftSections) do
                             if Section.Background then Section.Background:Remove() end
+                            if Section.Border then Section.Border:Remove() end
                             if Section.Title then Section.Title:Remove() end
-                            if Section.SectionTopLine then Section.SectionTopLine:Remove() end
                             if Section.Interfaces then
                                 for _, Interface in ipairs(Section.Interfaces) do
                                     if Interface.Type == "Button" then
@@ -69,9 +68,9 @@ function Library:Unload()
                                         if Interface.Background then Interface.Background:Remove() end
                                         if Interface.Border then Interface.Border:Remove() end
                                         if Interface.Fill then Interface.Fill:Remove() end
-                                        if Interface.Knob then Interface.Knob:Remove() end
                                         if Interface.Text then Interface.Text:Remove() end
                                         if Interface.ValueText then Interface.ValueText:Remove() end
+                                        if Section.SectionTopLine then Section.SectionTopLine:Remove() end
                                     end
                                 end
                             end
@@ -80,8 +79,8 @@ function Library:Unload()
                     if Tab.Content.RightSections then
                         for _, Section in ipairs(Tab.Content.RightSections) do
                             if Section.Background then Section.Background:Remove() end
+                            if Section.Border then Section.Border:Remove() end
                             if Section.Title then Section.Title:Remove() end
-                            if Section.SectionTopLine then Section.SectionTopLine:Remove() end
                             if Section.Interfaces then
                                 for _, Interface in ipairs(Section.Interfaces) do
                                     if Interface.Type == "Button" then
@@ -104,9 +103,9 @@ function Library:Unload()
                                         if Interface.Background then Interface.Background:Remove() end
                                         if Interface.Border then Interface.Border:Remove() end
                                         if Interface.Fill then Interface.Fill:Remove() end
-                                        if Interface.Knob then Interface.Knob:Remove() end
                                         if Interface.Text then Interface.Text:Remove() end
                                         if Interface.ValueText then Interface.ValueText:Remove() end
+                                        if Section.SectionTopLine then Section.SectionTopLine:Remove() end
                                     end
                                 end
                             end
@@ -117,9 +116,10 @@ function Library:Unload()
         end
         if ActiveWindow.WindowBackground then ActiveWindow.WindowBackground:Remove() end
         if ActiveWindow.Title then ActiveWindow.Title:Remove() end
-        if ActiveWindow.TitleAccent then ActiveWindow.TitleAccent:Remove() end
         if ActiveWindow.TabBackground then ActiveWindow.TabBackground:Remove() end
+        if ActiveWindow.TabBorder then ActiveWindow.TabBorder:Remove() end
         if ActiveWindow.WindowBackground2 then ActiveWindow.WindowBackground2:Remove() end
+        if ActiveWindow.Window2Border then ActiveWindow.Window2Border:Remove() end
         if ActiveWindow.WindowBorder then ActiveWindow.WindowBorder:Remove() end
         ActiveWindow.Tabs = {}
         ActiveWindow.TabButtons = {}
@@ -165,16 +165,17 @@ function ToggleUI()
         local Main = ActiveWindow
         SetVisibility(Main.WindowBackground, IsVisible)
         SetVisibility(Main.Title, IsVisible)
-        SetVisibility(Main.TitleAccent, IsVisible)
         SetVisibility(Main.TabBackground, IsVisible)
+        SetVisibility(Main.TabBorder, IsVisible)
         SetVisibility(Main.WindowBackground2, IsVisible)
+        SetVisibility(Main.Window2Border, IsVisible)
         SetVisibility(Main.WindowBorder, IsVisible)
         for _, Tab in ipairs(Main.Tabs) do
             SetVisibility(Tab.Button, IsVisible)
+            SetVisibility(Tab.ButtonBorder, IsVisible)
             SetVisibility(Tab.ButtonText, IsVisible)
             local ActiveTab = Tab.Name == Main.ActiveTab
             SetVisibility(Tab.SelectedHighlight, IsVisible and ActiveTab)
-            SetVisibility(Tab.SelectedIndicator, IsVisible and ActiveTab)
             SetInterfaceVisibility(Tab.Content.LeftSections, IsVisible and ActiveTab)
             SetInterfaceVisibility(Tab.Content.RightSections, IsVisible and ActiveTab)
         end
@@ -202,54 +203,56 @@ function Library:Create(Options)
     Main.WindowBackground.Color = Colors["DarkContrast"]
     Main.WindowBackground.Filled = true
     Main.WindowBackground.Thickness = 1
-    Main.WindowBackground.Transparency = 1
-    Main.WindowBackground.Rounded = true
-    Main.WindowBackground.Rounding = 8
+    Main.WindowBackground.Transparency = 0.97
     SetInitialVisibility(Main.WindowBackground)
 
     Main.Title = Drawing.new("Text")
     Main.Title.Text = TitleText
-    Main.Title.Size = 16
-    Main.Title.Font = 2
-    Main.Title.Color = Colors["Accent"]
-    Main.Title.Outline = false
-    Main.Title.Position = {Main.WindowBackground.Position.x + 15, Main.WindowBackground.Position.y + 10}
+    Main.Title.Size = 17
+    Main.Title.Font = 5
+    Main.Title.Color = Colors["Text"]
+    Main.Title.Outline = true
+    Main.Title.OutlineColor = {0, 0, 0}
+    Main.Title.Position = {Main.WindowBackground.Position.x + 10, Main.WindowBackground.Position.y + 5}
     Main.Title.Transparency = 1
     Main.Title.Center = false
     SetInitialVisibility(Main.Title)
 
-    -- Aesthetic accent line below title
-    Main.TitleAccent = Drawing.new("Square")
-    Main.TitleAccent.Position = {Main.WindowBackground.Position.x + 15, Main.WindowBackground.Position.y + 32}
-    Main.TitleAccent.Size = {100, 2}
-    Main.TitleAccent.Color = Colors["Accent"]
-    Main.TitleAccent.Filled = true
-    Main.TitleAccent.Transparency = 1
-    Main.TitleAccent.Rounded = true
-    Main.TitleAccent.Rounding = 1
-    SetInitialVisibility(Main.TitleAccent)
-
     Main.TabBackground = Drawing.new("Square")
-    Main.TabBackground.Position = {Main.WindowBackground.Position.x + 15, Main.WindowBackground.Position.y + 45}
-    Main.TabBackground.Size = {Main.WindowBackground.Size.x - 30, 22}
-    Main.TabBackground.Color = Colors["LightContrast"]
+    Main.TabBackground.Position = {Main.WindowBackground.Position.x + 10, Main.WindowBackground.Position.y + 25}
+    Main.TabBackground.Size = {Main.WindowBackground.Size.x - 20, 19}
+    Main.TabBackground.Color = Colors["DarkContrast"]
     Main.TabBackground.Filled = true
     Main.TabBackground.Thickness = 1
     Main.TabBackground.Transparency = 1
-    Main.TabBackground.Rounded = true
-    Main.TabBackground.Rounding = 6
     SetInitialVisibility(Main.TabBackground)
 
+    Main.TabBorder = Drawing.new("Square")
+    Main.TabBorder.Position = {Main.TabBackground.Position.x, Main.TabBackground.Position.y}
+    Main.TabBorder.Size = {Main.TabBackground.Size.x, Main.TabBackground.Size.y}
+    Main.TabBorder.Color = Colors["Border"]
+    Main.TabBorder.Filled = false
+    Main.TabBorder.Thickness = 1
+    Main.TabBorder.Transparency = 0.7
+    SetInitialVisibility(Main.TabBorder)
+
     Main.WindowBackground2 = Drawing.new("Square")
-    Main.WindowBackground2.Position = {Main.WindowBackground.Position.x + 15, Main.WindowBackground.Position.y + 75}
-    Main.WindowBackground2.Size = {Main.WindowBackground.Size.x - 30, Main.WindowBackground.Size.y - 90}
+    Main.WindowBackground2.Position = {Main.WindowBackground.Position.x + 10, Main.WindowBackground.Position.y + 40}
+    Main.WindowBackground2.Size = {Main.WindowBackground.Size.x - 20, Main.WindowBackground.Size.y - 50}
     Main.WindowBackground2.Color = Colors["LightContrast"]
     Main.WindowBackground2.Filled = true
     Main.WindowBackground2.Thickness = 1
-    Main.WindowBackground2.Transparency = 1
-    Main.WindowBackground2.Rounded = true
-    Main.WindowBackground2.Rounding = 8
+    Main.WindowBackground2.Transparency = 0.95
     SetInitialVisibility(Main.WindowBackground2)
+
+    Main.Window2Border = Drawing.new("Square")
+    Main.Window2Border.Position = {Main.WindowBackground2.Position.x, Main.WindowBackground2.Position.y}
+    Main.Window2Border.Size = {Main.WindowBackground2.Size.x, Main.WindowBackground2.Size.y}
+    Main.Window2Border.Color = Colors["Border"]
+    Main.Window2Border.Filled = false
+    Main.Window2Border.Thickness = 1
+    Main.Window2Border.Transparency = 0.7
+    SetInitialVisibility(Main.Window2Border)
 
     Main.WindowBorder = Drawing.new("Square")
     Main.WindowBorder.Size = {Main.WindowBackground.Size.x, Main.WindowBackground.Size.y}
@@ -257,14 +260,8 @@ function Library:Create(Options)
     Main.WindowBorder.Color = Colors["Accent"]
     Main.WindowBorder.Filled = false
     Main.WindowBorder.Thickness = 1.5
-    Main.WindowBorder.Transparency = 0.5
-    Main.WindowBorder.Rounded = true
-    Main.WindowBorder.Rounding = 8
+    Main.WindowBorder.Transparency = 0.9
     SetInitialVisibility(Main.WindowBorder)
-
-    -- Remove the TabBorder and Window2Border for cleaner look
-    Main.TabBorder = nil
-    Main.Window2Border = nil
 
     Main.Tabs = {}
     Main.TabButtons = {}
@@ -299,10 +296,11 @@ function Library:Create(Options)
     function Main:UpdateElementPositions()
         local BasePos = Main.WindowBackground.Position
         local BaseX, BaseY = BasePos.x, BasePos.y
-        Main.Title.Position = {BaseX + 15, BaseY + 10}
-        Main.TitleAccent.Position = {BaseX + 15, BaseY + 32}
-        Main.TabBackground.Position = {BaseX + 15, BaseY + 45}
-        Main.WindowBackground2.Position = {BaseX + 15, BaseY + 75}
+        Main.Title.Position = {BaseX + 10, BaseY + 5}
+        Main.TabBackground.Position = {BaseX + 10, BaseY + 25}
+        Main.TabBorder.Position = {Main.TabBackground.Position.x, Main.TabBackground.Position.y}
+        Main.WindowBackground2.Position = {BaseX + 10, BaseY + 40}
+        Main.Window2Border.Position = {Main.WindowBackground2.Position.x, Main.WindowBackground2.Position.y}
         Main.WindowBorder.Position = {BaseX, BaseY}
         Main:UpdateLayout()
     end
@@ -331,21 +329,17 @@ function Library:Create(Options)
             end
             if RoundedWidth <= 0 then RoundedWidth = 1 end
             local Button = Tab.Button
+            local ButtonBorder = Tab.ButtonBorder
             local ButtonText = Tab.ButtonText
             local Highlight = Tab.SelectedHighlight
-            local Indicator = Tab.SelectedIndicator
             Button.Position = {RoundedStartX, TabY}
             Button.Size = {RoundedWidth, TabH}
+            ButtonBorder.Position = {RoundedStartX, TabY}
+            ButtonBorder.Size = {RoundedWidth, TabH}
             Highlight.Position = {RoundedStartX, TabY}
             Highlight.Size = {RoundedWidth, TabH}
             ButtonText.Position = {RoundedStartX + (RoundedWidth / 2), TabY + (TabH / 2) - 7}
             ButtonText.Center = true
-            
-            -- Update indicator position if tab is selected
-            if Tab.Name == Main.ActiveTab then
-                Indicator.Position = {RoundedStartX + 5, TabY + TabH - 2}
-                Indicator.Size = {RoundedWidth - 10, 2}
-            end
         end
     end
 
@@ -356,7 +350,7 @@ function Library:Create(Options)
         local ParentPos = Main.WindowBackground2.Position
         local ParentSize = Main.WindowBackground2.Size
         local ParentWidth = ParentSize.x
-        local Padding = 8 -- Increase padding for a more spacious look
+        local Padding = 5
         local AvailableWidth = ParentWidth - (Padding * 2) - Padding
         local ColumnWidth = math.floor(AvailableWidth / 2)
         local BaseX = ParentPos.x
@@ -369,120 +363,112 @@ function Library:Create(Options)
 
         local function UpdateSectionLayout(Section, ColumnX, StartY, Width)
             local InnerWidth = Width - (Padding * 2)
-            local LineThickness = 2 -- Thicker accent line
+            local LineThickness = 1
             local BorderThickness = Section.Border.Thickness
 
             SetVisibility(Section.Background, true)
+            SetVisibility(Section.Border, true)
             SetVisibility(Section.Title, true)
             SetVisibility(Section.SectionTopLine, true)
 
             Section.Background.Position = {ColumnX + Padding, StartY}
             Section.Background.Size = {InnerWidth, 0}
 
-            Section.SectionTopLine.Position = {ColumnX + Padding + 5, StartY + Padding + 20} -- Move below title
-            Section.SectionTopLine.Size = {30, LineThickness} -- Shorter line for a cleaner look
+            Section.Border.Position = {ColumnX + Padding - BorderThickness, StartY + Padding - 1}
+            Section.Border.Size = {InnerWidth + BorderThickness * 2, 0}
 
-            local TitleHeight = Section.Title.TextBounds and Section.Title.TextBounds.y or 15
-            Section.Title.Position = {ColumnX + Padding + 8, StartY + Padding - 1}
+            Section.SectionTopLine.Position = {ColumnX + Padding, StartY + Padding}
+            Section.SectionTopLine.Size = {InnerWidth, LineThickness}
+            Section.SectionTopLine.Color = Colors["AccentSecondary"]
 
-            local CurrentInternalY = StartY + Padding + LineThickness + Padding + TitleHeight + 10 -- More spacing
+            local TitleHeight = Section.Title.TextBounds and Section.Title.TextBounds.y
+            Section.Title.Position = {ColumnX + Padding + Padding, StartY + Padding + LineThickness + Padding - 1.5}
+
+            local CurrentInternalY = StartY + Padding + LineThickness + Padding + TitleHeight + Padding
 
             if Section.Interfaces then
                 for _, Element in ipairs(Section.Interfaces) do
                     if Element.Type == "Button" then
-                        local ButtonHeight = 24 -- Taller buttons
+                        local ButtonHeight = 18
                         local ButtonWidth = InnerWidth - (Padding * 2)
                         local ButtonX = ColumnX + Padding + Padding
                         local ButtonY = CurrentInternalY
                         SetVisibility(Element.ButtonBackground, true)
                         SetVisibility(Element.ButtonBorder, true)
                         SetVisibility(Element.ButtonText, true)
-                        
-                        -- Position the shadow slightly offset
-                        Element.ButtonBorder.Position = {ButtonX + 1, ButtonY + 1}
-                        Element.ButtonBorder.Size = {ButtonWidth, ButtonHeight}
-                        
                         Element.ButtonBackground.Position = {ButtonX, ButtonY}
                         Element.ButtonBackground.Size = {ButtonWidth, ButtonHeight}
+                        Element.ButtonBorder.Position = {ButtonX, ButtonY}
+                        Element.ButtonBorder.Size = {ButtonWidth, ButtonHeight}
                         Element.ButtonText.Position = {ButtonX + math.floor(ButtonWidth / 2), ButtonY + math.floor(ButtonHeight / 2) - 7}
                         Element.ButtonText.Center = true
-                        Element.ButtonText.Size = 14
-                        CurrentInternalY = CurrentInternalY + ButtonHeight + Padding + 2 -- Add more spacing between elements
+                        Element.ButtonText.Size = 13
+                        CurrentInternalY = CurrentInternalY + ButtonHeight + Padding
                     elseif Element.Type == "Toggle" then
-                        local ToggleHeight = 18
-                        local ToggleWidth = 36 -- Width of the pill toggle
-                        local TextWidth = InnerWidth - ToggleWidth - Padding - 20 -- Extra space for visual separation
+                        local ToggleHeight = 16
+                        local ToggleWidth = 16
+                        local TextWidth = InnerWidth - ToggleWidth - Padding
                         local ToggleX = ColumnX + Padding + Padding
                         local ToggleY = CurrentInternalY
                         SetVisibility(Element.OuterBox, true)
                         SetVisibility(Element.InnerBox, true)
                         SetVisibility(Element.Text, true)
-                        
-                        -- Position the toggle at the right side
-                        local ToggleRightX = ColumnX + InnerWidth - ToggleWidth
-                        Element.OuterBox.Position = {ToggleRightX, ToggleY}
+                        Element.OuterBox.Position = {ToggleX, ToggleY}
                         Element.OuterBox.Size = {ToggleWidth, ToggleHeight}
-                        
-                        -- Position the toggle indicator based on state
-                        if Element.State then
-                            Element.InnerBox.Position = {ToggleRightX + Element.OuterBox.Size.x - Element.InnerBox.Size.x - 2, ToggleY + 2}
-                        else
-                            Element.InnerBox.Position = {ToggleRightX + 2, ToggleY + 2}
-                        end
-                        Element.Text.Position = {ToggleX, ToggleY + math.floor(ToggleHeight / 2) - 6}
+                        Element.InnerBox.Position = {ToggleX + 1, ToggleY + 1}
+                        Element.InnerBox.Size = {14, 14}
+                        Element.Text.Position = {ToggleX + ToggleWidth + Padding, ToggleY + math.floor(ToggleHeight / 2) - 6}
                         Element.Text.Center = false
                         
                         if Element.KeybindBackground then
-                            -- Update keybind position code if needed
+                            local KeybindWidth = 40
+                            local KeybindX = ColumnX + InnerWidth - KeybindWidth + Padding
+                            local KeybindY = ToggleY
+                            SetVisibility(Element.KeybindBackground, true)
+                            SetVisibility(Element.KeybindBorder, true)
+                            SetVisibility(Element.KeybindText, true)
+                            Element.KeybindBackground.Position = {KeybindX - 5, KeybindY}
+                            Element.KeybindBackground.Size = {KeybindWidth, ToggleHeight}
+                            Element.KeybindBorder.Position = {KeybindX - 5, KeybindY}
+                            Element.KeybindBorder.Size = {KeybindWidth, ToggleHeight}
+                            Element.KeybindText.Position = {
+                                KeybindX - 5 + (KeybindWidth / 2),
+                                KeybindY + (ToggleHeight / 2) - 6
+                            }
+                            Element.KeybindText.Center = true
                         end
                         
-                        CurrentInternalY = CurrentInternalY + ToggleHeight + Padding + 3 -- More spacing
+                        CurrentInternalY = CurrentInternalY + ToggleHeight + Padding
                     elseif Element.Type == "Slider" then
                         local SliderHeight = 15
                         local SliderWidth = InnerWidth - (Padding * 2)
                         local SliderX = ColumnX + Padding + Padding
-                        local SliderY = CurrentInternalY + 16 -- More vertical spacing for the title
+                        local SliderY = CurrentInternalY + 14
                         SetVisibility(Element.Background, true)
-                        if Element.Border then SetVisibility(Element.Border, true) end
+                        SetVisibility(Element.Border, true)
                         SetVisibility(Element.Fill, true)
                         SetVisibility(Element.Text, true)
                         SetVisibility(Element.ValueText, true)
-                        if Element.Knob then SetVisibility(Element.Knob, true) end
-                        
-                        Element.Border.Position = {SliderX + 1, SliderY + 1}
-                        Element.Border.Size = {SliderWidth, SliderHeight}
-                        
                         Element.Background.Position = {SliderX, SliderY}
                         Element.Background.Size = {SliderWidth, SliderHeight}
-                        
-                        local percentage = (Element.Value - Element.Min) / (Element.Max - Element.Min)
-                        local FillWidth = percentage * SliderWidth
+                        Element.Border.Position = {SliderX, SliderY}
+                        Element.Border.Size = {SliderWidth, SliderHeight}
                         Element.Fill.Position = {SliderX, SliderY}
-                        Element.Fill.Size = {FillWidth, SliderHeight}
-                        
-                        -- Position the knob
-                        if Element.Knob then
-                            local knobPosX = SliderX + FillWidth - (Element.Knob.Size.x / 2)
-                            local knobPosY = SliderY - (Element.Knob.Size.y - SliderHeight) / 2
-                            Element.Knob.Position = {knobPosX, knobPosY}
-                        end
-                        
-                        Element.Text.Position = {SliderX, SliderY - 17}
+                        Element.Fill.Size = {((Element.Value - Element.Min) / (Element.Max - Element.Min)) * SliderWidth, SliderHeight}
+                        Element.Text.Position = {SliderX, SliderY - 15}
                         local SliderCenterX = SliderX + (SliderWidth / 2)
                         local SliderCenterY = SliderY + (SliderHeight / 2) - 6.5
                         Element.ValueText.Position = {SliderCenterX, SliderCenterY}
                         Element.ValueText.Center = true
-                        CurrentInternalY = CurrentInternalY + SliderHeight + Padding + 20 -- Add more spacing below slider
+                        CurrentInternalY = CurrentInternalY + SliderHeight + Padding + 15
                     end
                 end
             end
             local TotalSectionHeight = (CurrentInternalY - StartY)
             Section.Background.Size = {InnerWidth, TotalSectionHeight}
-            if Section.Border and Section.Border.Size then -- Check if border exists and has a Size property
-                Section.Border.Size = {InnerWidth + BorderThickness * 2, TotalSectionHeight + BorderThickness - Padding}
-            end
+            Section.Border.Size = {InnerWidth + BorderThickness * 2, TotalSectionHeight + BorderThickness - Padding}
             Section.CalculatedHeight = TotalSectionHeight
-            return StartY + TotalSectionHeight + Padding + 5 -- Added more spacing between sections
+            return StartY + TotalSectionHeight + Padding
         end
 
         for _, Section in ipairs(CurrentTabContent.LeftSections) do
@@ -514,38 +500,29 @@ function Library:Create(Options)
         TabButton.Color = Colors["LightContrast"]
         TabButton.Filled = true
         TabButton.Thickness = 1
-        TabButton.Transparency = 1
-        TabButton.Rounded = true
-        TabButton.Rounding = 6
+        TabButton.Transparency = 0.9
         SetInitialVisibility(TabButton)
-        
+        local TabButtonBorder = Drawing.new("Square")
+        TabButtonBorder.Color = Colors["Border"]
+        TabButtonBorder.Filled = false
+        TabButtonBorder.Thickness = 1
+        TabButtonBorder.Transparency = 0.7
+        SetInitialVisibility(TabButtonBorder)
         local TabButtonText = Drawing.new("Text")
         TabButtonText.Text = TabName
         TabButtonText.Size = 14
-        TabButtonText.Font = 2
+        TabButtonText.Font = 5
         TabButtonText.Color = Colors["Text"]
-        TabButtonText.Outline = false
+        TabButtonText.Outline = true
+        TabButtonText.OutlineColor = {0, 0, 0}
         TabButtonText.Transparency = 1
         TabButtonText.Center = true
         SetInitialVisibility(TabButtonText)
-        
         local SelectedHighlight = Drawing.new("Square")
         SelectedHighlight.Color = Colors["Accent"]
-        SelectedHighlight.Transparency = 0.4
+        SelectedHighlight.Transparency = 0.15
         SelectedHighlight.Filled = true
-        SelectedHighlight.Rounded = true
-        SelectedHighlight.Rounding = 6
         SelectedHighlight.Visible = false
-        
-        -- Bottom indicator for selected tab
-        local SelectedIndicator = Drawing.new("Square")
-        SelectedIndicator.Color = Colors["Accent"]
-        SelectedIndicator.Transparency = 1
-        SelectedIndicator.Filled = true
-        SelectedIndicator.Rounded = true
-        SelectedIndicator.Rounding = 1
-        SelectedIndicator.Visible = false
-        
         local TabContent = {
             Name = TabName,
             LeftSections = {},
@@ -560,38 +537,30 @@ function Library:Create(Options)
             SectionBackground.Color = Colors["DarkContrast"]
             SectionBackground.Filled = true
             SectionBackground.Thickness = 1
-            SectionBackground.Transparency = 1
-            SectionBackground.Rounded = true
-            SectionBackground.Rounding = 6
+            SectionBackground.Transparency = 0.97
             SectionBackground.Visible = false
-            
+            local SectionBorder = Drawing.new("Square")
+            SectionBorder.Color = Colors["Border"]
+            SectionBorder.Filled = false
+            SectionBorder.Thickness = 1
+            SectionBorder.Transparency = 0.7
+            SectionBorder.Visible = false
             local SectionTitle = Drawing.new("Text")
             SectionTitle.Text = SectionName
             SectionTitle.Size = 14
-            SectionTitle.Font = 2
-            SectionTitle.Color = Colors["Accent"]
-            SectionTitle.Outline = false
+            SectionTitle.Font = 5
+            SectionTitle.Color = Colors["Text"]
+            SectionTitle.Outline = true
+            SectionTitle.OutlineColor = {0, 0, 0}
             SectionTitle.Transparency = 1
             SectionTitle.Center = false
             SectionTitle.Visible = false
-            
             local SectionTopLine = Drawing.new("Square")
-            SectionTopLine.Color = Colors["Accent"]
+            SectionTopLine.Color = Colors["AccentSecondary"]
             SectionTopLine.Filled = true
             SectionTopLine.Thickness = 1
-            SectionTopLine.Transparency = 0.8
-            SectionTopLine.Rounded = true
-            SectionTopLine.Rounding = 1
+            SectionTopLine.Transparency = 0.9
             SectionTopLine.Visible = false
-            
-            -- Remove border for cleaner look
-            local SectionBorder = {
-                Position = {x = 0, y = 0},
-                Size = {x = 0, y = 0},
-                Visible = false,
-                Thickness = 0
-            }
-            
             local Section = {
                 Type = "Section",
                 Name = SectionName,
@@ -612,39 +581,35 @@ function Library:Create(Options)
                 ButtonBackground.Color = Colors["LightContrast"]
                 ButtonBackground.Filled = true
                 ButtonBackground.Thickness = 1
-                ButtonBackground.Transparency = 1
-                ButtonBackground.Rounded = true
-                ButtonBackground.Rounding = 4
+                ButtonBackground.Transparency = 0.9
                 ButtonBackground.Visible = self.Visible
+
+                local ButtonBorder = Drawing.new("Square")
+                ButtonBorder.Color = Colors["Border"]
+                ButtonBorder.Filled = false
+                ButtonBorder.Thickness = 1
+                ButtonBorder.Transparency = 0.8
+                ButtonBorder.Visible = self.Visible
 
                 local ButtonText = Drawing.new("Text")
                 ButtonText.Text = ButtonName
                 ButtonText.Size = 14
-                ButtonText.Font = 2
+                ButtonText.Font = 5
                 ButtonText.Color = Colors["Text"]
-                ButtonText.Outline = false
+                ButtonText.Outline = true
+                ButtonText.OutlineColor = {0, 0, 0}
                 ButtonText.Transparency = 1
                 ButtonText.Center = true
                 ButtonText.Visible = self.Visible
-
-                -- Replace border with a subtle shadow effect
-                local ButtonShadow = Drawing.new("Square")
-                ButtonShadow.Color = {0, 0, 0}
-                ButtonShadow.Filled = true
-                ButtonShadow.Thickness = 1
-                ButtonShadow.Transparency = 0.2
-                ButtonShadow.Rounded = true
-                ButtonShadow.Rounding = 4
-                ButtonShadow.Visible = self.Visible
 
                 local Button = {
                     Type = "Button",
                     Name = ButtonName,
                     Callback = Callback,
                     ButtonBackground = ButtonBackground,
-                    ButtonBorder = ButtonShadow, -- Rename for compatibility
+                    ButtonBorder = ButtonBorder,
                     ButtonText = ButtonText,
-                    DefaultBorderColor = {0, 0, 0},
+                    DefaultBorderColor = Colors["Border"],
                     OriginalBackgroundColor = Colors["LightContrast"],
                     OriginalBackgroundTransparency = 1,
                     Visible = self.Visible
@@ -658,39 +623,30 @@ function Library:Create(Options)
                 local ToggleName = Options.Name or "Toggle"
                 local DefaultState = Options.Default or false
                 local Callback = Options.Callback or function() end
-                
-                -- Modern toggle design (rounded rectangle)
                 local ToggleOuterBox = Drawing.new("Square")
-                ToggleOuterBox.Size = {36, 18}
-                ToggleOuterBox.Filled = true
+                ToggleOuterBox.Size = {18, 18}
+                ToggleOuterBox.Filled = false
                 ToggleOuterBox.Thickness = 1
-                ToggleOuterBox.Transparency = 1
+                ToggleOuterBox.Transparency = 0.9
                 ToggleOuterBox.Visible = self.Visible
-                ToggleOuterBox.Color = DefaultState and Colors["Accent"] or Colors["Border"]
-                ToggleOuterBox.Rounded = true
-                ToggleOuterBox.Rounding = 10
-                
-                -- Toggle indicator (circle)
+                ToggleOuterBox.Color = Colors["Border"]
                 local ToggleInnerBox = Drawing.new("Square")
-                ToggleInnerBox.Size = {14, 14}
+                ToggleInnerBox.Size = {16, 16}
                 ToggleInnerBox.Filled = true
                 ToggleInnerBox.Thickness = 1
-                ToggleInnerBox.Transparency = 1
+                ToggleInnerBox.Transparency = 0.75
                 ToggleInnerBox.Visible = self.Visible
-                ToggleInnerBox.Color = Colors["Selected"]
-                ToggleInnerBox.Rounded = true
-                ToggleInnerBox.Rounding = 10
-                
+                ToggleInnerBox.Color = DefaultState and Colors["Accent"] or Colors["LightContrast"]
                 local ToggleText = Drawing.new("Text")
                 ToggleText.Text = ToggleName
                 ToggleText.Size = 14
-                ToggleText.Font = 2
+                ToggleText.Font = 5
                 ToggleText.Color = Colors["Text"]
-                ToggleText.Outline = false
+                ToggleText.Outline = true
+                ToggleText.OutlineColor = {0, 0, 0}
                 ToggleText.Transparency = 1
                 ToggleText.Center = false
                 ToggleText.Visible = self.Visible
-                
                 local ToggleState = DefaultState
                 
                 local Toggle = {
@@ -702,30 +658,176 @@ function Library:Create(Options)
                     InnerBox = ToggleInnerBox,
                     Text = ToggleText,
                     DefaultBorderColor = Colors["Border"],
-                    OriginalInnerColor = ToggleState and Colors["Accent"] or Colors["Border"],
+                    OriginalInnerColor = ToggleState and Colors["Accent"] or Colors["LightContrast"],
                     Visible = self.Visible,
                     LastKeyState = false
                 }
 
                 function Toggle:SetState(NewState)
                     self.State = NewState
-                    self.OuterBox.Color = NewState and Colors["Accent"] or Colors["Border"]
-                    -- Move the toggle indicator based on state
-                    if NewState then
-                        -- Position at right side when ON
-                        self.InnerBox.Position = {
-                            self.OuterBox.Position.x + self.OuterBox.Size.x - self.InnerBox.Size.x - 2, 
-                            self.OuterBox.Position.y + 2
-                        }
-                    else
-                        -- Position at left side when OFF
-                        self.InnerBox.Position = {
-                            self.OuterBox.Position.x + 2, 
-                            self.OuterBox.Position.y + 2
-                        }
-                    end
-                    self.OriginalInnerColor = self.OuterBox.Color
+                    self.InnerBox.Color = NewState and Colors["Accent"] or Colors["LightContrast"]
+                    self.OriginalInnerColor = self.InnerBox.Color
                     if self.Callback then spawn(function() self.Callback(NewState) end) end
+                end
+                
+                function Toggle:Keybind(Options)
+                    local KeybindBackground = Drawing.new("Square")
+                    KeybindBackground.Color = Colors["DarkContrast"]
+                    KeybindBackground.Filled = true
+                    KeybindBackground.Thickness = 1
+                    KeybindBackground.Transparency = 0.9
+                    KeybindBackground.Visible = self.Visible
+                    
+                    local KeybindBorder = Drawing.new("Square")
+                    KeybindBorder.Color = Colors["Border"]
+                    KeybindBorder.Filled = false
+                    KeybindBorder.Thickness = 1
+                    KeybindBorder.Transparency = 0.8
+                    KeybindBorder.Visible = self.Visible
+                    
+                    local KeybindText = Drawing.new("Text")
+                    KeybindText.Text = (Options.Default and not Options.Default:find("Mouse")) and Options.Default or "None"
+                    KeybindText.Size = 13
+                    KeybindText.Font = 5
+                    KeybindText.Color = Colors["SubText"]
+                    KeybindText.Outline = true
+                    KeybindText.OutlineColor = {0, 0, 0}
+                    KeybindText.Transparency = 1
+                    KeybindText.Center = true
+                    KeybindText.Visible = self.Visible
+
+                    local ModeSelectorBackground = Drawing.new("Square")
+                    ModeSelectorBackground.Color = Colors["LightContrast"]
+                    ModeSelectorBackground.Filled = true
+                    ModeSelectorBackground.Thickness = 1
+                    ModeSelectorBackground.Transparency = 1
+                    ModeSelectorBackground.Visible = false
+                    ModeSelectorBackground.ZIndex = 999
+
+                    local ModeSelectorBorder = Drawing.new("Square")
+                    ModeSelectorBorder.Color = Colors["Border"]
+                    ModeSelectorBorder.Filled = false
+                    ModeSelectorBorder.Thickness = 1
+                    ModeSelectorBorder.Transparency = 1
+                    ModeSelectorBorder.Visible = false
+                    ModeSelectorBorder.ZIndex = 999
+
+                    local HoldText = Drawing.new("Text")
+                    HoldText.Text = "Hold"
+                    HoldText.Size = 12
+                    HoldText.Font = 5
+                    HoldText.Color = Colors["Text"]
+                    HoldText.Outline = true
+                    HoldText.OutlineColor = {0, 0, 0}
+                    HoldText.Transparency = 1
+                    HoldText.Center = true
+                    HoldText.Visible = false
+                    HoldText.ZIndex = 999
+
+                    local ToggleText = Drawing.new("Text")
+                    ToggleText.Text = "Toggle"
+                    ToggleText.Size = 12
+                    ToggleText.Font = 5
+                    ToggleText.Color = Colors["Text"]
+                    ToggleText.Outline = true
+                    ToggleText.OutlineColor = {0, 0, 0}
+                    ToggleText.Transparency = 1
+                    ToggleText.Center = true
+                    ToggleText.Visible = false
+                    ToggleText.ZIndex = 999
+
+                    local ModeDivider = Drawing.new("Square")
+                    ModeDivider.Color = Colors["Border"]
+                    ModeDivider.Filled = true
+                    ModeDivider.Thickness = 1
+                    ModeDivider.Transparency = 1
+                    ModeDivider.Visible = false
+                    ModeDivider.ZIndex = 999
+                    
+                    Toggle.KeybindBackground = KeybindBackground
+                    Toggle.KeybindBorder = KeybindBorder
+                    Toggle.KeybindText = KeybindText
+                    Toggle.KeybindValue = (Options.Default and not Options.Default:find("Mouse")) and Options.Default or nil
+                    Toggle.KeybindCallback = Options.Callback
+                    Toggle.Listening = false
+                    Toggle.KeybindMode = "Toggle"
+                    Toggle.ModeSelectorBackground = ModeSelectorBackground
+                    Toggle.ModeSelectorBorder = ModeSelectorBorder
+                    Toggle.HoldText = HoldText
+                    Toggle.ToggleText = ToggleText
+                    Toggle.ModeDivider = ModeDivider
+                    
+                    function Toggle:SetKeybind(Key)
+                        if Key == "Escape" then
+                            self.KeybindValue = nil
+                            self.KeybindText.Text = "None"
+                        elseif Key and not Key:find("Mouse") then
+                            self.KeybindValue = Key
+                            self.KeybindText.Text = Key
+                        end
+                        if self.KeybindCallback then 
+                            spawn(function() self.KeybindCallback(self.KeybindValue, self.KeybindMode) end) 
+                        end
+                    end
+
+                    function Toggle:UpdateModeSelectorPosition()
+                        if self.KeybindBackground.Position and self.KeybindBackground.Size then
+                            local BgPos = self.KeybindBackground.Position
+                            local BgSize = self.KeybindBackground.Size
+                            local SelectorWidth = 60
+                            local SelectorHeight = 30
+                            
+                            self.ModeSelectorBackground.Position = {BgPos.x + BgSize.x - SelectorWidth, BgPos.y - SelectorHeight - 5}
+                            self.ModeSelectorBackground.Size = {SelectorWidth, SelectorHeight}
+                            self.ModeSelectorBorder.Position = self.ModeSelectorBackground.Position
+                            self.ModeSelectorBorder.Size = self.ModeSelectorBackground.Size
+                            
+                            self.HoldText.Position = {
+                                self.ModeSelectorBackground.Position.x + (SelectorWidth / 2),
+                                self.ModeSelectorBackground.Position.y + (SelectorHeight / 4) - 6
+                            }
+                            
+                            self.ToggleText.Position = {
+                                self.ModeSelectorBackground.Position.x + (SelectorWidth / 2),
+                                self.ModeSelectorBackground.Position.y + (SelectorHeight * 0.75) - 6
+                            }
+                            
+                            self.ModeDivider.Position = {
+                                self.ModeSelectorBackground.Position.x,
+                                self.ModeSelectorBackground.Position.y + (SelectorHeight / 2)
+                            }
+                            self.ModeDivider.Size = {SelectorWidth, 1}
+                        end
+                    end
+
+                    function Toggle:ToggleModeSelector(Visible)
+                        self.ModeSelectorBackground.Visible = Visible
+                        self.ModeSelectorBorder.Visible = Visible
+                        self.HoldText.Visible = Visible
+                        self.ToggleText.Visible = Visible
+                        self.ModeDivider.Visible = Visible
+                    end
+                    
+                    spawn(function()
+                        while Running and Toggle.KeybindBackground do
+                            if Toggle.KeybindBackground.Position and Toggle.KeybindBackground.Size then
+                                local BgPos = Toggle.KeybindBackground.Position
+                                local BgSize = Toggle.KeybindBackground.Size
+                                Toggle.KeybindText.Position = {
+                                    BgPos.x + (BgSize.x / 2),
+                                    BgPos.y + (BgSize.y / 2) - 6
+                                }
+                                Toggle:UpdateModeSelectorPosition()
+                            end
+                            wait()
+                        end
+                    end)
+                    
+                    return {
+                        Set = function(Key) Toggle:SetKeybind(Key) end,
+                        Get = function() return Toggle.KeybindValue end,
+                        GetMode = function() return Toggle.KeybindMode end
+                    }
                 end
                 
                 table.insert(self.Interfaces, Toggle)
@@ -743,38 +845,32 @@ function Library:Create(Options)
                 local Callback = Options.Callback or function() end
 
                 local SliderBackground = Drawing.new("Square")
-                SliderBackground.Color = Colors["Border"]
+                SliderBackground.Color = Colors["DarkContrast"]
                 SliderBackground.Filled = true
                 SliderBackground.Thickness = 1
-                SliderBackground.Transparency = 0.6
+                SliderBackground.Transparency = 0.9
                 SliderBackground.Visible = self.Visible
-                SliderBackground.Rounded = true
-                SliderBackground.Rounding = 4
+
+                local SliderBorder = Drawing.new("Square")
+                SliderBorder.Color = Colors["Border"]
+                SliderBorder.Filled = false
+                SliderBorder.Thickness = 1
+                SliderBorder.Transparency = 0.8
+                SliderBorder.Visible = self.Visible
 
                 local SliderFill = Drawing.new("Square")
                 SliderFill.Color = Colors["Accent"]
                 SliderFill.Filled = true
-                SliderFill.Transparency = 1
+                SliderFill.Transparency = 0.8
                 SliderFill.Visible = self.Visible
-                SliderFill.Rounded = true
-                SliderFill.Rounding = 4
-
-                -- Replace border with a subtle shadow
-                local SliderShadow = Drawing.new("Square")
-                SliderShadow.Color = {0, 0, 0}
-                SliderShadow.Filled = true
-                SliderShadow.Thickness = 0
-                SliderShadow.Transparency = 0.15
-                SliderShadow.Visible = self.Visible
-                SliderShadow.Rounded = true
-                SliderShadow.Rounding = 4
 
                 local SliderText = Drawing.new("Text")
                 SliderText.Text = SliderName
                 SliderText.Size = 14
-                SliderText.Font = 2
+                SliderText.Font = 5
                 SliderText.Color = Colors["Text"]
-                SliderText.Outline = false
+                SliderText.Outline = true
+                SliderText.OutlineColor = {0, 0, 0}
                 SliderText.Transparency = 1
                 SliderText.Center = false
                 SliderText.Visible = self.Visible
@@ -782,22 +878,13 @@ function Library:Create(Options)
                 local ValueText = Drawing.new("Text")
                 ValueText.Text = Default .. Units
                 ValueText.Size = 13
-                ValueText.Font = 2
-                ValueText.Color = Colors["Selected"]
-                ValueText.Outline = false
+                ValueText.Font = 5
+                ValueText.Color = Colors["SubText"]
+                ValueText.Outline = true
+                ValueText.OutlineColor = {0, 0, 0}
                 ValueText.Transparency = 1
                 ValueText.Center = true
                 ValueText.Visible = self.Visible
-
-                -- Add a slider knob for better visualization
-                local SliderKnob = Drawing.new("Square")
-                SliderKnob.Size = {10, 15}
-                SliderKnob.Filled = true
-                SliderKnob.Color = Colors["Selected"]
-                SliderKnob.Transparency = 1
-                SliderKnob.Visible = self.Visible
-                SliderKnob.Rounded = true
-                SliderKnob.Rounding = 3
 
                 local Slider = {
                     Type = "Slider",
@@ -809,13 +896,12 @@ function Library:Create(Options)
                     Increment = Increment,
                     Callback = Callback,
                     Background = SliderBackground,
-                    Border = SliderShadow,
+                    Border = SliderBorder,
                     Fill = SliderFill,
-                    Knob = SliderKnob,
                     Text = SliderText,
                     ValueText = ValueText,
-                    DefaultBorderColor = {0, 0, 0},
-                    OriginalBackgroundColor = Colors["Border"],
+                    DefaultBorderColor = Colors["Border"],
+                    OriginalBackgroundColor = Colors["LightContrast"],
                     Visible = self.Visible,
                     Dragging = false
                 }
@@ -829,23 +915,13 @@ function Library:Create(Options)
                         format = "%." .. decimalPlaces .. "f%s"
                     end
                     self.ValueText.Text = string.format(format, self.Value, self.Units)
-                    
                     if self.Background.Size and self.Background.Size.x then
-                        local percentage = (self.Value - self.Min) / (self.Max - self.Min)
-                        local FillWidth = percentage * self.Background.Size.x
-                        
+                        local FillWidth = ((self.Value - self.Min) / (self.Max - self.Min)) * self.Background.Size.x
                         self.Fill.Size = {FillWidth, self.Background.Size.y}
-                        
-                        -- Update knob position
-                        local knobPosX = self.Background.Position.x + FillWidth - (self.Knob.Size.x / 2)
-                        local knobPosY = self.Background.Position.y - (self.Knob.Size.y - self.Background.Size.y) / 2
-                        self.Knob.Position = {knobPosX, knobPosY}
-                        
                         local SliderCenterX = self.Background.Position.x + (self.Background.Size.x / 2)
                         local SliderCenterY = self.Background.Position.y + (self.Background.Size.y / 2) - 6.5
                         self.ValueText.Position = {SliderCenterX, SliderCenterY}
                     end
-                    
                     if self.Callback then spawn(function() self.Callback(self.Value) end) end
                 end
 
@@ -873,9 +949,9 @@ function Library:Create(Options)
         local Tab = {
             Name = TabName,
             Button = TabButton,
+            ButtonBorder = TabButtonBorder,
             ButtonText = TabButtonText,
             SelectedHighlight = SelectedHighlight,
-            SelectedIndicator = SelectedIndicator,
             Content = TabContent
         }
         table.insert(Main.Tabs, Tab)
@@ -888,6 +964,8 @@ function Library:Create(Options)
             Main:SelectTab(Main.ActiveTab)
         else
             SetVisibility(TabButton, false)
+            SetVisibility(TabButtonBorder, false)
+            SetVisibility(TabButtonText, false)
             SetVisibility(SelectedHighlight, false)
             SetInterfaceVisibility(TabContent.LeftSections, false)
             SetInterfaceVisibility(TabContent.RightSections, false)
@@ -902,25 +980,6 @@ function Library:Create(Options)
         for OtherTabName, OtherTab in pairs(Main.TabButtons) do
             local Selected = OtherTabName == TabName
             SetVisibility(OtherTab.SelectedHighlight, Selected)
-            SetVisibility(OtherTab.SelectedIndicator, Selected)
-            
-            if Selected then
-                -- Update the tab button text color to show it's selected
-                OtherTab.ButtonText.Color = Colors["Selected"]
-                
-                -- Position the bottom indicator for the selected tab
-                local ButtonPos = OtherTab.Button.Position
-                local ButtonSize = OtherTab.Button.Size
-                OtherTab.SelectedIndicator.Position = {
-                    ButtonPos.x + 5,
-                    ButtonPos.y + ButtonSize.y - 2
-                }
-                OtherTab.SelectedIndicator.Size = {ButtonSize.x - 10, 2}
-            else
-                -- Reset the tab button text color
-                OtherTab.ButtonText.Color = Colors["Text"]
-            end
-            
             OtherTab.Content.Visible = Selected
             SetInterfaceVisibility(OtherTab.Content.LeftSections, Selected)
             SetInterfaceVisibility(OtherTab.Content.RightSections, Selected)
@@ -1005,7 +1064,7 @@ spawn(function()
                                         if Element.Type == "Button" and Element.ButtonBackground.Visible then
                                             if ActiveWindow:IsHovered(Element.ButtonBackground) then
                                                 Element.ButtonBackground.Color = Colors["Selected"]
-                                                Element.ButtonBackground.Transparency = 0.085
+                                                Element.ButtonBackground.Transparency = 0.1
                                                 Element.ButtonBorder.Color = Colors["Accent"]
                                                 local TargetButton = Element
                                                 spawn(function()
