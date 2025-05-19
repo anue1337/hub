@@ -11,9 +11,22 @@ local Utility = {}
 
 function Utility.GetMouse()
     local MouseLocation = getmouselocation(MouseService)
+    
+    -- Handle MouseLocation depending on whether it returns a table or separate values
+    local mouseX, mouseY
+    
+    if type(MouseLocation) == "table" and MouseLocation.x ~= nil then
+        mouseX = MouseLocation.x
+        mouseY = MouseLocation.y
+    else
+        -- For environments where it returns separate values
+        mouseX = MouseLocation
+        mouseY = getmouselocation(MouseService).y
+    end
+    
     return {
-        X = MouseLocation.x,
-        Y = MouseLocation.y,
+        X = mouseX,
+        Y = mouseY,
         Clicked = isleftclicked(),
         Pressed = isleftpressed(),
         Released = not isleftpressed() and Utility.LastPress
@@ -90,9 +103,24 @@ function AugmentUI:CreateWindow(Options)
     local WindowWidth = Options.Width or 800
     local WindowHeight = Options.Height or 500
     local WindowTitle = Options.Title or "AugmentUI"
+    
+    -- Fix for getscreendimensions - properly get values as separate x and y
+    local screenDimensions = getscreendimensions()
+    local screenWidth, screenHeight
+    
+    -- Check if getscreendimensions returns a table or separate values
+    if type(screenDimensions) == "table" and screenDimensions.x then
+        screenWidth = screenDimensions.x
+        screenHeight = screenDimensions.y
+    else
+        -- If it returns separate values or a tuple-like result
+        screenWidth = screenDimensions
+        screenHeight = getscreendimensions().y or 600 -- Default if y isn't available
+    end
+    
     local WindowPosition = Options.Position or {
-        x = (getscreendimensions().x / 2) - (WindowWidth / 2),
-        y = (getscreendimensions().y / 2) - (WindowHeight / 2)
+        x = (screenWidth / 2) - (WindowWidth / 2),
+        y = (screenHeight / 2) - (WindowHeight / 2)
     }
     
     if ActiveWindow then
