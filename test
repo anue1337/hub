@@ -1,382 +1,209 @@
---[[
-    Severe UI Library
-    A modern, sleek UI library inspired by CSGO cheats
-    Created for Severe External Lua API
-]]
+-- SevereUI Library
+local SevereUI = {}
 
+-- Constants
 local MouseService = findservice(Game, "MouseService")
-local Mouse = {
-    X = 0,
-    Y = 0,
-    Clicked = false,
-    Pressed = false
-}
-
--- Color palette for the UI
 local Colors = {
-    Background = {17, 17, 27},       -- Dark background
-    Primary = {30, 30, 45},          -- Main elements
-    Secondary = {40, 40, 60},        -- Secondary elements  
-    Accent = {88, 101, 242},         -- Primary accent (bluish purple)
-    AccentSecondary = {255, 73, 108},-- Secondary accent (pink)
-    Text = {220, 220, 220},          -- Normal text
-    TextDim = {150, 150, 150},       -- Dimmed text
-    Border = {50, 50, 65},           -- Border color
-    Success = {72, 189, 120},        -- Success color
-    Warning = {235, 171, 52},        -- Warning color
-    Error = {235, 59, 90}            -- Error color
+    Window = {30, 30, 30},         -- Dark background
+    Border = {60, 60, 60},         -- Subtle border
+    Accent = {0, 180, 255},        -- Bright blue accent
+    Text = {230, 230, 230},        -- Light text
+    Shadow = {15, 15, 15},         -- Shadow color
+    HeaderGradient = {35, 35, 35}  -- Slightly lighter header
 }
 
-local Library = {}
-local ActiveWindow = nil
-local IsDragging = false
-local DragOffsetX, DragOffsetY = 0, 0
-local IsVisible = true
-local HoveredElement = nil
-local Running = true
-
--- Utility Functions
-local function SetVisibility(Object, Visible)
-    if Object and Object.Visible ~= nil then 
-        Object.Visible = Visible 
-    end
-end
-
-local function CreateStroke(Object, Color, Thickness)
-    local Stroke = Drawing.new("Square")
-    Stroke.Size = {Object.Size.x + 2, Object.Size.y + 2}
-    Stroke.Position = {Object.Position.x - 1, Object.Position.y - 1}
-    Stroke.Color = Color
-    Stroke.Filled = false
-    Stroke.Thickness = Thickness or 1
-    Stroke.Transparency = 1
-    Stroke.Visible = Object.Visible
-    return Stroke
-end
-
--- Main Library Functions
-function Library:Create(Options)
-    local WindowName = Options.Name or "Severe"
-    local Width = Options.Width or 650
-    local Height = Options.Height or 500
+-- Core functionalities
+function SevereUI.new(options)
+    options = options or {}
+    local window = {
+        Title = options.Title or "SevereUI",
+        Size = options.Size or {500, 350},
+        Position = options.Position or {200, 200},
+        Visible = true,
+        Dragging = false,
+        DragOffset = {0, 0},
+        Elements = {},
+        Tabs = {},
+        ActiveTab = nil
+    }
     
-    local Window = {}
+    -- Create window background
+    window.Background = Drawing.new("Square")
+    window.Background.Size = {window.Size[1], window.Size[2]}
+    window.Background.Position = {window.Position[1], window.Position[2]}
+    window.Background.Color = Colors.Window
+    window.Background.Filled = true
+    window.Background.Visible = window.Visible
+    window.Background.Transparency = 1
     
-    -- Main window container
-    Window.Background = Drawing.new("Square")
-    Window.Background.Size = {Width, Height}
-    Window.Background.Position = {350, 150}
-    Window.Background.Color = Colors.Background
-    Window.Background.Filled = true
-    Window.Background.Thickness = 1
-    Window.Background.Transparency = 0.95
-    Window.Background.Visible = IsVisible
+    -- Create window shadow for depth
+    window.Shadow = Drawing.new("Square")
+    window.Shadow.Size = {window.Size[1] + 10, window.Size[2] + 10}
+    window.Shadow.Position = {window.Position[1] - 5, window.Position[2] - 5}
+    window.Shadow.Color = Colors.Shadow
+    window.Shadow.Filled = true
+    window.Shadow.Visible = window.Visible
+    window.Shadow.Transparency = 0.5
+    window.Shadow.ZIndex = -1
     
-    -- Window border (outer glow effect)
-    Window.Border = Drawing.new("Square")
-    Window.Border.Size = {Width + 2, Height + 2}
-    Window.Border.Position = {Window.Background.Position.x - 1, Window.Background.Position.y - 1}
-    Window.Border.Color = Colors.Accent
-    Window.Border.Filled = false
-    Window.Border.Thickness = 1
-    Window.Border.Transparency = 1
-    Window.Border.Visible = IsVisible
+    -- Create window border
+    window.Border = Drawing.new("Square")
+    window.Border.Size = {window.Size[1], window.Size[2]}
+    window.Border.Position = {window.Position[1], window.Position[2]}
+    window.Border.Color = Colors.Border
+    window.Border.Filled = false
+    window.Border.Thickness = 1.5
+    window.Border.Visible = window.Visible
+    window.Border.Transparency = 1
     
-    -- Header background
-    Window.Header = Drawing.new("Square")
-    Window.Header.Size = {Width, 30}
-    Window.Header.Position = {Window.Background.Position.x, Window.Background.Position.y}
-    Window.Header.Color = Colors.Primary
-    Window.Header.Filled = true
-    Window.Header.Thickness = 1
-    Window.Header.Transparency = 1
-    Window.Header.Visible = IsVisible
+    -- Create header bar
+    window.Header = Drawing.new("Square")
+    window.Header.Size = {window.Size[1], 30}
+    window.Header.Position = {window.Position[1], window.Position[2]}
+    window.Header.Color = Colors.HeaderGradient
+    window.Header.Filled = true
+    window.Header.Visible = window.Visible
+    window.Header.Transparency = 1
     
-    -- Header title
-    Window.Title = Drawing.new("Text")
-    Window.Title.Text = WindowName
-    Window.Title.Size = 16
-    Window.Title.Font = 2
-    Window.Title.Color = Colors.Text
-    Window.Title.Outline = true
-    Window.Title.OutlineColor = {0, 0, 0}
-    Window.Title.Position = {Window.Header.Position.x + 10, Window.Header.Position.y + 7}
-    Window.Title.Transparency = 1
-    Window.Title.Center = false
-    Window.Title.Visible = IsVisible
+    -- Create header accent line
+    window.HeaderAccent = Drawing.new("Square")
+    window.HeaderAccent.Size = {window.Size[1], 2}
+    window.HeaderAccent.Position = {window.Position[1], window.Position[2] + 30}
+    window.HeaderAccent.Color = Colors.Accent
+    window.HeaderAccent.Filled = true
+    window.HeaderAccent.Visible = window.Visible
+    window.HeaderAccent.Transparency = 1
     
-    -- Header accent line
-    Window.HeaderAccent = Drawing.new("Square")
-    Window.HeaderAccent.Size = {Width, 1}
-    Window.HeaderAccent.Position = {Window.Header.Position.x, Window.Header.Position.y + Window.Header.Size.y}
-    Window.HeaderAccent.Color = Colors.Accent
-    Window.HeaderAccent.Filled = true
-    Window.HeaderAccent.Thickness = 1
-    Window.HeaderAccent.Transparency = 1
-    Window.HeaderAccent.Visible = IsVisible
+    -- Create title text
+    window.TitleText = Drawing.new("Text")
+    window.TitleText.Text = window.Title
+    window.TitleText.Size = 16
+    window.TitleText.Font = 2
+    window.TitleText.Color = Colors.Text
+    window.TitleText.Position = {window.Position[1] + 10, window.Position[2] + 7}
+    window.TitleText.Visible = window.Visible
+    window.TitleText.Outline = true
+    window.TitleText.OutlineColor = {10, 10, 10}
+    window.TitleText.Transparency = 1
     
-    -- Navigation container
-    Window.Navigation = Drawing.new("Square")
-    Window.Navigation.Size = {Width, 30}
-    Window.Navigation.Position = {Window.Background.Position.x, Window.HeaderAccent.Position.y + Window.HeaderAccent.Size.y}
-    Window.Navigation.Color = Colors.Primary
-    Window.Navigation.Filled = true
-    Window.Navigation.Thickness = 1
-    Window.Navigation.Transparency = 0.8
-    Window.Navigation.Visible = IsVisible
+    -- Create close button
+    window.CloseButton = Drawing.new("Square")
+    window.CloseButton.Size = {16, 16}
+    window.CloseButton.Position = {window.Position[1] + window.Size[1] - 25, window.Position[2] + 7}
+    window.CloseButton.Color = {220, 50, 50}
+    window.CloseButton.Filled = true
+    window.CloseButton.Visible = window.Visible
+    window.CloseButton.Transparency = 1
     
-    -- Navigation border (subtle separation)
-    Window.NavigationBorder = Drawing.new("Square")
-    Window.NavigationBorder.Size = {Width, 1}
-    Window.NavigationBorder.Position = {Window.Navigation.Position.x, Window.Navigation.Position.y + Window.Navigation.Size.y}
-    Window.NavigationBorder.Color = Colors.Border
-    Window.NavigationBorder.Filled = true
-    Window.NavigationBorder.Thickness = 1
-    Window.NavigationBorder.Transparency = 1
-    Window.NavigationBorder.Visible = IsVisible
+    -- Create minimize button
+    window.MinimizeButton = Drawing.new("Square")
+    window.MinimizeButton.Size = {16, 16}
+    window.MinimizeButton.Position = {window.Position[1] + window.Size[1] - 50, window.Position[2] + 7}
+    window.MinimizeButton.Color = {50, 180, 50}
+    window.MinimizeButton.Filled = true
+    window.MinimizeButton.Visible = window.Visible
+    window.MinimizeButton.Transparency = 1
     
-    -- Content area
-    Window.Content = Drawing.new("Square")
-    Window.Content.Size = {Width, Height - Window.Header.Size.y - Window.Navigation.Size.y - 2}
-    Window.Content.Position = {Window.Background.Position.x, Window.NavigationBorder.Position.y + Window.NavigationBorder.Size.y}
-    Window.Content.Color = Colors.Background
-    Window.Content.Filled = true
-    Window.Content.Thickness = 1
-    Window.Content.Transparency = 1
-    Window.Content.Visible = IsVisible
-    
-    -- Close button
-    Window.CloseButton = Drawing.new("Square")
-    Window.CloseButton.Size = {16, 16}
-    Window.CloseButton.Position = {Window.Header.Position.x + Window.Header.Size.x - 26, Window.Header.Position.y + 7}
-    Window.CloseButton.Color = Colors.Error
-    Window.CloseButton.Filled = true
-    Window.CloseButton.Thickness = 1
-    Window.CloseButton.Transparency = 0.8
-    Window.CloseButton.Visible = IsVisible
-    
-    -- Minimize button
-    Window.MinimizeButton = Drawing.new("Square")
-    Window.MinimizeButton.Size = {16, 16}
-    Window.MinimizeButton.Position = {Window.CloseButton.Position.x - 26, Window.Header.Position.y + 7}
-    Window.MinimizeButton.Color = Colors.Warning
-    Window.MinimizeButton.Filled = true
-    Window.MinimizeButton.Thickness = 1
-    Window.MinimizeButton.Transparency = 0.8
-    Window.MinimizeButton.Visible = IsVisible
-    
-    -- Window status indicators
-    Window.StatusBar = Drawing.new("Square")
-    Window.StatusBar.Size = {Width, 20}
-    Window.StatusBar.Position = {Window.Background.Position.x, Window.Background.Position.y + Window.Background.Size.y - 20}
-    Window.StatusBar.Color = Colors.Primary
-    Window.StatusBar.Filled = true
-    Window.StatusBar.Thickness = 1
-    Window.StatusBar.Transparency = 0.8
-    Window.StatusBar.Visible = IsVisible
-    
-    -- Status text
-    Window.StatusText = Drawing.new("Text")
-    Window.StatusText.Text = "Ready"
-    Window.StatusText.Size = 13
-    Window.StatusText.Font = 2
-    Window.StatusText.Color = Colors.TextDim
-    Window.StatusText.Outline = true
-    Window.StatusText.OutlineColor = {0, 0, 0}
-    Window.StatusText.Position = {Window.StatusBar.Position.x + 10, Window.StatusBar.Position.y + 3}
-    Window.StatusText.Transparency = 1
-    Window.StatusText.Center = false
-    Window.StatusText.Visible = IsVisible
-    
-    -- Window properties
-    Window.Tabs = {}
-    Window.ActiveTab = nil
-    Window.IsMinimized = false
+    -- Create content area
+    window.Content = Drawing.new("Square")
+    window.Content.Size = {window.Size[1] - 20, window.Size[2] - 50}
+    window.Content.Position = {window.Position[1] + 10, window.Position[2] + 40}
+    window.Content.Color = {40, 40, 40}
+    window.Content.Filled = true
+    window.Content.Visible = window.Visible
+    window.Content.Transparency = 0.7
     
     -- Window methods
-    function Window:IsHovered(Object)
-        if not IsVisible or not Object or not Object.Visible then return false end
-        local MouseX, MouseY = Mouse.X, Mouse.Y
-        local ObjectPos = Object.Position
-        if not ObjectPos then return false end
-        local ObjectX, ObjectY = ObjectPos.x, ObjectPos.y
-        
-        if Object.Size then
-            local ObjectSize = Object.Size
-            local ObjectW, ObjectH = ObjectSize.x, ObjectSize.y
-            return MouseX >= ObjectX and MouseX <= ObjectX + ObjectW and MouseY >= ObjectY and MouseY <= ObjectY + ObjectH
-        elseif Object.TextBounds then
-            local ObjectBounds = Object.TextBounds
-            local ObjectW, ObjectH = ObjectBounds.x, ObjectBounds.y
-            if Object.Center then ObjectX = ObjectX - ObjectW / 2 end
-            return MouseX >= ObjectX and MouseX <= ObjectX + ObjectW and MouseY >= ObjectY and MouseY <= ObjectY + ObjectH
-        end
-        
-        return false
+    function window:UpdatePosition()
+        local pos = self.Position
+        self.Background.Position = {pos[1], pos[2]}
+        self.Shadow.Position = {pos[1] - 5, pos[2] - 5}
+        self.Border.Position = {pos[1], pos[2]}
+        self.Header.Position = {pos[1], pos[2]}
+        self.HeaderAccent.Position = {pos[1], pos[2] + 30}
+        self.TitleText.Position = {pos[1] + 10, pos[2] + 7}
+        self.CloseButton.Position = {pos[1] + self.Size[1] - 25, pos[2] + 7}
+        self.MinimizeButton.Position = {pos[1] + self.Size[1] - 50, pos[2] + 7}
+        self.Content.Position = {pos[1] + 10, pos[2] + 40}
     end
     
-    function Window:IsWindowHovered()
-        if not IsVisible then return false end
-        return self:IsHovered(self.Background)
+    function window:IsHovered(object)
+        if not self.Visible or not object or not object.Visible then return false end
+        
+        local mouse = getmouseposition()
+        local pos = object.Position
+        local size = object.Size
+        
+        return mouse.x >= pos.x and mouse.x <= pos.x + size.x and 
+               mouse.y >= pos.y and mouse.y <= pos.y + size.y
     end
     
-    function Window:UpdateElementPositions()
-        local BaseX, BaseY = self.Background.Position.x, self.Background.Position.y
+    function window:SetVisible(visible)
+        self.Visible = visible
+        self.Background.Visible = visible
+        self.Shadow.Visible = visible
+        self.Border.Visible = visible
+        self.Header.Visible = visible
+        self.HeaderAccent.Visible = visible
+        self.TitleText.Visible = visible
+        self.CloseButton.Visible = visible
+        self.MinimizeButton.Visible = visible
+        self.Content.Visible = visible
         
-        -- Update positions of all window elements
-        self.Border.Position = {BaseX - 1, BaseY - 1}
-        self.Header.Position = {BaseX, BaseY}
-        self.Title.Position = {BaseX + 10, BaseY + 7}
-        self.HeaderAccent.Position = {BaseX, BaseY + self.Header.Size.y}
-        self.Navigation.Position = {BaseX, self.HeaderAccent.Position.y + self.HeaderAccent.Size.y}
-        self.NavigationBorder.Position = {BaseX, self.Navigation.Position.y + self.Navigation.Size.y}
-        self.Content.Position = {BaseX, self.NavigationBorder.Position.y + self.NavigationBorder.Size.y}
-        self.CloseButton.Position = {BaseX + self.Header.Size.x - 26, BaseY + 7}
-        self.MinimizeButton.Position = {self.CloseButton.Position.x - 26, BaseY + 7}
-        self.StatusBar.Position = {BaseX, BaseY + self.Background.Size.y - 20}
-        self.StatusText.Position = {BaseX + 10, self.StatusBar.Position.y + 3}
-        
-        -- Update any active tabs
-        self:UpdateLayout()
-    end
-    
-    function Window:UpdateLayout()
-        -- To be implemented when we add tabs
-    end
-    
-    function Window:Unload()
-        -- Remove all drawing objects
-        self.Background:Remove()
-        self.Border:Remove()
-        self.Header:Remove()
-        self.Title:Remove()
-        self.HeaderAccent:Remove()
-        self.Navigation:Remove()
-        self.NavigationBorder:Remove()
-        self.Content:Remove()
-        self.CloseButton:Remove()
-        self.MinimizeButton:Remove()
-        self.StatusBar:Remove()
-        self.StatusText:Remove()
-        
-        -- Reset state
-        IsDragging = false
-        HoveredElement = nil
-        ActiveWindow = nil
-    end
-    
-    function Window:ToggleMinimize()
-        self.IsMinimized = not self.IsMinimized
-        
-        local BaseHeight = self.IsMinimized and (self.Header.Size.y + self.HeaderAccent.Size.y + self.Navigation.Size.y + self.NavigationBorder.Size.y) or Height
-        
-        -- Update sizes
-        self.Background.Size = {Width, BaseHeight}
-        self.Border.Size = {Width + 2, BaseHeight + 2}
-        
-        -- Hide/show content based on minimized state
-        self.Content.Visible = not self.IsMinimized and IsVisible
-        self.StatusBar.Visible = not self.IsMinimized and IsVisible
-        self.StatusText.Visible = not self.IsMinimized and IsVisible
-        
-        -- If not minimized, move status bar to bottom
-        if not self.IsMinimized then
-            self.StatusBar.Position = {self.Background.Position.x, self.Background.Position.y + self.Background.Size.y - 20}
-            self.StatusText.Position = {self.StatusBar.Position.x + 10, self.StatusBar.Position.y + 3}
+        -- Update visibility of all elements
+        for _, element in ipairs(self.Elements) do
+            if element.SetVisible then
+                element:SetVisible(visible)
+            end
         end
     end
     
-    function Window:Close()
-        self:Unload()
-        Running = false
+    function window:Close()
+        self:SetVisible(false)
+        -- Cleanup code if needed
     end
     
-    -- Set active window
-    ActiveWindow = Window
-    
-    -- Mouse input handling loop
+    -- Handle window interactions
     spawn(function()
-        while Running do
-            local MouseLocation = getmouselocation(MouseService)
-            Mouse.X = MouseLocation.x
-            Mouse.Y = MouseLocation.y
-            Mouse.Clicked = isleftclicked()
-            Mouse.Pressed = isleftpressed()
+        while true do
+            wait()
             
-            if IsVisible and Window and not Window.IsUnloaded then
-                -- Handle dragging
-                local HeaderHovered = Window:IsHovered(Window.Header)
-                
-                if Mouse.Clicked and HeaderHovered and not IsDragging then
-                    IsDragging = true
-                    DragOffsetX = Mouse.X - Window.Background.Position.x
-                    DragOffsetY = Mouse.Y - Window.Background.Position.y
-                elseif Mouse.Pressed and IsDragging then
-                    local NewX = Mouse.X - DragOffsetX
-                    local NewY = Mouse.Y - DragOffsetY
-                    Window.Background.Position = {NewX, NewY}
-                    Window:UpdateElementPositions()
-                elseif not Mouse.Pressed and IsDragging then
-                    IsDragging = false
-                end
-                
-                -- Handle close button
-                if Window:IsHovered(Window.CloseButton) and Mouse.Clicked then
-                    Window:Close()
-                end
-                
-                -- Handle minimize button
-                if Window:IsHovered(Window.MinimizeButton) and Mouse.Clicked then
-                    Window:ToggleMinimize()
-                end
-                
-                -- Update hover states
-                if Window:IsHovered(Window.CloseButton) then
-                    Window.CloseButton.Transparency = 1
-                else
-                    Window.CloseButton.Transparency = 0.8
-                end
-                
-                if Window:IsHovered(Window.MinimizeButton) then
-                    Window.MinimizeButton.Transparency = 1
-                else
-                    Window.MinimizeButton.Transparency = 0.8
-                end
+            local mouse = getmouseposition()
+            local mouseClicked = isleftclicked()
+            local mousePressed = isleftpressed()
+            
+            -- Handle dragging
+            if window:IsHovered(window.Header) and mouseClicked and not window.Dragging then
+                window.Dragging = true
+                window.DragOffset = {
+                    mouse.x - window.Position[1],
+                    mouse.y - window.Position[2]
+                }
+            elseif window.Dragging and mousePressed then
+                window.Position = {
+                    mouse.x - window.DragOffset[1],
+                    mouse.y - window.DragOffset[2]
+                }
+                window:UpdatePosition()
+            elseif window.Dragging and not mousePressed then
+                window.Dragging = false
             end
             
-            wait()
+            -- Handle close button
+            if window:IsHovered(window.CloseButton) and mouseClicked then
+                window:Close()
+            end
+            
+            -- Handle minimize button
+            if window:IsHovered(window.MinimizeButton) and mouseClicked then
+                -- Toggle visibility of content, but keep header
+                window.Content.Visible = not window.Content.Visible
+            end
         end
     end)
     
-    return Window
+    return window
 end
 
--- Toggling visibility of the UI
-function Library:ToggleUI()
-    IsVisible = not IsVisible
-    if ActiveWindow then
-        SetVisibility(ActiveWindow.Background, IsVisible)
-        SetVisibility(ActiveWindow.Border, IsVisible)
-        SetVisibility(ActiveWindow.Header, IsVisible)
-        SetVisibility(ActiveWindow.Title, IsVisible)
-        SetVisibility(ActiveWindow.HeaderAccent, IsVisible)
-        SetVisibility(ActiveWindow.Navigation, IsVisible)
-        SetVisibility(ActiveWindow.NavigationBorder, IsVisible)
-        SetVisibility(ActiveWindow.Content, IsVisible and not ActiveWindow.IsMinimized)
-        SetVisibility(ActiveWindow.CloseButton, IsVisible)
-        SetVisibility(ActiveWindow.MinimizeButton, IsVisible)
-        SetVisibility(ActiveWindow.StatusBar, IsVisible and not ActiveWindow.IsMinimized)
-        SetVisibility(ActiveWindow.StatusText, IsVisible and not ActiveWindow.IsMinimized)
-    end
-end
-
--- Cleanup function
-function Library:Unload()
-    Running = false
-    if ActiveWindow then
-        ActiveWindow:Unload()
-    end
-    Drawing.clear()
-end
-
-return Library 
+-- Return the library
+return SevereUI
