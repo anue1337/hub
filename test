@@ -544,9 +544,311 @@ function AugmentUI:CreateWindow(Options)
             table.insert(Section.Elements, Section.Title)
             table.insert(self.Elements, Section.Title)
             
-            -- Section helper functions (implemented later)
-            -- ...
+            -- Add the AddButton method to this Section instance
+            function Section:AddButton(Options)
+                local Name = Options.Name or "Button"
+                local Callback = Options.Callback or function() end
+                local Height = 30
+                
+                -- Calcular posição Y baseada em interfaces existentes
+                local InterfaceY = self.Background.Position.y + 30
+                for _, Interface in ipairs(self.Interfaces) do
+                    InterfaceY = InterfaceY + Interface.Height + 5
+                end
+                
+                local Button = {
+                    Type = "Button",
+                    Name = Name,
+                    Callback = Callback,
+                    Height = Height
+                }
+                
+                -- Criar fundo do botão
+                Button.ButtonBackground = Drawing.new("Square")
+                Button.ButtonBackground.Size = {self.Background.Size[1] - 20, Height}
+                Button.ButtonBackground.Position = {self.Background.Position.x + 10, InterfaceY}
+                Button.ButtonBackground.Color = Theme.Background
+                Button.ButtonBackground.Filled = true
+                Button.ButtonBackground.Transparency = 1
+                Button.ButtonBackground.Visible = self.Visible and IsVisible
+                
+                -- Criar borda do botão
+                Button.ButtonBorder = Drawing.new("Square")
+                Button.ButtonBorder.Size = {self.Background.Size[1] - 20, Height}
+                Button.ButtonBorder.Position = {self.Background.Position.x + 10, InterfaceY}
+                Button.ButtonBorder.Color = Theme.WindowBorder
+                Button.ButtonBorder.Filled = false
+                Button.ButtonBorder.Thickness = 1
+                Button.ButtonBorder.Transparency = 1
+                Button.ButtonBorder.Visible = self.Visible and IsVisible
+                
+                -- Criar texto do botão
+                Button.ButtonText = Drawing.new("Text")
+                Button.ButtonText.Text = Name
+                Button.ButtonText.Position = {
+                    self.Background.Position.x + self.Background.Size[1]/2, 
+                    InterfaceY + Height/2 - 7
+                }
+                Button.ButtonText.Color = Theme.Text
+                Button.ButtonText.Size = 14
+                Button.ButtonText.Font = 2
+                Button.ButtonText.Center = true
+                Button.ButtonText.Outline = true
+                Button.ButtonText.OutlineColor = {0, 0, 0}
+                Button.ButtonText.Visible = self.Visible and IsVisible
+                
+                -- Adicionar elementos à seção
+                table.insert(self.Elements, Button.ButtonBackground)
+                table.insert(self.Elements, Button.ButtonBorder)
+                table.insert(self.Elements, Button.ButtonText)
+                table.insert(self.Tab.Elements, Button.ButtonBackground)
+                table.insert(self.Tab.Elements, Button.ButtonBorder)
+                table.insert(self.Tab.Elements, Button.ButtonText)
+                table.insert(self.Window.Elements, Button.ButtonBackground)
+                table.insert(self.Window.Elements, Button.ButtonBorder)
+                table.insert(self.Window.Elements, Button.ButtonText)
+                
+                -- Atualizar tamanho da seção
+                local NewHeight = (InterfaceY + Height) - self.Background.Position.y + 10
+                self.Background.Size = {self.Background.Size[1], NewHeight}
+                self.Border.Size = {self.Border.Size[1], NewHeight}
+                
+                table.insert(self.Interfaces, Button)
+                return Button
+            end
             
+            -- Add the AddToggle method to this Section instance
+            function Section:AddToggle(Options)
+                local Name = Options.Name or "Toggle"
+                local Default = Options.Default or false
+                local Callback = Options.Callback or function() end
+                local Height = 25
+                
+                -- Calcular posição Y baseada em interfaces existentes
+                local InterfaceY = self.Background.Position.y + 30
+                for _, Interface in ipairs(self.Interfaces) do
+                    InterfaceY = InterfaceY + Interface.Height + 5
+                end
+                
+                local Toggle = {
+                    Type = "Toggle",
+                    Name = Name,
+                    State = Default,
+                    Callback = Callback,
+                    Height = Height
+                }
+                
+                -- Criar caixa externa do toggle
+                Toggle.OuterBox = Drawing.new("Square")
+                Toggle.OuterBox.Size = {16, 16}
+                Toggle.OuterBox.Position = {self.Background.Position.x + 10, InterfaceY + 4}
+                Toggle.OuterBox.Color = Theme.WindowBorder
+                Toggle.OuterBox.Filled = false
+                Toggle.OuterBox.Thickness = 1
+                Toggle.OuterBox.Transparency = 1
+                Toggle.OuterBox.Visible = self.Visible and IsVisible
+                
+                -- Criar caixa interna do toggle
+                Toggle.InnerBox = Drawing.new("Square")
+                Toggle.InnerBox.Size = {14, 14}
+                Toggle.InnerBox.Position = {self.Background.Position.x + 11, InterfaceY + 5}
+                Toggle.InnerBox.Color = Default and Theme.Accent or Theme.Background
+                Toggle.InnerBox.Filled = true
+                Toggle.InnerBox.Transparency = Default and 1 or 0.5
+                Toggle.InnerBox.Visible = self.Visible and IsVisible
+                
+                -- Criar texto do toggle
+                Toggle.Text = Drawing.new("Text")
+                Toggle.Text.Text = Name
+                Toggle.Text.Position = {self.Background.Position.x + 35, InterfaceY + 5}
+                Toggle.Text.Color = Theme.Text
+                Toggle.Text.Size = 14
+                Toggle.Text.Font = 2
+                Toggle.Text.Outline = true
+                Toggle.Text.OutlineColor = {0, 0, 0}
+                Toggle.Text.Visible = self.Visible and IsVisible
+                
+                -- Adicionar função para alterar estado
+                function Toggle:SetState(NewState)
+                    self.State = NewState
+                    self.InnerBox.Color = NewState and Theme.Accent or Theme.Background
+                    self.InnerBox.Transparency = NewState and 1 or 0.5
+                    
+                    -- Chamar callback
+                    spawn(function()
+                        self.Callback(NewState)
+                    end)
+                end
+                
+                -- Adicionar elementos à seção
+                table.insert(self.Elements, Toggle.OuterBox)
+                table.insert(self.Elements, Toggle.InnerBox)
+                table.insert(self.Elements, Toggle.Text)
+                table.insert(self.Tab.Elements, Toggle.OuterBox)
+                table.insert(self.Tab.Elements, Toggle.InnerBox)
+                table.insert(self.Tab.Elements, Toggle.Text)
+                table.insert(self.Window.Elements, Toggle.OuterBox)
+                table.insert(self.Window.Elements, Toggle.InnerBox)
+                table.insert(self.Window.Elements, Toggle.Text)
+                
+                -- Atualizar tamanho da seção
+                local NewHeight = (InterfaceY + Height) - self.Background.Position.y + 10
+                self.Background.Size = {self.Background.Size[1], NewHeight}
+                self.Border.Size = {self.Border.Size[1], NewHeight}
+                
+                table.insert(self.Interfaces, Toggle)
+                return Toggle
+            end
+            
+            -- Add the AddSlider method to this Section instance
+            function Section:AddSlider(Options)
+                local Name = Options.Name or "Slider"
+                local Min = Options.Min or 0
+                local Max = Options.Max or 100
+                local Default = math.clamp(Options.Default or ((Max - Min) / 2) + Min, Min, Max)
+                local Callback = Options.Callback or function() end
+                local Height = 40
+                local Units = Options.Units or ""
+                local Increment = Options.Increment or 1
+                
+                -- Calcular posição Y baseada em interfaces existentes
+                local InterfaceY = self.Background.Position.y + 30
+                for _, Interface in ipairs(self.Interfaces) do
+                    InterfaceY = InterfaceY + Interface.Height + 5
+                end
+                
+                local Slider = {
+                    Type = "Slider",
+                    Name = Name,
+                    Min = Min,
+                    Max = Max,
+                    Value = Default,
+                    Units = Units,
+                    Increment = Increment,
+                    Callback = Callback,
+                    Height = Height,
+                    Dragging = false
+                }
+                
+                -- Criar texto do slider
+                Slider.Text = Drawing.new("Text")
+                Slider.Text.Text = Name
+                Slider.Text.Position = {self.Background.Position.x + 10, InterfaceY}
+                Slider.Text.Color = Theme.Text
+                Slider.Text.Size = 14
+                Slider.Text.Font = 2
+                Slider.Text.Outline = true
+                Slider.Text.OutlineColor = {0, 0, 0}
+                Slider.Text.Visible = self.Visible and IsVisible
+                
+                -- Criar fundo do slider
+                Slider.Background = Drawing.new("Square")
+                Slider.Background.Size = {self.Background.Size[1] - 20, 10}
+                Slider.Background.Position = {self.Background.Position.x + 10, InterfaceY + 20}
+                Slider.Background.Color = Theme.Background
+                Slider.Background.Filled = true
+                Slider.Background.Transparency = 1
+                Slider.Background.Visible = self.Visible and IsVisible
+                
+                -- Criar borda do slider
+                Slider.Border = Drawing.new("Square")
+                Slider.Border.Size = {self.Background.Size[1] - 20, 10}
+                Slider.Border.Position = {self.Background.Position.x + 10, InterfaceY + 20}
+                Slider.Border.Color = Theme.WindowBorder
+                Slider.Border.Filled = false
+                Slider.Border.Thickness = 1
+                Slider.Border.Transparency = 1
+                Slider.Border.Visible = self.Visible and IsVisible
+                
+                -- Calcular largura do preenchimento
+                local SliderWidth = self.Background.Size[1] - 20
+                local FillWidth = ((Default - Min) / (Max - Min)) * SliderWidth
+                
+                -- Criar preenchimento do slider
+                Slider.Fill = Drawing.new("Square")
+                Slider.Fill.Size = {FillWidth, 10}
+                Slider.Fill.Position = {self.Background.Position.x + 10, InterfaceY + 20}
+                Slider.Fill.Color = Theme.Accent
+                Slider.Fill.Filled = true
+                Slider.Fill.Transparency = 0.7
+                Slider.Fill.Visible = self.Visible and IsVisible
+                
+                -- Criar texto do valor
+                Slider.ValueText = Drawing.new("Text")
+                Slider.ValueText.Text = tostring(Default) .. Units
+                Slider.ValueText.Position = {
+                    self.Background.Position.x + self.Background.Size[1] - 30,
+                    InterfaceY
+                }
+                Slider.ValueText.Color = Theme.Text
+                Slider.ValueText.Size = 14
+                Slider.ValueText.Font = 2
+                Slider.ValueText.Center = true
+                Slider.ValueText.Outline = true
+                Slider.ValueText.OutlineColor = {0, 0, 0}
+                Slider.ValueText.Visible = self.Visible and IsVisible
+                
+                -- Adicionar função para atualizar valor
+                function Slider:SetValue(NewValue)
+                    -- Limitar valor entre Min e Max
+                    NewValue = math.clamp(NewValue, self.Min, self.Max)
+                    
+                    -- Aplicar incremento
+                    if self.Increment > 0 then
+                        NewValue = self.Min + (math.floor((NewValue - self.Min) / self.Increment + 0.5) * self.Increment)
+                    end
+                    
+                    self.Value = NewValue
+                    
+                    -- Atualizar tamanho do preenchimento
+                    local SliderWidth = Section.Background.Size[1] - 20
+                    local FillWidth = ((self.Value - self.Min) / (self.Max - self.Min)) * SliderWidth
+                    self.Fill.Size = {FillWidth, 10}
+                    
+                    -- Atualizar texto do valor
+                    if self.Increment < 1 then
+                        -- Formato para casas decimais
+                        local DecimalPlaces = math.max(0, math.ceil(math.abs(math.log10(self.Increment))))
+                        local Format = "%." .. DecimalPlaces .. "f%s"
+                        self.ValueText.Text = string.format(Format, self.Value, self.Units)
+                    else
+                        -- Formato inteiro
+                        self.ValueText.Text = tostring(math.floor(self.Value)) .. self.Units
+                    end
+                    
+                    -- Chamar callback
+                    spawn(function()
+                        self.Callback(self.Value)
+                    end)
+                end
+                
+                -- Adicionar elementos à seção
+                table.insert(self.Elements, Slider.Text)
+                table.insert(self.Elements, Slider.Background)
+                table.insert(self.Elements, Slider.Border)
+                table.insert(self.Elements, Slider.Fill)
+                table.insert(self.Elements, Slider.ValueText)
+                table.insert(self.Tab.Elements, Slider.Text)
+                table.insert(self.Tab.Elements, Slider.Background)
+                table.insert(self.Tab.Elements, Slider.Border)
+                table.insert(self.Tab.Elements, Slider.Fill)
+                table.insert(self.Tab.Elements, Slider.ValueText)
+                table.insert(self.Window.Elements, Slider.Text)
+                table.insert(self.Window.Elements, Slider.Background)
+                table.insert(self.Window.Elements, Slider.Border)
+                table.insert(self.Window.Elements, Slider.Fill)
+                table.insert(self.Window.Elements, Slider.ValueText)
+                
+                -- Atualizar tamanho da seção
+                local NewHeight = (InterfaceY + Height) - self.Background.Position.y + 10
+                self.Background.Size = {self.Background.Size[1], NewHeight}
+                self.Border.Size = {self.Border.Size[1], NewHeight}
+                
+                table.insert(self.Interfaces, Slider)
+                return Slider
+            end
+            
+            -- Register this section
             table.insert(SectionCollection, Section)
             return Section
         end
@@ -792,312 +1094,5 @@ spawn(function()
         wait(0.1)
     end
 end)
-
--- Section helper functions - implementando métodos de interface
--- Adicionar antes da linha "table.insert(SectionCollection, Section)"
-
--- Método para adicionar um botão
-function Section:AddButton(Options)
-    local Name = Options.Name or "Button"
-    local Callback = Options.Callback or function() end
-    local Height = 30
-    
-    -- Calcular posição Y baseada em interfaces existentes
-    local InterfaceY = Section.Background.Position.y + 30
-    for _, Interface in ipairs(Section.Interfaces) do
-        InterfaceY = InterfaceY + Interface.Height + 5
-    end
-    
-    local Button = {
-        Type = "Button",
-        Name = Name,
-        Callback = Callback,
-        Height = Height
-    }
-    
-    -- Criar fundo do botão
-    Button.ButtonBackground = Drawing.new("Square")
-    Button.ButtonBackground.Size = {Section.Background.Size[1] - 20, Height}
-    Button.ButtonBackground.Position = {Section.Background.Position.x + 10, InterfaceY}
-    Button.ButtonBackground.Color = Theme.Background
-    Button.ButtonBackground.Filled = true
-    Button.ButtonBackground.Transparency = 1
-    Button.ButtonBackground.Visible = Section.Visible and IsVisible
-    
-    -- Criar borda do botão
-    Button.ButtonBorder = Drawing.new("Square")
-    Button.ButtonBorder.Size = {Section.Background.Size[1] - 20, Height}
-    Button.ButtonBorder.Position = {Section.Background.Position.x + 10, InterfaceY}
-    Button.ButtonBorder.Color = Theme.WindowBorder
-    Button.ButtonBorder.Filled = false
-    Button.ButtonBorder.Thickness = 1
-    Button.ButtonBorder.Transparency = 1
-    Button.ButtonBorder.Visible = Section.Visible and IsVisible
-    
-    -- Criar texto do botão
-    Button.ButtonText = Drawing.new("Text")
-    Button.ButtonText.Text = Name
-    Button.ButtonText.Position = {
-        Section.Background.Position.x + Section.Background.Size[1]/2, 
-        InterfaceY + Height/2 - 7
-    }
-    Button.ButtonText.Color = Theme.Text
-    Button.ButtonText.Size = 14
-    Button.ButtonText.Font = 2
-    Button.ButtonText.Center = true
-    Button.ButtonText.Outline = true
-    Button.ButtonText.OutlineColor = {0, 0, 0}
-    Button.ButtonText.Visible = Section.Visible and IsVisible
-    
-    -- Adicionar elementos à seção
-    table.insert(Section.Elements, Button.ButtonBackground)
-    table.insert(Section.Elements, Button.ButtonBorder)
-    table.insert(Section.Elements, Button.ButtonText)
-    table.insert(Section.Tab.Elements, Button.ButtonBackground)
-    table.insert(Section.Tab.Elements, Button.ButtonBorder)
-    table.insert(Section.Tab.Elements, Button.ButtonText)
-    table.insert(Section.Window.Elements, Button.ButtonBackground)
-    table.insert(Section.Window.Elements, Button.ButtonBorder)
-    table.insert(Section.Window.Elements, Button.ButtonText)
-    
-    -- Atualizar tamanho da seção
-    local NewHeight = (InterfaceY + Height) - Section.Background.Position.y + 10
-    Section.Background.Size = {Section.Background.Size[1], NewHeight}
-    Section.Border.Size = {Section.Border.Size[1], NewHeight}
-    
-    table.insert(Section.Interfaces, Button)
-    return Button
-end
-
--- Método para adicionar um toggle
-function Section:AddToggle(Options)
-    local Name = Options.Name or "Toggle"
-    local Default = Options.Default or false
-    local Callback = Options.Callback or function() end
-    local Height = 25
-    
-    -- Calcular posição Y baseada em interfaces existentes
-    local InterfaceY = Section.Background.Position.y + 30
-    for _, Interface in ipairs(Section.Interfaces) do
-        InterfaceY = InterfaceY + Interface.Height + 5
-    end
-    
-    local Toggle = {
-        Type = "Toggle",
-        Name = Name,
-        State = Default,
-        Callback = Callback,
-        Height = Height
-    }
-    
-    -- Criar caixa externa do toggle
-    Toggle.OuterBox = Drawing.new("Square")
-    Toggle.OuterBox.Size = {16, 16}
-    Toggle.OuterBox.Position = {Section.Background.Position.x + 10, InterfaceY + 4}
-    Toggle.OuterBox.Color = Theme.WindowBorder
-    Toggle.OuterBox.Filled = false
-    Toggle.OuterBox.Thickness = 1
-    Toggle.OuterBox.Transparency = 1
-    Toggle.OuterBox.Visible = Section.Visible and IsVisible
-    
-    -- Criar caixa interna do toggle
-    Toggle.InnerBox = Drawing.new("Square")
-    Toggle.InnerBox.Size = {14, 14}
-    Toggle.InnerBox.Position = {Section.Background.Position.x + 11, InterfaceY + 5}
-    Toggle.InnerBox.Color = Default and Theme.Accent or Theme.Background
-    Toggle.InnerBox.Filled = true
-    Toggle.InnerBox.Transparency = Default and 1 or 0.5
-    Toggle.InnerBox.Visible = Section.Visible and IsVisible
-    
-    -- Criar texto do toggle
-    Toggle.Text = Drawing.new("Text")
-    Toggle.Text.Text = Name
-    Toggle.Text.Position = {Section.Background.Position.x + 35, InterfaceY + 5}
-    Toggle.Text.Color = Theme.Text
-    Toggle.Text.Size = 14
-    Toggle.Text.Font = 2
-    Toggle.Text.Outline = true
-    Toggle.Text.OutlineColor = {0, 0, 0}
-    Toggle.Text.Visible = Section.Visible and IsVisible
-    
-    -- Adicionar função para alterar estado
-    function Toggle:SetState(NewState)
-        self.State = NewState
-        self.InnerBox.Color = NewState and Theme.Accent or Theme.Background
-        self.InnerBox.Transparency = NewState and 1 or 0.5
-        
-        -- Chamar callback
-        spawn(function()
-            self.Callback(NewState)
-        end)
-    end
-    
-    -- Adicionar elementos à seção
-    table.insert(Section.Elements, Toggle.OuterBox)
-    table.insert(Section.Elements, Toggle.InnerBox)
-    table.insert(Section.Elements, Toggle.Text)
-    table.insert(Section.Tab.Elements, Toggle.OuterBox)
-    table.insert(Section.Tab.Elements, Toggle.InnerBox)
-    table.insert(Section.Tab.Elements, Toggle.Text)
-    table.insert(Section.Window.Elements, Toggle.OuterBox)
-    table.insert(Section.Window.Elements, Toggle.InnerBox)
-    table.insert(Section.Window.Elements, Toggle.Text)
-    
-    -- Atualizar tamanho da seção
-    local NewHeight = (InterfaceY + Height) - Section.Background.Position.y + 10
-    Section.Background.Size = {Section.Background.Size[1], NewHeight}
-    Section.Border.Size = {Section.Border.Size[1], NewHeight}
-    
-    table.insert(Section.Interfaces, Toggle)
-    return Toggle
-end
-
--- Método para adicionar um slider
-function Section:AddSlider(Options)
-    local Name = Options.Name or "Slider"
-    local Min = Options.Min or 0
-    local Max = Options.Max or 100
-    local Default = math.clamp(Options.Default or ((Max - Min) / 2) + Min, Min, Max)
-    local Callback = Options.Callback or function() end
-    local Height = 40
-    local Units = Options.Units or ""
-    local Increment = Options.Increment or 1
-    
-    -- Calcular posição Y baseada em interfaces existentes
-    local InterfaceY = Section.Background.Position.y + 30
-    for _, Interface in ipairs(Section.Interfaces) do
-        InterfaceY = InterfaceY + Interface.Height + 5
-    end
-    
-    local Slider = {
-        Type = "Slider",
-        Name = Name,
-        Min = Min,
-        Max = Max,
-        Value = Default,
-        Units = Units,
-        Increment = Increment,
-        Callback = Callback,
-        Height = Height,
-        Dragging = false
-    }
-    
-    -- Criar texto do slider
-    Slider.Text = Drawing.new("Text")
-    Slider.Text.Text = Name
-    Slider.Text.Position = {Section.Background.Position.x + 10, InterfaceY}
-    Slider.Text.Color = Theme.Text
-    Slider.Text.Size = 14
-    Slider.Text.Font = 2
-    Slider.Text.Outline = true
-    Slider.Text.OutlineColor = {0, 0, 0}
-    Slider.Text.Visible = Section.Visible and IsVisible
-    
-    -- Criar fundo do slider
-    Slider.Background = Drawing.new("Square")
-    Slider.Background.Size = {Section.Background.Size[1] - 20, 10}
-    Slider.Background.Position = {Section.Background.Position.x + 10, InterfaceY + 20}
-    Slider.Background.Color = Theme.Background
-    Slider.Background.Filled = true
-    Slider.Background.Transparency = 1
-    Slider.Background.Visible = Section.Visible and IsVisible
-    
-    -- Criar borda do slider
-    Slider.Border = Drawing.new("Square")
-    Slider.Border.Size = {Section.Background.Size[1] - 20, 10}
-    Slider.Border.Position = {Section.Background.Position.x + 10, InterfaceY + 20}
-    Slider.Border.Color = Theme.WindowBorder
-    Slider.Border.Filled = false
-    Slider.Border.Thickness = 1
-    Slider.Border.Transparency = 1
-    Slider.Border.Visible = Section.Visible and IsVisible
-    
-    -- Calcular largura do preenchimento
-    local SliderWidth = Section.Background.Size[1] - 20
-    local FillWidth = ((Default - Min) / (Max - Min)) * SliderWidth
-    
-    -- Criar preenchimento do slider
-    Slider.Fill = Drawing.new("Square")
-    Slider.Fill.Size = {FillWidth, 10}
-    Slider.Fill.Position = {Section.Background.Position.x + 10, InterfaceY + 20}
-    Slider.Fill.Color = Theme.Accent
-    Slider.Fill.Filled = true
-    Slider.Fill.Transparency = 0.7
-    Slider.Fill.Visible = Section.Visible and IsVisible
-    
-    -- Criar texto do valor
-    Slider.ValueText = Drawing.new("Text")
-    Slider.ValueText.Text = tostring(Default) .. Units
-    Slider.ValueText.Position = {
-        Section.Background.Position.x + Section.Background.Size[1] - 30,
-        InterfaceY
-    }
-    Slider.ValueText.Color = Theme.Text
-    Slider.ValueText.Size = 14
-    Slider.ValueText.Font = 2
-    Slider.ValueText.Center = true
-    Slider.ValueText.Outline = true
-    Slider.ValueText.OutlineColor = {0, 0, 0}
-    Slider.ValueText.Visible = Section.Visible and IsVisible
-    
-    -- Adicionar função para atualizar valor
-    function Slider:SetValue(NewValue)
-        -- Limitar valor entre Min e Max
-        NewValue = math.clamp(NewValue, self.Min, self.Max)
-        
-        -- Aplicar incremento
-        if self.Increment > 0 then
-            NewValue = self.Min + (math.floor((NewValue - self.Min) / self.Increment + 0.5) * self.Increment)
-        end
-        
-        self.Value = NewValue
-        
-        -- Atualizar tamanho do preenchimento
-        local SliderWidth = Section.Background.Size[1] - 20
-        local FillWidth = ((self.Value - self.Min) / (self.Max - self.Min)) * SliderWidth
-        self.Fill.Size = {FillWidth, 10}
-        
-        -- Atualizar texto do valor
-        if self.Increment < 1 then
-            -- Formato para casas decimais
-            local DecimalPlaces = math.max(0, math.ceil(math.abs(math.log10(self.Increment))))
-            local Format = "%." .. DecimalPlaces .. "f%s"
-            self.ValueText.Text = string.format(Format, self.Value, self.Units)
-        else
-            -- Formato inteiro
-            self.ValueText.Text = tostring(math.floor(self.Value)) .. self.Units
-        end
-        
-        -- Chamar callback
-        spawn(function()
-            self.Callback(self.Value)
-        end)
-    end
-    
-    -- Adicionar elementos à seção
-    table.insert(Section.Elements, Slider.Text)
-    table.insert(Section.Elements, Slider.Background)
-    table.insert(Section.Elements, Slider.Border)
-    table.insert(Section.Elements, Slider.Fill)
-    table.insert(Section.Elements, Slider.ValueText)
-    table.insert(Section.Tab.Elements, Slider.Text)
-    table.insert(Section.Tab.Elements, Slider.Background)
-    table.insert(Section.Tab.Elements, Slider.Border)
-    table.insert(Section.Tab.Elements, Slider.Fill)
-    table.insert(Section.Tab.Elements, Slider.ValueText)
-    table.insert(Section.Window.Elements, Slider.Text)
-    table.insert(Section.Window.Elements, Slider.Background)
-    table.insert(Section.Window.Elements, Slider.Border)
-    table.insert(Section.Window.Elements, Slider.Fill)
-    table.insert(Section.Window.Elements, Slider.ValueText)
-    
-    -- Atualizar tamanho da seção
-    local NewHeight = (InterfaceY + Height) - Section.Background.Position.y + 10
-    Section.Background.Size = {Section.Background.Size[1], NewHeight}
-    Section.Border.Size = {Section.Border.Size[1], NewHeight}
-    
-    table.insert(Section.Interfaces, Slider)
-    return Slider
-end
 
 return AugmentUI 
