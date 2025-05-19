@@ -1,12 +1,17 @@
--- AugmentUI Library
--- A modern, clean UI library for Severe
+local Colors = {
+    ["Accent"] = {126, 87, 194},        -- Purple accent color
+    ["DarkContrast"] = {22, 22, 31},    -- Darker background
+    ["LightContrast"] = {28, 28, 38},   -- Lighter background
+    ["Border"] = {40, 40, 60},          -- Subtle border color
+    ["Selected"] = {255, 255, 255},     -- White for selected items
+    ["Text"] = {220, 220, 230},         -- Slightly brighter text
+    ["DisabledText"] = {120, 120, 140}, -- More visible disabled text
+    ["Highlight"] = {140, 100, 215},    -- Highlight color for hovering
+    ["Error"] = {240, 90, 90},          -- Error color
+    ["Success"] = {100, 200, 100}       -- Success color
+}
 
-local AugmentUI = {}
-local ActiveWindow = nil
 local MouseService = findservice(Game, "MouseService")
-local RunService = findservice(Game, "RunService")
-
--- Mouse tracking implementation from original Severe UI
 local Mouse = {
     X = 0,
     Y = 0,
@@ -14,77 +19,8 @@ local Mouse = {
     Pressed = false
 }
 
--- Utility functions
-local Utility = {}
-
-function Utility.GetMouse()
-    local MouseLocation = getmouselocation(MouseService)
-    -- Safer approach to extract mouse position
-    local mX, mY
-    
-    if type(MouseLocation) == "table" and MouseLocation.x ~= nil then
-        mX = MouseLocation.x
-        mY = MouseLocation.y
-    else
-        -- Fallback values if not a table
-        mX = 0
-        mY = 0
-    end
-    
-    return {
-        X = mX, 
-        Y = mY,
-        Clicked = isleftclicked(),
-        Pressed = isleftpressed(),
-        Released = not isleftpressed() and Utility.LastPress
-    }
-end
-
-Utility.LastPress = false
-
-function Utility.IsHovered(Object)
-    if not Object or not Object.Visible then return false end
-    
-    local Mouse = Utility.GetMouse()
-    local Position = Object.Position
-    
-    if not Position then return false end
-    
-    if Object.Size then
-        return Mouse.X >= Position.x and 
-               Mouse.X <= Position.x + Object.Size.x and 
-               Mouse.Y >= Position.y and 
-               Mouse.Y <= Position.y + Object.Size.y
-    elseif Object.TextBounds then
-        local Bounds = Object.TextBounds
-        local X, Y = Position.x, Position.y
-        
-        if Object.Center then
-            X = X - Bounds.x / 2
-        end
-        Y = Y - Bounds.y / 4
-        
-        return Mouse.X >= X and 
-               Mouse.X <= X + Bounds.x and 
-               Mouse.Y >= Y and 
-               Mouse.Y <= Y + Bounds.y
-    end
-    
-    return false
-end
-
--- Color theme
-local Theme = {
-    Background = {30, 30, 40},      -- Dark background
-    Accent = {120, 80, 255},        -- Purple accent
-    AccentDarker = {90, 60, 220},   -- Darker purple for borders
-    Text = {240, 240, 255},         -- White text
-    SubText = {180, 180, 200},      -- Slightly darker text
-    WindowBorder = {50, 50, 65},    -- Window border
-    WindowBackground = {20, 20, 30}, -- Window background
-    Shadow = {10, 10, 15}          -- Shadow color
-}
-
+local Library = {}
+local ActiveWindow = nil
 local IsDragging = false
 local DragOffsetX = 0
 local DragOffsetY = 0
@@ -93,7 +29,107 @@ local IsToggled = false
 local HoveredButton = nil
 local Running = true
 
--- Helper functions borrowed from Severe UI
+function Library:Unload()
+    Running = false
+    if ActiveWindow then
+        IsDragging = false
+        IsToggled = false
+        HoveredButton = nil
+        if ActiveWindow.Tabs then
+            for _, Tab in ipairs(ActiveWindow.Tabs) do
+                if Tab.Button then Tab.Button:Remove() end
+                if Tab.ButtonText then Tab.ButtonText:Remove() end
+                if Tab.SelectedHighlight then Tab.SelectedHighlight:Remove() end
+                if Tab.SelectedIndicator then Tab.SelectedIndicator:Remove() end
+                if Tab.Content then
+                    if Tab.Content.LeftSections then
+                        for _, Section in ipairs(Tab.Content.LeftSections) do
+                            if Section.Background then Section.Background:Remove() end
+                            if Section.Title then Section.Title:Remove() end
+                            if Section.SectionTopLine then Section.SectionTopLine:Remove() end
+                            if Section.Interfaces then
+                                for _, Interface in ipairs(Section.Interfaces) do
+                                    if Interface.Type == "Button" then
+                                        if Interface.ButtonBackground then Interface.ButtonBackground:Remove() end
+                                        if Interface.ButtonBorder then Interface.ButtonBorder:Remove() end
+                                        if Interface.ButtonText then Interface.ButtonText:Remove() end
+                                    elseif Interface.Type == "Toggle" then
+                                        if Interface.OuterBox then Interface.OuterBox:Remove() end
+                                        if Interface.InnerBox then Interface.InnerBox:Remove() end
+                                        if Interface.Text then Interface.Text:Remove() end
+                                        if Interface.KeybindBackground then Interface.KeybindBackground:Remove() end
+                                        if Interface.KeybindBorder then Interface.KeybindBorder:Remove() end
+                                        if Interface.KeybindText then Interface.KeybindText:Remove() end
+                                        if Interface.ModeSelectorBackground then Interface.ModeSelectorBackground:Remove() end
+                                        if Interface.ModeSelectorBorder then Interface.ModeSelectorBorder:Remove() end
+                                        if Interface.HoldText then Interface.HoldText:Remove() end
+                                        if Interface.ToggleText then Interface.ToggleText:Remove() end
+                                        if Interface.ModeDivider then Interface.ModeDivider:Remove() end
+                                    elseif Interface.Type == "Slider" then
+                                        if Interface.Background then Interface.Background:Remove() end
+                                        if Interface.Border then Interface.Border:Remove() end
+                                        if Interface.Fill then Interface.Fill:Remove() end
+                                        if Interface.Knob then Interface.Knob:Remove() end
+                                        if Interface.Text then Interface.Text:Remove() end
+                                        if Interface.ValueText then Interface.ValueText:Remove() end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    if Tab.Content.RightSections then
+                        for _, Section in ipairs(Tab.Content.RightSections) do
+                            if Section.Background then Section.Background:Remove() end
+                            if Section.Title then Section.Title:Remove() end
+                            if Section.SectionTopLine then Section.SectionTopLine:Remove() end
+                            if Section.Interfaces then
+                                for _, Interface in ipairs(Section.Interfaces) do
+                                    if Interface.Type == "Button" then
+                                        if Interface.ButtonBackground then Interface.ButtonBackground:Remove() end
+                                        if Interface.ButtonBorder then Interface.ButtonBorder:Remove() end
+                                        if Interface.ButtonText then Interface.ButtonText:Remove() end
+                                    elseif Interface.Type == "Toggle" then
+                                        if Interface.OuterBox then Interface.OuterBox:Remove() end
+                                        if Interface.InnerBox then Interface.InnerBox:Remove() end
+                                        if Interface.Text then Interface.Text:Remove() end
+                                        if Interface.KeybindBackground then Interface.KeybindBackground:Remove() end
+                                        if Interface.KeybindBorder then Interface.KeybindBorder:Remove() end
+                                        if Interface.KeybindText then Interface.KeybindText:Remove() end
+                                        if Interface.ModeSelectorBackground then Interface.ModeSelectorBackground:Remove() end
+                                        if Interface.ModeSelectorBorder then Interface.ModeSelectorBorder:Remove() end
+                                        if Interface.HoldText then Interface.HoldText:Remove() end
+                                        if Interface.ToggleText then Interface.ToggleText:Remove() end
+                                        if Interface.ModeDivider then Interface.ModeDivider:Remove() end
+                                    elseif Interface.Type == "Slider" then
+                                        if Interface.Background then Interface.Background:Remove() end
+                                        if Interface.Border then Interface.Border:Remove() end
+                                        if Interface.Fill then Interface.Fill:Remove() end
+                                        if Interface.Knob then Interface.Knob:Remove() end
+                                        if Interface.Text then Interface.Text:Remove() end
+                                        if Interface.ValueText then Interface.ValueText:Remove() end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        if ActiveWindow.WindowBackground then ActiveWindow.WindowBackground:Remove() end
+        if ActiveWindow.Title then ActiveWindow.Title:Remove() end
+        if ActiveWindow.TitleAccent then ActiveWindow.TitleAccent:Remove() end
+        if ActiveWindow.TabBackground then ActiveWindow.TabBackground:Remove() end
+        if ActiveWindow.WindowBackground2 then ActiveWindow.WindowBackground2:Remove() end
+        if ActiveWindow.WindowBorder then ActiveWindow.WindowBorder:Remove() end
+        ActiveWindow.Tabs = {}
+        ActiveWindow.TabButtons = {}
+        ActiveWindow.TabContents = {}
+        ActiveWindow = nil
+    end
+    Drawing.clear()
+    Library = nil
+end
+
 local function SetVisibility(Object, Visible)
     if Object and Object.Visible ~= nil then Object.Visible = Visible end
 end
@@ -104,958 +140,1086 @@ local function SetInterfaceVisibility(UI, Visible)
             SetVisibility(Element.Background, Visible)
             SetVisibility(Element.Border, Visible)
             SetVisibility(Element.Title, Visible)
-            SetVisibility(Element.Underline, Visible)
+            SetVisibility(Element.SectionTopLine, Visible)
             Element.Visible = Visible
-            if Element.Items then
-                for _, Item in pairs(Element.Items) do
-                    for _, Property in pairs(Item.Elements) do
-                        if Property.Visible ~= nil then SetVisibility(Property, Visible) end
-                    end
-                    Item.Visible = Visible
-                end
+            if Element.Interfaces then SetInterfaceVisibility(Element.Interfaces, Visible) end
+        elseif Element.Type == "Button" or Element.Type == "Toggle" or Element.Type == "Slider" then
+            for _, Property in pairs(Element) do
+                if type(Property) == "table" and Property.Visible ~= nil then SetVisibility(Property, Visible) end
             end
+            Element.Visible = Visible
         else
             if Element.Visible ~= nil then SetVisibility(Element, Visible) end
-            if Element.Elements then
-                for _, SubElement in pairs(Element.Elements) do
-                    if SubElement.Visible ~= nil then SetVisibility(SubElement, Visible) end
-                end
-            end
+            if Element.Interfaces then SetInterfaceVisibility(Element.Interfaces, Visible) end
+            if Element.Background and Element.Background.Visible ~= nil then SetVisibility(Element.Background, Visible) end
+            if Element.Border and Element.Border.Visible ~= nil then SetVisibility(Element.Border, Visible) end
+            if Element.Title and Element.Title.Visible ~= nil then SetVisibility(Element.Title, Visible) end
+            if Element.SelectedHighlight and Element.SelectedHighlight.Visible ~= nil then SetVisibility(Element.SelectedHighlight, false) end
         end
     end
 end
 
-function AugmentUI:ToggleVisibility()
+function ToggleUI()
     IsVisible = not IsVisible
-    
     if ActiveWindow then
-        SetVisibility(ActiveWindow.Shadow, IsVisible)
-        SetVisibility(ActiveWindow.Background, IsVisible)
-        SetVisibility(ActiveWindow.Border, IsVisible)
-        SetVisibility(ActiveWindow.TitleBar, IsVisible)
-        SetVisibility(ActiveWindow.TitleAccent, IsVisible)
-        SetVisibility(ActiveWindow.Logo, IsVisible)
-        SetVisibility(ActiveWindow.TitleText, IsVisible)
-        SetVisibility(ActiveWindow.TabContainer, IsVisible)
-        SetVisibility(ActiveWindow.TabBorder, IsVisible)
-        SetVisibility(ActiveWindow.ContentArea, IsVisible)
-        
-        for _, Tab in pairs(ActiveWindow.Tabs) do
+        local Main = ActiveWindow
+        SetVisibility(Main.WindowBackground, IsVisible)
+        SetVisibility(Main.Title, IsVisible)
+        SetVisibility(Main.TitleAccent, IsVisible)
+        SetVisibility(Main.TabBackground, IsVisible)
+        SetVisibility(Main.WindowBackground2, IsVisible)
+        SetVisibility(Main.WindowBorder, IsVisible)
+        for _, Tab in ipairs(Main.Tabs) do
             SetVisibility(Tab.Button, IsVisible)
-            SetVisibility(Tab.Text, IsVisible)
-            SetVisibility(Tab.Indicator, IsVisible and Tab.Active)
-            
-            if Tab.Active then
-                for _, Section in pairs(Tab.Sections) do
-                    SetInterfaceVisibility({Section}, IsVisible)
-                end
-            else
-                for _, Section in pairs(Tab.Sections) do
-                    SetInterfaceVisibility({Section}, false)
-                end
-            end
+            SetVisibility(Tab.ButtonText, IsVisible)
+            local ActiveTab = Tab.Name == Main.ActiveTab
+            SetVisibility(Tab.SelectedHighlight, IsVisible and ActiveTab)
+            SetVisibility(Tab.SelectedIndicator, IsVisible and ActiveTab)
+            SetInterfaceVisibility(Tab.Content.LeftSections, IsVisible and ActiveTab)
+            SetInterfaceVisibility(Tab.Content.RightSections, IsVisible and ActiveTab)
         end
-        
         if not IsVisible then
             IsDragging = false
             HoveredButton = nil
+        else
+            Main:SelectTab(Main.ActiveTab)
+            Main:UpdateLayout()
         end
     end
-    
-    return IsVisible
 end
 
-function AugmentUI:IsHovered(Object)
-    if not Object or not Object.Visible then return false end
-    
-    local Position = Object.Position
-    
-    if not Position then return false end
-    
-    if Object.Size then
-        return Mouse.X >= Position.x and 
-               Mouse.X <= Position.x + Object.Size.x and 
-               Mouse.Y >= Position.y and 
-               Mouse.Y <= Position.y + Object.Size.y
-    elseif Object.TextBounds then
-        local Bounds = Object.TextBounds
-        local X, Y = Position.x, Position.y
-        
-        if Object.Center then
-            X = X - Bounds.x / 2
+function Library:Create(Options)
+    local Main = {}
+    local TitleText = Options.Name or "Severe UI"
+
+    local function SetInitialVisibility(Object)
+        if Object and Object.Visible ~= nil then SetVisibility(Object, IsVisible) end
+    end
+
+    Main.WindowBackground = Drawing.new("Square")
+    Main.WindowBackground.Size = {650, 700}
+    Main.WindowBackground.Position = {350, 100}
+    Main.WindowBackground.Color = Colors["DarkContrast"]
+    Main.WindowBackground.Filled = true
+    Main.WindowBackground.Thickness = 1
+    Main.WindowBackground.Transparency = 1
+    Main.WindowBackground.Rounded = true
+    Main.WindowBackground.Rounding = 8
+    SetInitialVisibility(Main.WindowBackground)
+
+    Main.Title = Drawing.new("Text")
+    Main.Title.Text = TitleText
+    Main.Title.Size = 16
+    Main.Title.Font = 2
+    Main.Title.Color = Colors["Accent"]
+    Main.Title.Outline = false
+    Main.Title.Position = {Main.WindowBackground.Position.x + 15, Main.WindowBackground.Position.y + 10}
+    Main.Title.Transparency = 1
+    Main.Title.Center = false
+    SetInitialVisibility(Main.Title)
+
+    -- Aesthetic accent line below title
+    Main.TitleAccent = Drawing.new("Square")
+    Main.TitleAccent.Position = {Main.WindowBackground.Position.x + 15, Main.WindowBackground.Position.y + 32}
+    Main.TitleAccent.Size = {100, 2}
+    Main.TitleAccent.Color = Colors["Accent"]
+    Main.TitleAccent.Filled = true
+    Main.TitleAccent.Transparency = 1
+    Main.TitleAccent.Rounded = true
+    Main.TitleAccent.Rounding = 1
+    SetInitialVisibility(Main.TitleAccent)
+
+    Main.TabBackground = Drawing.new("Square")
+    Main.TabBackground.Position = {Main.WindowBackground.Position.x + 15, Main.WindowBackground.Position.y + 45}
+    Main.TabBackground.Size = {Main.WindowBackground.Size.x - 30, 22}
+    Main.TabBackground.Color = Colors["LightContrast"]
+    Main.TabBackground.Filled = true
+    Main.TabBackground.Thickness = 1
+    Main.TabBackground.Transparency = 1
+    Main.TabBackground.Rounded = true
+    Main.TabBackground.Rounding = 6
+    SetInitialVisibility(Main.TabBackground)
+
+    Main.WindowBackground2 = Drawing.new("Square")
+    Main.WindowBackground2.Position = {Main.WindowBackground.Position.x + 15, Main.WindowBackground.Position.y + 75}
+    Main.WindowBackground2.Size = {Main.WindowBackground.Size.x - 30, Main.WindowBackground.Size.y - 90}
+    Main.WindowBackground2.Color = Colors["LightContrast"]
+    Main.WindowBackground2.Filled = true
+    Main.WindowBackground2.Thickness = 1
+    Main.WindowBackground2.Transparency = 1
+    Main.WindowBackground2.Rounded = true
+    Main.WindowBackground2.Rounding = 8
+    SetInitialVisibility(Main.WindowBackground2)
+
+    Main.WindowBorder = Drawing.new("Square")
+    Main.WindowBorder.Size = {Main.WindowBackground.Size.x, Main.WindowBackground.Size.y}
+    Main.WindowBorder.Position = {Main.WindowBackground.Position.x, Main.WindowBackground.Position.y}
+    Main.WindowBorder.Color = Colors["Accent"]
+    Main.WindowBorder.Filled = false
+    Main.WindowBorder.Thickness = 1.5
+    Main.WindowBorder.Transparency = 0.5
+    Main.WindowBorder.Rounded = true
+    Main.WindowBorder.Rounding = 8
+    SetInitialVisibility(Main.WindowBorder)
+
+    -- Remove the TabBorder and Window2Border for cleaner look
+    Main.TabBorder = nil
+    Main.Window2Border = nil
+
+    Main.Tabs = {}
+    Main.TabButtons = {}
+    Main.TabContents = {}
+    Main.ActiveTab = nil
+
+    function Main:IsHovered(Object)
+        if not IsVisible or not Object or not Object.Visible then return false end
+        local MouseX, MouseY = Mouse.X, Mouse.Y
+        local ObjectPos = Object.Position
+        if not ObjectPos then return false end
+        local ObjectX, ObjectY = ObjectPos.x, ObjectPos.y
+        if Object.Size then
+            local ObjectSize = Object.Size
+            local ObjectW, ObjectH = ObjectSize.x, ObjectSize.y
+            return MouseX >= ObjectX and MouseX <= ObjectX + ObjectW and MouseY >= ObjectY and MouseY <= ObjectY + ObjectH
+        elseif Object.TextBounds then
+            local ObjectBounds = Object.TextBounds
+            local ObjectW, ObjectH = ObjectBounds.x, ObjectBounds.y
+            if Object.Center then ObjectX = ObjectX - ObjectW / 2 end
+            ObjectY = ObjectY - ObjectH / 4
+            return MouseX >= ObjectX and MouseX <= ObjectX + ObjectW and MouseY >= ObjectY and MouseY <= ObjectY + ObjectH
         end
-        Y = Y - Bounds.y / 4
-        
-        return Mouse.X >= X and 
-               Mouse.X <= X + Bounds.x and 
-               Mouse.Y >= Y and 
-               Mouse.Y <= Y + Bounds.y
+        return false
     end
-    
-    return false
-end
 
-function AugmentUI:CreateWindow(Options)
-    Options = Options or {}
-    
-    local WindowWidth = Options.Width or 800
-    local WindowHeight = Options.Height or 500
-    local WindowTitle = Options.Title or "AugmentUI"
-    
-    -- Safe screen dimension handling
-    local ScreenWidth, ScreenHeight = 1920, 1080
-    
-    -- Try to determine screen dimensions safely
-    local ScreenDims = getscreendimensions()
-    if type(ScreenDims) == "table" and ScreenDims.x then
-        ScreenWidth = ScreenDims.x
-        ScreenHeight = ScreenDims.y
-    elseif type(ScreenDims) == "number" then
-        ScreenWidth = ScreenDims
-        ScreenHeight = ScreenDims -- Default fallback
+    function Main:IsWindowHovered()
+        if not IsVisible then return false end
+        return Main:IsHovered(Main.WindowBackground)
     end
-    
-    local WindowPosition = Options.Position or {
-        x = (ScreenWidth / 2) - (WindowWidth / 2),
-        y = (ScreenHeight / 2) - (WindowHeight / 2)
-    }
-    
-    if ActiveWindow then
-        AugmentUI:Unload()
+
+    function Main:UpdateElementPositions()
+        local BasePos = Main.WindowBackground.Position
+        local BaseX, BaseY = BasePos.x, BasePos.y
+        Main.Title.Position = {BaseX + 15, BaseY + 10}
+        Main.TitleAccent.Position = {BaseX + 15, BaseY + 32}
+        Main.TabBackground.Position = {BaseX + 15, BaseY + 45}
+        Main.WindowBackground2.Position = {BaseX + 15, BaseY + 75}
+        Main.WindowBorder.Position = {BaseX, BaseY}
+        Main:UpdateLayout()
     end
-    
-    local Window = {
-        Elements = {},
-        Tabs = {},
-        TabButtons = {},   -- Map tabName -> Tab for easier access
-        TabContents = {},  -- Store tab content separately
-        ActiveTab = nil,
-        Position = WindowPosition,
-        Size = {x = WindowWidth, y = WindowHeight},
-        Title = WindowTitle,
-        Draggable = Options.Draggable ~= false
-    }
 
-    -- Create shadow
-    Window.Shadow = Drawing.new("Square")
-    Window.Shadow.Size = {WindowWidth + 14, WindowHeight + 14}
-    Window.Shadow.Position = {WindowPosition.x - 7, WindowPosition.y - 7}
-    Window.Shadow.Color = Theme.Shadow
-    Window.Shadow.Filled = true
-    Window.Shadow.Transparency = 0.4
-    Window.Shadow.Visible = IsVisible
-    table.insert(Window.Elements, Window.Shadow)
-
-    -- Main window background
-    Window.Background = Drawing.new("Square")
-    Window.Background.Size = {WindowWidth, WindowHeight}
-    Window.Background.Position = {WindowPosition.x, WindowPosition.y}
-    Window.Background.Color = Theme.WindowBackground
-    Window.Background.Filled = true
-    Window.Background.Transparency = 1
-    Window.Background.Visible = IsVisible
-    table.insert(Window.Elements, Window.Background)
-    
-    -- Window border
-    Window.Border = Drawing.new("Square")
-    Window.Border.Size = {WindowWidth, WindowHeight}
-    Window.Border.Position = {WindowPosition.x, WindowPosition.y}
-    Window.Border.Color = Theme.WindowBorder
-    Window.Border.Filled = false
-    Window.Border.Thickness = 1
-    Window.Border.Transparency = 1
-    Window.Border.Visible = IsVisible
-    table.insert(Window.Elements, Window.Border)
-    
-    -- Title bar
-    Window.TitleBar = Drawing.new("Square")
-    Window.TitleBar.Size = {WindowWidth, 30}
-    Window.TitleBar.Position = {WindowPosition.x, WindowPosition.y}
-    Window.TitleBar.Color = Theme.Background
-    Window.TitleBar.Filled = true
-    Window.TitleBar.Transparency = 1
-    Window.TitleBar.Visible = IsVisible
-    table.insert(Window.Elements, Window.TitleBar)
-    
-    -- Title bar accent line
-    Window.TitleAccent = Drawing.new("Square")
-    Window.TitleAccent.Size = {WindowWidth, 2}
-    Window.TitleAccent.Position = {WindowPosition.x, WindowPosition.y + 30}
-    Window.TitleAccent.Color = Theme.Accent
-    Window.TitleAccent.Filled = true
-    Window.TitleAccent.Transparency = 1
-    Window.TitleAccent.Visible = IsVisible
-    table.insert(Window.Elements, Window.TitleAccent)
-
-    -- Logo
-    Window.Logo = Drawing.new("Image")
-    Window.Logo.Url = "https://cdn.nest.rip/uploads/17230644-70b2-4de4-aa2b-17e23bc47a8c.png"
-    Window.Logo.Position = {WindowPosition.x + 10, WindowPosition.y + 7}
-    Window.Logo.Size = {16, 16}
-    Window.Logo.Visible = IsVisible
-    Window.Logo.Transparency = 1
-    table.insert(Window.Elements, Window.Logo)
-    
-    -- Title text
-    Window.TitleText = Drawing.new("Text")
-    Window.TitleText.Text = WindowTitle
-    Window.TitleText.Position = {WindowPosition.x + 34, WindowPosition.y + 7}
-    Window.TitleText.Color = Theme.Text
-    Window.TitleText.Size = 14
-    Window.TitleText.Font = 2
-    Window.TitleText.Outline = true
-    Window.TitleText.OutlineColor = {0, 0, 0}
-    Window.TitleText.Visible = IsVisible
-    table.insert(Window.Elements, Window.TitleText)
-    
-    -- Tab container
-    Window.TabContainer = Drawing.new("Square")
-    Window.TabContainer.Size = {180, WindowHeight - 32}
-    Window.TabContainer.Position = {WindowPosition.x, WindowPosition.y + 32}
-    Window.TabContainer.Color = {Theme.Background[1] - 5, Theme.Background[2] - 5, Theme.Background[3] - 5}
-    Window.TabContainer.Filled = true
-    Window.TabContainer.Transparency = 1
-    Window.TabContainer.Visible = IsVisible
-    table.insert(Window.Elements, Window.TabContainer)
-    
-    -- Tab container border
-    Window.TabBorder = Drawing.new("Square")
-    Window.TabBorder.Size = {180, WindowHeight - 32}
-    Window.TabBorder.Position = {WindowPosition.x, WindowPosition.y + 32}
-    Window.TabBorder.Color = Theme.WindowBorder
-    Window.TabBorder.Filled = false
-    Window.TabBorder.Thickness = 1
-    Window.TabBorder.Transparency = 1
-    Window.TabBorder.Visible = IsVisible
-    table.insert(Window.Elements, Window.TabBorder)
-    
-    -- Content area
-    Window.ContentArea = Drawing.new("Square")
-    Window.ContentArea.Size = {WindowWidth - 180, WindowHeight - 32}
-    Window.ContentArea.Position = {WindowPosition.x + 180, WindowPosition.y + 32}
-    Window.ContentArea.Color = Theme.WindowBackground
-    Window.ContentArea.Filled = true
-    Window.ContentArea.Transparency = 1
-    Window.ContentArea.Visible = IsVisible
-    table.insert(Window.Elements, Window.ContentArea)
-
-    function Window:UpdatePosition(X, Y)
-        self.Position = {x = X, y = Y}
-        
-        -- Update all elements' positions
-        self.Shadow.Position = {X - 7, Y - 7}
-        self.Background.Position = {X, Y}
-        self.Border.Position = {X, Y}
-        self.TitleBar.Position = {X, Y}
-        self.TitleAccent.Position = {X, Y + 30}
-        self.Logo.Position = {X + 10, Y + 7}
-        self.TitleText.Position = {X + 34, Y + 7}
-        self.TabContainer.Position = {X, Y + 32}
-        self.TabBorder.Position = {X, Y + 32}
-        self.ContentArea.Position = {X + 180, Y + 32}
-        
-        -- Update tabs and tab content
-        self:UpdateTabPositions()
-    end
-    
-    function Window:UpdateTabPositions()
-        local TabCount = #self.Tabs
+    function Main:UpdateTabSizes()
+        local TabCount = #Main.Tabs
         if TabCount == 0 then return end
-        
-        -- Use verificações de nil para evitar erros
-        if not self.TabContainer or not self.TabContainer.Position then return end
-        
-        local TabContainerPos = self.TabContainer.Position
-        local TabContainerWidth = self.TabContainer.Size[1]
-        if not TabContainerPos or not TabContainerWidth then return end
-        
-        local TabY = TabContainerPos.y
-        local TabHeight = 30
-        
-        for i, Tab in ipairs(self.Tabs) do
-            if Tab and Tab.Button and Tab.ButtonBorder and Tab.ButtonText and Tab.SelectedHighlight then
-                local CurrentTabY = TabY + ((i-1) * TabHeight) + 5
-                
-                -- Update tab button position
-                Tab.Button.Position = {TabContainerPos.x + 5, CurrentTabY}
-                Tab.ButtonBorder.Position = {TabContainerPos.x + 5, CurrentTabY}
-                Tab.ButtonText.Position = {TabContainerPos.x + TabContainerWidth/2, CurrentTabY + TabHeight/2 - 7}
-                Tab.SelectedHighlight.Position = {TabContainerPos.x + 5, CurrentTabY}
+        local TabBackgroundPos = Main.TabBackground.Position
+        local TabBackgroundSize = Main.TabBackground.Size
+        local TotalWidth = TabBackgroundSize.x
+        local StartXBase = TabBackgroundPos.x
+        local TabY = TabBackgroundPos.y
+        local TabH = TabBackgroundSize.y
+        if TotalWidth <= 0 then return end
+        local ExactTabWidth = TotalWidth / TabCount
+        local Epsilon = 0.0001
+        for i, Tab in ipairs(Main.Tabs) do
+            local StartX = StartXBase + (i - 1) * ExactTabWidth
+            local EndX = StartX + ExactTabWidth
+            local RoundedStartX = math.floor(StartX + Epsilon)
+            local RoundedEndX = math.floor(EndX + Epsilon)
+            local RoundedWidth = RoundedEndX - RoundedStartX
+            if i == TabCount then
+                RoundedEndX = math.floor(StartXBase + TotalWidth + Epsilon)
+                RoundedWidth = RoundedEndX - RoundedStartX
             end
-        end
-    end
-    
-    function Window:SelectTab(TabName)
-        if not self.TabButtons[TabName] then return end
-        
-        self.ActiveTab = TabName
-        
-        for OtherTabName, OtherTab in pairs(self.TabButtons) do
-            local Selected = OtherTabName == TabName
-            SetVisibility(OtherTab.SelectedHighlight, Selected and IsVisible)
+            if RoundedWidth <= 0 then RoundedWidth = 1 end
+            local Button = Tab.Button
+            local ButtonText = Tab.ButtonText
+            local Highlight = Tab.SelectedHighlight
+            local Indicator = Tab.SelectedIndicator
+            Button.Position = {RoundedStartX, TabY}
+            Button.Size = {RoundedWidth, TabH}
+            Highlight.Position = {RoundedStartX, TabY}
+            Highlight.Size = {RoundedWidth, TabH}
+            ButtonText.Position = {RoundedStartX + (RoundedWidth / 2), TabY + (TabH / 2) - 7}
+            ButtonText.Center = true
             
-            local Content = self.TabContents[OtherTabName]
-            if Content then
-                Content.Visible = Selected
-                SetInterfaceVisibility(Content.LeftSections, Selected and IsVisible)
-                SetInterfaceVisibility(Content.RightSections, Selected and IsVisible)
+            -- Update indicator position if tab is selected
+            if Tab.Name == Main.ActiveTab then
+                Indicator.Position = {RoundedStartX + 5, TabY + TabH - 2}
+                Indicator.Size = {RoundedWidth - 10, 2}
             end
         end
     end
 
-    function Window:AddTab(TabName)
-        TabName = TabName or "Tab " .. (#self.Tabs + 1)
-        local TabCount = #self.Tabs
-        local TabButtonX = self.Position.x + 5
-        local TabButtonY = self.Position.y + 40 + (TabCount * 30)
+    function Main:UpdateLayout()
+        Main:UpdateTabSizes()
+        if not Main.ActiveTab or not Main.TabContents[Main.ActiveTab] then return end
+        local CurrentTabContent = Main.TabContents[Main.ActiveTab]
+        local ParentPos = Main.WindowBackground2.Position
+        local ParentSize = Main.WindowBackground2.Size
+        local ParentWidth = ParentSize.x
+        local Padding = 8 -- Increase padding for a more spacious look
+        local AvailableWidth = ParentWidth - (Padding * 2) - Padding
+        local ColumnWidth = math.floor(AvailableWidth / 2)
+        local BaseX = ParentPos.x
+        local BaseY = ParentPos.y
+        local LeftColumnX = BaseX + Padding
+        local RightColumnX = LeftColumnX + ColumnWidth + Padding
+        local InitialY = BaseY + Padding + 5
+        local CurrentLeftY = InitialY
+        local CurrentRightY = InitialY
+
+        local function UpdateSectionLayout(Section, ColumnX, StartY, Width)
+            local InnerWidth = Width - (Padding * 2)
+            local LineThickness = 2 -- Thicker accent line
+            local BorderThickness = Section.Border.Thickness
+
+            SetVisibility(Section.Background, true)
+            SetVisibility(Section.Title, true)
+            SetVisibility(Section.SectionTopLine, true)
+
+            Section.Background.Position = {ColumnX + Padding, StartY}
+            Section.Background.Size = {InnerWidth, 0}
+
+            Section.SectionTopLine.Position = {ColumnX + Padding + 5, StartY + Padding + 20} -- Move below title
+            Section.SectionTopLine.Size = {30, LineThickness} -- Shorter line for a cleaner look
+
+            local TitleHeight = Section.Title.TextBounds and Section.Title.TextBounds.y or 15
+            Section.Title.Position = {ColumnX + Padding + 8, StartY + Padding - 1}
+
+            local CurrentInternalY = StartY + Padding + LineThickness + Padding + TitleHeight + 10 -- More spacing
+
+            if Section.Interfaces then
+                for _, Element in ipairs(Section.Interfaces) do
+                    if Element.Type == "Button" then
+                        local ButtonHeight = 24 -- Taller buttons
+                        local ButtonWidth = InnerWidth - (Padding * 2)
+                        local ButtonX = ColumnX + Padding + Padding
+                        local ButtonY = CurrentInternalY
+                        SetVisibility(Element.ButtonBackground, true)
+                        SetVisibility(Element.ButtonBorder, true)
+                        SetVisibility(Element.ButtonText, true)
+                        
+                        -- Position the shadow slightly offset
+                        Element.ButtonBorder.Position = {ButtonX + 1, ButtonY + 1}
+                        Element.ButtonBorder.Size = {ButtonWidth, ButtonHeight}
+                        
+                        Element.ButtonBackground.Position = {ButtonX, ButtonY}
+                        Element.ButtonBackground.Size = {ButtonWidth, ButtonHeight}
+                        Element.ButtonText.Position = {ButtonX + math.floor(ButtonWidth / 2), ButtonY + math.floor(ButtonHeight / 2) - 7}
+                        Element.ButtonText.Center = true
+                        Element.ButtonText.Size = 14
+                        CurrentInternalY = CurrentInternalY + ButtonHeight + Padding + 2 -- Add more spacing between elements
+                    elseif Element.Type == "Toggle" then
+                        local ToggleHeight = 18
+                        local ToggleWidth = 36 -- Width of the pill toggle
+                        local TextWidth = InnerWidth - ToggleWidth - Padding - 20 -- Extra space for visual separation
+                        local ToggleX = ColumnX + Padding + Padding
+                        local ToggleY = CurrentInternalY
+                        SetVisibility(Element.OuterBox, true)
+                        SetVisibility(Element.InnerBox, true)
+                        SetVisibility(Element.Text, true)
+                        
+                        -- Position the toggle at the right side
+                        local ToggleRightX = ColumnX + InnerWidth - ToggleWidth
+                        Element.OuterBox.Position = {ToggleRightX, ToggleY}
+                        Element.OuterBox.Size = {ToggleWidth, ToggleHeight}
+                        
+                        -- Position the toggle indicator based on state
+                        if Element.State then
+                            Element.InnerBox.Position = {ToggleRightX + Element.OuterBox.Size.x - Element.InnerBox.Size.x - 2, ToggleY + 2}
+                        else
+                            Element.InnerBox.Position = {ToggleRightX + 2, ToggleY + 2}
+                        end
+                        Element.Text.Position = {ToggleX, ToggleY + math.floor(ToggleHeight / 2) - 6}
+                        Element.Text.Center = false
+                        
+                        if Element.KeybindBackground then
+                            -- Update keybind position code if needed
+                        end
+                        
+                        CurrentInternalY = CurrentInternalY + ToggleHeight + Padding + 3 -- More spacing
+                    elseif Element.Type == "Slider" then
+                        local SliderHeight = 15
+                        local SliderWidth = InnerWidth - (Padding * 2)
+                        local SliderX = ColumnX + Padding + Padding
+                        local SliderY = CurrentInternalY + 16 -- More vertical spacing for the title
+                        SetVisibility(Element.Background, true)
+                        if Element.Border then SetVisibility(Element.Border, true) end
+                        SetVisibility(Element.Fill, true)
+                        SetVisibility(Element.Text, true)
+                        SetVisibility(Element.ValueText, true)
+                        if Element.Knob then SetVisibility(Element.Knob, true) end
+                        
+                        Element.Border.Position = {SliderX + 1, SliderY + 1}
+                        Element.Border.Size = {SliderWidth, SliderHeight}
+                        
+                        Element.Background.Position = {SliderX, SliderY}
+                        Element.Background.Size = {SliderWidth, SliderHeight}
+                        
+                        local percentage = (Element.Value - Element.Min) / (Element.Max - Element.Min)
+                        local FillWidth = percentage * SliderWidth
+                        Element.Fill.Position = {SliderX, SliderY}
+                        Element.Fill.Size = {FillWidth, SliderHeight}
+                        
+                        -- Position the knob
+                        if Element.Knob then
+                            local knobPosX = SliderX + FillWidth - (Element.Knob.Size.x / 2)
+                            local knobPosY = SliderY - (Element.Knob.Size.y - SliderHeight) / 2
+                            Element.Knob.Position = {knobPosX, knobPosY}
+                        end
+                        
+                        Element.Text.Position = {SliderX, SliderY - 17}
+                        local SliderCenterX = SliderX + (SliderWidth / 2)
+                        local SliderCenterY = SliderY + (SliderHeight / 2) - 6.5
+                        Element.ValueText.Position = {SliderCenterX, SliderCenterY}
+                        Element.ValueText.Center = true
+                        CurrentInternalY = CurrentInternalY + SliderHeight + Padding + 20 -- Add more spacing below slider
+                    end
+                end
+            end
+            local TotalSectionHeight = (CurrentInternalY - StartY)
+            Section.Background.Size = {InnerWidth, TotalSectionHeight}
+            if Section.Border and Section.Border.Size then -- Check if border exists and has a Size property
+                Section.Border.Size = {InnerWidth + BorderThickness * 2, TotalSectionHeight + BorderThickness - Padding}
+            end
+            Section.CalculatedHeight = TotalSectionHeight
+            return StartY + TotalSectionHeight + Padding + 5 -- Added more spacing between sections
+        end
+
+        for _, Section in ipairs(CurrentTabContent.LeftSections) do
+            if Section.Visible then
+                CurrentLeftY = UpdateSectionLayout(Section, LeftColumnX, CurrentLeftY, ColumnWidth)
+            else
+                SetVisibility(Section.Background, false)
+                SetVisibility(Section.Border, false)
+                SetVisibility(Section.Title, false)
+                if Section.Interfaces then SetInterfaceVisibility(Section.Interfaces, false) end
+            end
+        end
+
+        for _, Section in ipairs(CurrentTabContent.RightSections) do
+            if Section.Visible then
+                CurrentRightY = UpdateSectionLayout(Section, RightColumnX, CurrentRightY, ColumnWidth)
+            else
+                SetVisibility(Section.Background, false)
+                SetVisibility(Section.Border, false)
+                SetVisibility(Section.Title, false)
+                if Section.Interfaces then SetInterfaceVisibility(Section.Interfaces, false) end
+            end
+        end
+    end
+
+    function Main:Tab(Options)
+        local TabName = Options.Name or "Tab " .. (#Main.Tabs + 1)
+        local TabButton = Drawing.new("Square")
+        TabButton.Color = Colors["LightContrast"]
+        TabButton.Filled = true
+        TabButton.Thickness = 1
+        TabButton.Transparency = 1
+        TabButton.Rounded = true
+        TabButton.Rounding = 6
+        SetInitialVisibility(TabButton)
         
-        -- Create tab content storage
+        local TabButtonText = Drawing.new("Text")
+        TabButtonText.Text = TabName
+        TabButtonText.Size = 14
+        TabButtonText.Font = 2
+        TabButtonText.Color = Colors["Text"]
+        TabButtonText.Outline = false
+        TabButtonText.Transparency = 1
+        TabButtonText.Center = true
+        SetInitialVisibility(TabButtonText)
+        
+        local SelectedHighlight = Drawing.new("Square")
+        SelectedHighlight.Color = Colors["Accent"]
+        SelectedHighlight.Transparency = 0.4
+        SelectedHighlight.Filled = true
+        SelectedHighlight.Rounded = true
+        SelectedHighlight.Rounding = 6
+        SelectedHighlight.Visible = false
+        
+        -- Bottom indicator for selected tab
+        local SelectedIndicator = Drawing.new("Square")
+        SelectedIndicator.Color = Colors["Accent"]
+        SelectedIndicator.Transparency = 1
+        SelectedIndicator.Filled = true
+        SelectedIndicator.Rounded = true
+        SelectedIndicator.Rounding = 1
+        SelectedIndicator.Visible = false
+        
         local TabContent = {
             Name = TabName,
             LeftSections = {},
             RightSections = {},
             Visible = false
         }
-        
-        -- Create tab button
-        local TabButton = Drawing.new("Square")
-        TabButton.Size = {170, 28}
-        TabButton.Position = {TabButtonX, TabButtonY}
-        TabButton.Color = Theme.Background
-        TabButton.Filled = true
-        TabButton.Transparency = 1
-        TabButton.Visible = IsVisible
-        table.insert(self.Elements, TabButton)
-        
-        -- Create button border
-        local TabButtonBorder = Drawing.new("Square")
-        TabButtonBorder.Size = {170, 28}
-        TabButtonBorder.Position = {TabButtonX, TabButtonY}
-        TabButtonBorder.Color = Theme.WindowBorder
-        TabButtonBorder.Filled = false
-        TabButtonBorder.Thickness = 1
-        TabButtonBorder.Transparency = 1
-        TabButtonBorder.Visible = IsVisible
-        table.insert(self.Elements, TabButtonBorder)
-        
-        -- Create button text
-        local TabButtonText = Drawing.new("Text")
-        TabButtonText.Text = TabName
-        TabButtonText.Position = {TabButtonX + 85, TabButtonY + 7}
-        TabButtonText.Color = Theme.Text
-        TabButtonText.Size = 14
-        TabButtonText.Font = 2
-        TabButtonText.Outline = true
-        TabButtonText.OutlineColor = {0, 0, 0}
-        TabButtonText.Center = true
-        TabButtonText.Transparency = 1
-        TabButtonText.Visible = IsVisible
-        table.insert(self.Elements, TabButtonText)
-        
-        -- Create selected highlight
-        local SelectedHighlight = Drawing.new("Square")
-        SelectedHighlight.Size = {170, 28}
-        SelectedHighlight.Position = {TabButtonX, TabButtonY}
-        SelectedHighlight.Color = Theme.Accent
-        SelectedHighlight.Filled = true
-        SelectedHighlight.Transparency = 0.2
-        SelectedHighlight.Visible = false
-        table.insert(self.Elements, SelectedHighlight)
-        
-        -- Create Tab object with all required parts
-        local Tab = {
-            Name = TabName,
-            Button = TabButton,
-            ButtonBorder = TabButtonBorder,
-            ButtonText = TabButtonText,
-            SelectedHighlight = SelectedHighlight,
-            Content = TabContent
-        }
-        
-        -- Add section function
-        function Tab:AddSection(SectionName, SectionSide)
-            local Side = SectionSide or "Left"
-            local SectionCollection = Side == "Left" and TabContent.LeftSections or TabContent.RightSections
+
+        function TabContent:Section(Options)
+            local SectionName = Options.Name or "Section"
+            local Side = Options.Side or "Left"
+            local SectionBackground = Drawing.new("Square")
+            SectionBackground.Color = Colors["DarkContrast"]
+            SectionBackground.Filled = true
+            SectionBackground.Thickness = 1
+            SectionBackground.Transparency = 1
+            SectionBackground.Rounded = true
+            SectionBackground.Rounding = 6
+            SectionBackground.Visible = false
             
-            local ContentAreaX = self.Window.ContentArea.Position.x
-            local ContentAreaY = self.Window.ContentArea.Position.y
-            local ContentWidth = self.Window.ContentArea.Size[1]
+            local SectionTitle = Drawing.new("Text")
+            SectionTitle.Text = SectionName
+            SectionTitle.Size = 14
+            SectionTitle.Font = 2
+            SectionTitle.Color = Colors["Accent"]
+            SectionTitle.Outline = false
+            SectionTitle.Transparency = 1
+            SectionTitle.Center = false
+            SectionTitle.Visible = false
             
-            -- Calculate section position
-            local SectionX = ContentAreaX + (Side == "Left" and 10 or ContentWidth/2 + 5)
-            local SectionY = ContentAreaY + 10
-            local SectionWidth = (ContentWidth / 2) - 15
+            local SectionTopLine = Drawing.new("Square")
+            SectionTopLine.Color = Colors["Accent"]
+            SectionTopLine.Filled = true
+            SectionTopLine.Thickness = 1
+            SectionTopLine.Transparency = 0.8
+            SectionTopLine.Rounded = true
+            SectionTopLine.Rounding = 1
+            SectionTopLine.Visible = false
             
-            -- Calculate vertical positioning based on existing sections
-            local VerticalOffset = 0
-            for _, ExistingSection in ipairs(SectionCollection) do
-                if ExistingSection.Container and ExistingSection.Container.Size then
-                    VerticalOffset = VerticalOffset + ExistingSection.Container.Size[2] + 10
-                end
-            end
-            
-            SectionY = SectionY + VerticalOffset
-            
-            -- Create section
-            local Section = {
-                Name = SectionName,
-                Type = "Section",
-                Window = self.Window,
-                Side = Side,
-                Tab = self,
-                Elements = {},
-                Interfaces = {},
-                Visible = self == self.Window.ActiveTab
+            -- Remove border for cleaner look
+            local SectionBorder = {
+                Position = {x = 0, y = 0},
+                Size = {x = 0, y = 0},
+                Visible = false,
+                Thickness = 0
             }
             
-            -- Create section background
-            Section.Background = Drawing.new("Square")
-            Section.Background.Size = {SectionWidth, 30} -- Initial height
-            Section.Background.Position = {SectionX, SectionY}
-            Section.Background.Color = Theme.Background
-            Section.Background.Filled = true
-            Section.Background.Transparency = 1
-            Section.Background.Visible = self.Active and IsVisible
-            table.insert(Section.Elements, Section.Background)
-            table.insert(self.Elements, Section.Background)
-            
-            -- Create section border
-            Section.Border = Drawing.new("Square")
-            Section.Border.Size = {SectionWidth, 30}
-            Section.Border.Position = {SectionX, SectionY}
-            Section.Border.Color = Theme.WindowBorder
-            Section.Border.Filled = false
-            Section.Border.Thickness = 1
-            Section.Border.Transparency = 1
-            Section.Border.Visible = self.Active and IsVisible
-            table.insert(Section.Elements, Section.Border)
-            table.insert(self.Elements, Section.Border)
-            
-            -- Create section title
-            Section.Title = Drawing.new("Text")
-            Section.Title.Text = SectionName
-            Section.Title.Position = {SectionX + 10, SectionY + 8}
-            Section.Title.Color = Theme.Text
-            Section.Title.Size = 14
-            Section.Title.Font = 2
-            Section.Title.Outline = true
-            Section.Title.OutlineColor = {0, 0, 0}
-            Section.Title.Visible = self.Active and IsVisible
-            table.insert(Section.Elements, Section.Title)
-            table.insert(self.Elements, Section.Title)
-            
-            -- Add the AddButton method to this Section instance
-            function Section:AddButton(Options)
-                local Name = Options.Name or "Button"
+            local Section = {
+                Type = "Section",
+                Name = SectionName,
+                Side = Side,
+                Background = SectionBackground,
+                Border = SectionBorder,
+                Title = SectionTitle,
+                SectionTopLine = SectionTopLine,
+                Interfaces = {},
+                Visible = false,
+                CalculatedHeight = 0
+            }
+
+            function Section:Button(Options)
+                local ButtonName = Options.Name or "Button"
                 local Callback = Options.Callback or function() end
-                local Height = 30
-                
-                -- Calcular posição Y baseada em interfaces existentes
-                local InterfaceY = self.Background.Position.y + 30
-                for _, Interface in ipairs(self.Interfaces) do
-                    InterfaceY = InterfaceY + Interface.Height + 5
-                end
-                
+                local ButtonBackground = Drawing.new("Square")
+                ButtonBackground.Color = Colors["LightContrast"]
+                ButtonBackground.Filled = true
+                ButtonBackground.Thickness = 1
+                ButtonBackground.Transparency = 1
+                ButtonBackground.Rounded = true
+                ButtonBackground.Rounding = 4
+                ButtonBackground.Visible = self.Visible
+
+                local ButtonText = Drawing.new("Text")
+                ButtonText.Text = ButtonName
+                ButtonText.Size = 14
+                ButtonText.Font = 2
+                ButtonText.Color = Colors["Text"]
+                ButtonText.Outline = false
+                ButtonText.Transparency = 1
+                ButtonText.Center = true
+                ButtonText.Visible = self.Visible
+
+                -- Replace border with a subtle shadow effect
+                local ButtonShadow = Drawing.new("Square")
+                ButtonShadow.Color = {0, 0, 0}
+                ButtonShadow.Filled = true
+                ButtonShadow.Thickness = 1
+                ButtonShadow.Transparency = 0.2
+                ButtonShadow.Rounded = true
+                ButtonShadow.Rounding = 4
+                ButtonShadow.Visible = self.Visible
+
                 local Button = {
                     Type = "Button",
-                    Name = Name,
+                    Name = ButtonName,
                     Callback = Callback,
-                    Height = Height
+                    ButtonBackground = ButtonBackground,
+                    ButtonBorder = ButtonShadow, -- Rename for compatibility
+                    ButtonText = ButtonText,
+                    DefaultBorderColor = {0, 0, 0},
+                    OriginalBackgroundColor = Colors["LightContrast"],
+                    OriginalBackgroundTransparency = 1,
+                    Visible = self.Visible
                 }
-                
-                -- Criar fundo do botão
-                Button.ButtonBackground = Drawing.new("Square")
-                Button.ButtonBackground.Size = {self.Background.Size[1] - 20, Height}
-                Button.ButtonBackground.Position = {self.Background.Position.x + 10, InterfaceY}
-                Button.ButtonBackground.Color = Theme.Background
-                Button.ButtonBackground.Filled = true
-                Button.ButtonBackground.Transparency = 1
-                Button.ButtonBackground.Visible = self.Visible and IsVisible
-                
-                -- Criar borda do botão
-                Button.ButtonBorder = Drawing.new("Square")
-                Button.ButtonBorder.Size = {self.Background.Size[1] - 20, Height}
-                Button.ButtonBorder.Position = {self.Background.Position.x + 10, InterfaceY}
-                Button.ButtonBorder.Color = Theme.WindowBorder
-                Button.ButtonBorder.Filled = false
-                Button.ButtonBorder.Thickness = 1
-                Button.ButtonBorder.Transparency = 1
-                Button.ButtonBorder.Visible = self.Visible and IsVisible
-                
-                -- Criar texto do botão
-                Button.ButtonText = Drawing.new("Text")
-                Button.ButtonText.Text = Name
-                Button.ButtonText.Position = {
-                    self.Background.Position.x + self.Background.Size[1]/2, 
-                    InterfaceY + Height/2 - 7
-                }
-                Button.ButtonText.Color = Theme.Text
-                Button.ButtonText.Size = 14
-                Button.ButtonText.Font = 2
-                Button.ButtonText.Center = true
-                Button.ButtonText.Outline = true
-                Button.ButtonText.OutlineColor = {0, 0, 0}
-                Button.ButtonText.Visible = self.Visible and IsVisible
-                
-                -- Adicionar elementos à seção
-                table.insert(self.Elements, Button.ButtonBackground)
-                table.insert(self.Elements, Button.ButtonBorder)
-                table.insert(self.Elements, Button.ButtonText)
-                table.insert(self.Tab.Elements, Button.ButtonBackground)
-                table.insert(self.Tab.Elements, Button.ButtonBorder)
-                table.insert(self.Tab.Elements, Button.ButtonText)
-                table.insert(self.Window.Elements, Button.ButtonBackground)
-                table.insert(self.Window.Elements, Button.ButtonBorder)
-                table.insert(self.Window.Elements, Button.ButtonText)
-                
-                -- Atualizar tamanho da seção
-                local NewHeight = (InterfaceY + Height) - self.Background.Position.y + 10
-                self.Background.Size = {self.Background.Size[1], NewHeight}
-                self.Border.Size = {self.Border.Size[1], NewHeight}
-                
                 table.insert(self.Interfaces, Button)
+                if IsVisible and Main.ActiveTab == TabContent.Name then Main:UpdateLayout() end
                 return Button
             end
-            
-            -- Add the AddToggle method to this Section instance
-            function Section:AddToggle(Options)
-                local Name = Options.Name or "Toggle"
-                local Default = Options.Default or false
+
+            function Section:Toggle(Options)
+                local ToggleName = Options.Name or "Toggle"
+                local DefaultState = Options.Default or false
                 local Callback = Options.Callback or function() end
-                local Height = 25
                 
-                -- Calcular posição Y baseada em interfaces existentes
-                local InterfaceY = self.Background.Position.y + 30
-                for _, Interface in ipairs(self.Interfaces) do
-                    InterfaceY = InterfaceY + Interface.Height + 5
-                end
+                -- Modern toggle design (rounded rectangle)
+                local ToggleOuterBox = Drawing.new("Square")
+                ToggleOuterBox.Size = {36, 18}
+                ToggleOuterBox.Filled = true
+                ToggleOuterBox.Thickness = 1
+                ToggleOuterBox.Transparency = 1
+                ToggleOuterBox.Visible = self.Visible
+                ToggleOuterBox.Color = DefaultState and Colors["Accent"] or Colors["Border"]
+                ToggleOuterBox.Rounded = true
+                ToggleOuterBox.Rounding = 10
+                
+                -- Toggle indicator (circle)
+                local ToggleInnerBox = Drawing.new("Square")
+                ToggleInnerBox.Size = {14, 14}
+                ToggleInnerBox.Filled = true
+                ToggleInnerBox.Thickness = 1
+                ToggleInnerBox.Transparency = 1
+                ToggleInnerBox.Visible = self.Visible
+                ToggleInnerBox.Color = Colors["Selected"]
+                ToggleInnerBox.Rounded = true
+                ToggleInnerBox.Rounding = 10
+                
+                local ToggleText = Drawing.new("Text")
+                ToggleText.Text = ToggleName
+                ToggleText.Size = 14
+                ToggleText.Font = 2
+                ToggleText.Color = Colors["Text"]
+                ToggleText.Outline = false
+                ToggleText.Transparency = 1
+                ToggleText.Center = false
+                ToggleText.Visible = self.Visible
+                
+                local ToggleState = DefaultState
                 
                 local Toggle = {
                     Type = "Toggle",
-                    Name = Name,
-                    State = Default,
+                    Name = ToggleName,
+                    State = ToggleState,
                     Callback = Callback,
-                    Height = Height
+                    OuterBox = ToggleOuterBox,
+                    InnerBox = ToggleInnerBox,
+                    Text = ToggleText,
+                    DefaultBorderColor = Colors["Border"],
+                    OriginalInnerColor = ToggleState and Colors["Accent"] or Colors["Border"],
+                    Visible = self.Visible,
+                    LastKeyState = false
                 }
-                
-                -- Criar caixa externa do toggle
-                Toggle.OuterBox = Drawing.new("Square")
-                Toggle.OuterBox.Size = {16, 16}
-                Toggle.OuterBox.Position = {self.Background.Position.x + 10, InterfaceY + 4}
-                Toggle.OuterBox.Color = Theme.WindowBorder
-                Toggle.OuterBox.Filled = false
-                Toggle.OuterBox.Thickness = 1
-                Toggle.OuterBox.Transparency = 1
-                Toggle.OuterBox.Visible = self.Visible and IsVisible
-                
-                -- Criar caixa interna do toggle
-                Toggle.InnerBox = Drawing.new("Square")
-                Toggle.InnerBox.Size = {14, 14}
-                Toggle.InnerBox.Position = {self.Background.Position.x + 11, InterfaceY + 5}
-                Toggle.InnerBox.Color = Default and Theme.Accent or Theme.Background
-                Toggle.InnerBox.Filled = true
-                Toggle.InnerBox.Transparency = Default and 1 or 0.5
-                Toggle.InnerBox.Visible = self.Visible and IsVisible
-                
-                -- Criar texto do toggle
-                Toggle.Text = Drawing.new("Text")
-                Toggle.Text.Text = Name
-                Toggle.Text.Position = {self.Background.Position.x + 35, InterfaceY + 5}
-                Toggle.Text.Color = Theme.Text
-                Toggle.Text.Size = 14
-                Toggle.Text.Font = 2
-                Toggle.Text.Outline = true
-                Toggle.Text.OutlineColor = {0, 0, 0}
-                Toggle.Text.Visible = self.Visible and IsVisible
-                
-                -- Adicionar função para alterar estado
+
                 function Toggle:SetState(NewState)
                     self.State = NewState
-                    self.InnerBox.Color = NewState and Theme.Accent or Theme.Background
-                    self.InnerBox.Transparency = NewState and 1 or 0.5
-                    
-                    -- Chamar callback
-                    spawn(function()
-                        self.Callback(NewState)
-                    end)
+                    self.OuterBox.Color = NewState and Colors["Accent"] or Colors["Border"]
+                    -- Move the toggle indicator based on state
+                    if NewState then
+                        -- Position at right side when ON
+                        self.InnerBox.Position = {
+                            self.OuterBox.Position.x + self.OuterBox.Size.x - self.InnerBox.Size.x - 2, 
+                            self.OuterBox.Position.y + 2
+                        }
+                    else
+                        -- Position at left side when OFF
+                        self.InnerBox.Position = {
+                            self.OuterBox.Position.x + 2, 
+                            self.OuterBox.Position.y + 2
+                        }
+                    end
+                    self.OriginalInnerColor = self.OuterBox.Color
+                    if self.Callback then spawn(function() self.Callback(NewState) end) end
                 end
-                
-                -- Adicionar elementos à seção
-                table.insert(self.Elements, Toggle.OuterBox)
-                table.insert(self.Elements, Toggle.InnerBox)
-                table.insert(self.Elements, Toggle.Text)
-                table.insert(self.Tab.Elements, Toggle.OuterBox)
-                table.insert(self.Tab.Elements, Toggle.InnerBox)
-                table.insert(self.Tab.Elements, Toggle.Text)
-                table.insert(self.Window.Elements, Toggle.OuterBox)
-                table.insert(self.Window.Elements, Toggle.InnerBox)
-                table.insert(self.Window.Elements, Toggle.Text)
-                
-                -- Atualizar tamanho da seção
-                local NewHeight = (InterfaceY + Height) - self.Background.Position.y + 10
-                self.Background.Size = {self.Background.Size[1], NewHeight}
-                self.Border.Size = {self.Border.Size[1], NewHeight}
                 
                 table.insert(self.Interfaces, Toggle)
+                if IsVisible and Main.ActiveTab == TabContent.Name then Main:UpdateLayout() end
                 return Toggle
             end
-            
-            -- Add the AddSlider method to this Section instance
-            function Section:AddSlider(Options)
-                local Name = Options.Name or "Slider"
+
+            function Section:Slider(Options)
+                local SliderName = Options.Name or "Slider"
                 local Min = Options.Min or 0
                 local Max = Options.Max or 100
-                local Default = math.clamp(Options.Default or ((Max - Min) / 2) + Min, Min, Max)
-                local Callback = Options.Callback or function() end
-                local Height = 40
+                local Default = math.clamp(Options.Default or ((Max - Min) / 2), Min, Max)
                 local Units = Options.Units or ""
                 local Increment = Options.Increment or 1
-                
-                -- Calcular posição Y baseada em interfaces existentes
-                local InterfaceY = self.Background.Position.y + 30
-                for _, Interface in ipairs(self.Interfaces) do
-                    InterfaceY = InterfaceY + Interface.Height + 5
-                end
-                
+                local Callback = Options.Callback or function() end
+
+                local SliderBackground = Drawing.new("Square")
+                SliderBackground.Color = Colors["Border"]
+                SliderBackground.Filled = true
+                SliderBackground.Thickness = 1
+                SliderBackground.Transparency = 0.6
+                SliderBackground.Visible = self.Visible
+                SliderBackground.Rounded = true
+                SliderBackground.Rounding = 4
+
+                local SliderFill = Drawing.new("Square")
+                SliderFill.Color = Colors["Accent"]
+                SliderFill.Filled = true
+                SliderFill.Transparency = 1
+                SliderFill.Visible = self.Visible
+                SliderFill.Rounded = true
+                SliderFill.Rounding = 4
+
+                -- Replace border with a subtle shadow
+                local SliderShadow = Drawing.new("Square")
+                SliderShadow.Color = {0, 0, 0}
+                SliderShadow.Filled = true
+                SliderShadow.Thickness = 0
+                SliderShadow.Transparency = 0.15
+                SliderShadow.Visible = self.Visible
+                SliderShadow.Rounded = true
+                SliderShadow.Rounding = 4
+
+                local SliderText = Drawing.new("Text")
+                SliderText.Text = SliderName
+                SliderText.Size = 14
+                SliderText.Font = 2
+                SliderText.Color = Colors["Text"]
+                SliderText.Outline = false
+                SliderText.Transparency = 1
+                SliderText.Center = false
+                SliderText.Visible = self.Visible
+
+                local ValueText = Drawing.new("Text")
+                ValueText.Text = Default .. Units
+                ValueText.Size = 13
+                ValueText.Font = 2
+                ValueText.Color = Colors["Selected"]
+                ValueText.Outline = false
+                ValueText.Transparency = 1
+                ValueText.Center = true
+                ValueText.Visible = self.Visible
+
+                -- Add a slider knob for better visualization
+                local SliderKnob = Drawing.new("Square")
+                SliderKnob.Size = {10, 15}
+                SliderKnob.Filled = true
+                SliderKnob.Color = Colors["Selected"]
+                SliderKnob.Transparency = 1
+                SliderKnob.Visible = self.Visible
+                SliderKnob.Rounded = true
+                SliderKnob.Rounding = 3
+
                 local Slider = {
                     Type = "Slider",
-                    Name = Name,
+                    Name = SliderName,
                     Min = Min,
                     Max = Max,
                     Value = Default,
                     Units = Units,
                     Increment = Increment,
                     Callback = Callback,
-                    Height = Height,
+                    Background = SliderBackground,
+                    Border = SliderShadow,
+                    Fill = SliderFill,
+                    Knob = SliderKnob,
+                    Text = SliderText,
+                    ValueText = ValueText,
+                    DefaultBorderColor = {0, 0, 0},
+                    OriginalBackgroundColor = Colors["Border"],
+                    Visible = self.Visible,
                     Dragging = false
                 }
-                
-                -- Criar texto do slider
-                Slider.Text = Drawing.new("Text")
-                Slider.Text.Text = Name
-                Slider.Text.Position = {self.Background.Position.x + 10, InterfaceY}
-                Slider.Text.Color = Theme.Text
-                Slider.Text.Size = 14
-                Slider.Text.Font = 2
-                Slider.Text.Outline = true
-                Slider.Text.OutlineColor = {0, 0, 0}
-                Slider.Text.Visible = self.Visible and IsVisible
-                
-                -- Criar fundo do slider
-                Slider.Background = Drawing.new("Square")
-                Slider.Background.Size = {self.Background.Size[1] - 20, 10}
-                Slider.Background.Position = {self.Background.Position.x + 10, InterfaceY + 20}
-                Slider.Background.Color = Theme.Background
-                Slider.Background.Filled = true
-                Slider.Background.Transparency = 1
-                Slider.Background.Visible = self.Visible and IsVisible
-                
-                -- Criar borda do slider
-                Slider.Border = Drawing.new("Square")
-                Slider.Border.Size = {self.Background.Size[1] - 20, 10}
-                Slider.Border.Position = {self.Background.Position.x + 10, InterfaceY + 20}
-                Slider.Border.Color = Theme.WindowBorder
-                Slider.Border.Filled = false
-                Slider.Border.Thickness = 1
-                Slider.Border.Transparency = 1
-                Slider.Border.Visible = self.Visible and IsVisible
-                
-                -- Calcular largura do preenchimento
-                local SliderWidth = self.Background.Size[1] - 20
-                local FillWidth = ((Default - Min) / (Max - Min)) * SliderWidth
-                
-                -- Criar preenchimento do slider
-                Slider.Fill = Drawing.new("Square")
-                Slider.Fill.Size = {FillWidth, 10}
-                Slider.Fill.Position = {self.Background.Position.x + 10, InterfaceY + 20}
-                Slider.Fill.Color = Theme.Accent
-                Slider.Fill.Filled = true
-                Slider.Fill.Transparency = 0.7
-                Slider.Fill.Visible = self.Visible and IsVisible
-                
-                -- Criar texto do valor
-                Slider.ValueText = Drawing.new("Text")
-                Slider.ValueText.Text = tostring(Default) .. Units
-                Slider.ValueText.Position = {
-                    self.Background.Position.x + self.Background.Size[1] - 30,
-                    InterfaceY
-                }
-                Slider.ValueText.Color = Theme.Text
-                Slider.ValueText.Size = 14
-                Slider.ValueText.Font = 2
-                Slider.ValueText.Center = true
-                Slider.ValueText.Outline = true
-                Slider.ValueText.OutlineColor = {0, 0, 0}
-                Slider.ValueText.Visible = self.Visible and IsVisible
-                
-                -- Adicionar função para atualizar valor
+
                 function Slider:SetValue(NewValue)
-                    -- Limitar valor entre Min e Max
-                    NewValue = math.clamp(NewValue, self.Min, self.Max)
-                    
-                    -- Aplicar incremento
-                    if self.Increment > 0 then
-                        NewValue = self.Min + (math.floor((NewValue - self.Min) / self.Increment + 0.5) * self.Increment)
-                    end
-                    
-                    self.Value = NewValue
-                    
-                    -- Atualizar tamanho do preenchimento
-                    local SliderWidth = Section.Background.Size[1] - 20
-                    local FillWidth = ((self.Value - self.Min) / (self.Max - self.Min)) * SliderWidth
-                    self.Fill.Size = {FillWidth, 10}
-                    
-                    -- Atualizar texto do valor
+                    local snappedValue = Min + (math.floor((NewValue - Min) / self.Increment + 0.5) * self.Increment)
+                    self.Value = math.clamp(snappedValue, self.Min, self.Max)
+                    local format = "%.0f%s"
                     if self.Increment < 1 then
-                        -- Formato para casas decimais
-                        local DecimalPlaces = math.max(0, math.ceil(math.abs(math.log10(self.Increment))))
-                        local Format = "%." .. DecimalPlaces .. "f%s"
-                        self.ValueText.Text = string.format(Format, self.Value, self.Units)
-                    else
-                        -- Formato inteiro
-                        self.ValueText.Text = tostring(math.floor(self.Value)) .. self.Units
+                        local decimalPlaces = math.max(0, math.ceil(math.abs(math.log10(self.Increment))))
+                        format = "%." .. decimalPlaces .. "f%s"
+                    end
+                    self.ValueText.Text = string.format(format, self.Value, self.Units)
+                    
+                    if self.Background.Size and self.Background.Size.x then
+                        local percentage = (self.Value - self.Min) / (self.Max - self.Min)
+                        local FillWidth = percentage * self.Background.Size.x
+                        
+                        self.Fill.Size = {FillWidth, self.Background.Size.y}
+                        
+                        -- Update knob position
+                        local knobPosX = self.Background.Position.x + FillWidth - (self.Knob.Size.x / 2)
+                        local knobPosY = self.Background.Position.y - (self.Knob.Size.y - self.Background.Size.y) / 2
+                        self.Knob.Position = {knobPosX, knobPosY}
+                        
+                        local SliderCenterX = self.Background.Position.x + (self.Background.Size.x / 2)
+                        local SliderCenterY = self.Background.Position.y + (self.Background.Size.y / 2) - 6.5
+                        self.ValueText.Position = {SliderCenterX, SliderCenterY}
                     end
                     
-                    -- Chamar callback
-                    spawn(function()
-                        self.Callback(self.Value)
-                    end)
+                    if self.Callback then spawn(function() self.Callback(self.Value) end) end
                 end
-                
-                -- Adicionar elementos à seção
-                table.insert(self.Elements, Slider.Text)
-                table.insert(self.Elements, Slider.Background)
-                table.insert(self.Elements, Slider.Border)
-                table.insert(self.Elements, Slider.Fill)
-                table.insert(self.Elements, Slider.ValueText)
-                table.insert(self.Tab.Elements, Slider.Text)
-                table.insert(self.Tab.Elements, Slider.Background)
-                table.insert(self.Tab.Elements, Slider.Border)
-                table.insert(self.Tab.Elements, Slider.Fill)
-                table.insert(self.Tab.Elements, Slider.ValueText)
-                table.insert(self.Window.Elements, Slider.Text)
-                table.insert(self.Window.Elements, Slider.Background)
-                table.insert(self.Window.Elements, Slider.Border)
-                table.insert(self.Window.Elements, Slider.Fill)
-                table.insert(self.Window.Elements, Slider.ValueText)
-                
-                -- Atualizar tamanho da seção
-                local NewHeight = (InterfaceY + Height) - self.Background.Position.y + 10
-                self.Background.Size = {self.Background.Size[1], NewHeight}
-                self.Border.Size = {self.Border.Size[1], NewHeight}
-                
+
                 table.insert(self.Interfaces, Slider)
+                if IsVisible and Main.ActiveTab == TabContent.Name then Main:UpdateLayout() end
                 return Slider
             end
-            
-            -- Register this section
-            table.insert(SectionCollection, Section)
+
+            if Side == "Left" then
+                table.insert(self.LeftSections, Section)
+            else
+                table.insert(self.RightSections, Section)
+            end
+            if IsVisible and Main.ActiveTab == TabContent.Name then
+                Section.Visible = true
+                SetVisibility(SectionBackground, true)
+                SetVisibility(SectionBorder, true)
+                SetVisibility(SectionTitle, true)
+                SetVisibility(SectionTopLine, true)
+                Main:UpdateLayout()
+            end
             return Section
         end
-        
-        -- Store Tab
-        table.insert(self.Tabs, Tab)
-        self.TabButtons[TabName] = Tab
-        self.TabContents[TabName] = TabContent
-        
-        Tab.Window = self -- Back reference to window
-        
-        -- Select first tab by default
-        if #self.Tabs == 1 then
-            self:SelectTab(TabName)
-        end
-        
-        return Tab
-    end
-    
-    function Window:Unload()
-        for _, Element in pairs(self.Elements) do
-            if Element.Remove then
-                Element:Remove()
-            end
-        end
-        
-        if ActiveWindow == self then
-            ActiveWindow = nil
-        end
-        
-        IsDragging = false
-    end
-    
-    ActiveWindow = Window
-    return Window
-end
 
-function AugmentUI:Unload()
-    Running = false
-    if ActiveWindow then
-        ActiveWindow:Unload()
-    end
-    Drawing.clear()
-end
-
--- Main loop for mouse update and UI interactivity
-spawn(function()
-    while Running do
-        -- Update mouse position
-        local MouseLocation = getmouselocation(MouseService)
-        if type(MouseLocation) == "table" then
-            Mouse.X = MouseLocation.x or 0
-            Mouse.Y = MouseLocation.y or 0
+        local Tab = {
+            Name = TabName,
+            Button = TabButton,
+            ButtonText = TabButtonText,
+            SelectedHighlight = SelectedHighlight,
+            SelectedIndicator = SelectedIndicator,
+            Content = TabContent
+        }
+        table.insert(Main.Tabs, Tab)
+        Main.TabButtons[TabName] = Tab
+        Main.TabContents[TabName] = TabContent
+        Main:UpdateTabSizes()
+        if #Main.Tabs == 1 and IsVisible then
+            Main:SelectTab(TabName)
+        elseif Main.ActiveTab and IsVisible then
+            Main:SelectTab(Main.ActiveTab)
         else
-            -- Fallback if getmouselocation doesn't return a table
-            Mouse.X = 0
-            Mouse.Y = 0
+            SetVisibility(TabButton, false)
+            SetVisibility(SelectedHighlight, false)
+            SetInterfaceVisibility(TabContent.LeftSections, false)
+            SetInterfaceVisibility(TabContent.RightSections, false)
         end
-        
-        -- Update mouse states
-        local WasPressed = Utility.LastPress
-        Mouse.Clicked = isleftclicked()
-        Mouse.Pressed = isleftpressed()
-        Mouse.Released = not Mouse.Pressed and WasPressed
-        Utility.LastPress = Mouse.Pressed
-        
-        -- Handle UI interaction if a window is active
-        if ActiveWindow and IsVisible then
-            -- Handle window dragging
-            if ActiveWindow.Draggable then
-                if Mouse.Pressed and AugmentUI:IsHovered(ActiveWindow.TitleBar) and not IsDragging then
-                    IsDragging = true
-                    DragOffsetX = Mouse.X - ActiveWindow.Position.x
-                    DragOffsetY = Mouse.Y - ActiveWindow.Position.y
-                elseif Mouse.Pressed and IsDragging then
-                    local NewX = Mouse.X - DragOffsetX
-                    local NewY = Mouse.Y - DragOffsetY
-                    ActiveWindow:UpdatePosition(NewX, NewY)
-                elseif not Mouse.Pressed and IsDragging then
-                    IsDragging = false
-                end
+        return TabContent
+    end
+
+    function Main:SelectTab(TabName)
+        if not Main.TabButtons[TabName] then return end
+        Main.ActiveTab = TabName
+        if not IsVisible then return end
+        for OtherTabName, OtherTab in pairs(Main.TabButtons) do
+            local Selected = OtherTabName == TabName
+            SetVisibility(OtherTab.SelectedHighlight, Selected)
+            SetVisibility(OtherTab.SelectedIndicator, Selected)
+            
+            if Selected then
+                -- Update the tab button text color to show it's selected
+                OtherTab.ButtonText.Color = Colors["Selected"]
+                
+                -- Position the bottom indicator for the selected tab
+                local ButtonPos = OtherTab.Button.Position
+                local ButtonSize = OtherTab.Button.Size
+                OtherTab.SelectedIndicator.Position = {
+                    ButtonPos.x + 5,
+                    ButtonPos.y + ButtonSize.y - 2
+                }
+                OtherTab.SelectedIndicator.Size = {ButtonSize.x - 10, 2}
+            else
+                -- Reset the tab button text color
+                OtherTab.ButtonText.Color = Colors["Text"]
             end
             
-            -- Handle tab selection
-            if Mouse.Clicked and not IsDragging then
-                for TabName, Tab in pairs(ActiveWindow.TabButtons) do
-                    if AugmentUI:IsHovered(Tab.Button) then
-                        ActiveWindow:SelectTab(TabName)
+            OtherTab.Content.Visible = Selected
+            SetInterfaceVisibility(OtherTab.Content.LeftSections, Selected)
+            SetInterfaceVisibility(OtherTab.Content.RightSections, Selected)
+        end
+        Main:UpdateLayout()
+    end
+
+    ActiveWindow = Main
+    return Main
+end
+
+spawn(function()
+    while Running do
+        local MouseLocation = getmouselocation(MouseService)
+        Mouse.X = MouseLocation.x
+        Mouse.Y = MouseLocation.y
+        Mouse.Clicked = isleftclicked()
+        Mouse.Pressed = isleftpressed()
+        HoveredButton = nil
+        local UIClickHandled = false
+        local IsHovered = false
+        local Keys = getpressedkeys()
+        local IsTogglePressed = false
+
+        for _, K in ipairs(Keys) do
+            if K == "P" then
+                IsTogglePressed = true
+                break
+            end
+        end
+
+        if IsTogglePressed and not IsToggled then
+            ToggleUI()
+        end
+        IsToggled = IsTogglePressed
+
+        if IsVisible and ActiveWindow then
+            if ActiveWindow:IsWindowHovered() then
+                IsHovered = true
+            end
+            for _, Tab in ipairs(ActiveWindow.Tabs) do
+                if Tab.Button.Visible and ActiveWindow:IsHovered(Tab.Button) then
+                    IsHovered = true
+                    break
+                end
+            end
+
+            local WindowPos = ActiveWindow.WindowBackground.Position
+            local DragAreaYMax = ActiveWindow.TabBackground.Position.y
+            if Mouse.Clicked and IsHovered and Mouse.Y < DragAreaYMax and not IsDragging then
+                IsDragging = true
+                DragOffsetX = Mouse.X - WindowPos.x
+                DragOffsetY = Mouse.Y - WindowPos.y
+                UIClickHandled = true
+            elseif Mouse.Pressed and IsDragging then
+                IsHovered = true
+                local NewX = Mouse.X - DragOffsetX
+                local NewY = Mouse.Y - DragOffsetY
+                ActiveWindow.WindowBackground.Position = {NewX, NewY}
+                ActiveWindow:UpdateElementPositions()
+                UIClickHandled = true
+            elseif not Mouse.Pressed and IsDragging then
+                IsDragging = false
+            end
+
+            if Mouse.Clicked and not IsDragging and not UIClickHandled then
+                for _, Tab in ipairs(ActiveWindow.Tabs) do
+                    if Tab.Button.Visible and ActiveWindow:IsHovered(Tab.Button) then
+                        ActiveWindow:SelectTab(Tab.Name)
+                        UIClickHandled = true
                         break
                     end
                 end
-                
-                -- Process interactions with UI elements
+
+                if not UIClickHandled and ActiveWindow.ActiveTab then
+                    local CurrentTabContent = ActiveWindow.TabContents[ActiveWindow.ActiveTab]
+                    if CurrentTabContent then
+                        local function CheckButtonClick(Sections)
+                            for _, Section in ipairs(Sections) do
+                                if Section.Visible and Section.Interfaces then
+                                    for _, Element in ipairs(Section.Interfaces) do
+                                        if Element.Type == "Button" and Element.ButtonBackground.Visible then
+                                            if ActiveWindow:IsHovered(Element.ButtonBackground) then
+                                                Element.ButtonBackground.Color = Colors["Selected"]
+                                                Element.ButtonBackground.Transparency = 0.085
+                                                Element.ButtonBorder.Color = Colors["Accent"]
+                                                local TargetButton = Element
+                                                spawn(function()
+                                                    wait(0.075)
+                                                    if IsVisible and ActiveWindow and TargetButton and TargetButton.ButtonBackground.Visible then
+                                                        TargetButton.ButtonBackground.Color = TargetButton.OriginalBackgroundColor
+                                                        TargetButton.ButtonBackground.Transparency = TargetButton.OriginalBackgroundTransparency
+                                                        TargetButton.ButtonBorder.Color = ActiveWindow:IsHovered(TargetButton.ButtonBackground) and Colors["Accent"] or TargetButton.DefaultBorderColor
+                                                    end
+                                                end)
+                                                if Element.Callback then spawn(Element.Callback) end
+                                                UIClickHandled = true
+                                                return
+                                            end
+                                        elseif Element.Type == "Toggle" and Element.OuterBox.Visible then
+                                            local ToggleX = Element.OuterBox.Position.x
+                                            local ToggleY = Element.OuterBox.Position.y
+                                            local ToggleWidth = Element.OuterBox.Size.x
+                                            local ToggleHeight = Element.OuterBox.Size.y
+                                            local TextX = Element.Text.Position.x
+                                            local TextBoundsX = Element.Text.TextBounds.x
+                                            local IsToggleHovered = Mouse.X >= ToggleX and Mouse.X <= TextX + TextBoundsX and Mouse.Y >= ToggleY and Mouse.Y <= ToggleY + ToggleHeight
+                                            
+                                            if Element.KeybindBackground then
+                                                local KeybindX = Element.KeybindBackground.Position.x
+                                                local KeybindWidth = Element.KeybindBackground.Size.x
+                                                local IsKeybindHovered = Mouse.X >= KeybindX and Mouse.X <= KeybindX + KeybindWidth and Mouse.Y >= ToggleY and Mouse.Y <= ToggleY + ToggleHeight
+                                                
+                                                if IsKeybindHovered then
+                                                    if Mouse.Clicked then
+                                                        Element.KeybindText.Text = "..."
+                                                        Element.Listening = true
+                                                        UIClickHandled = true
+                                                    elseif isrightclicked() then
+                                                        Element:ToggleModeSelector(not Element.ModeSelectorBackground.Visible)
+                                                        UIClickHandled = true
+                                                    end
+                                                elseif IsToggleHovered and Mouse.Clicked and not IsKeybindHovered then
+                                                    Element:SetState(not Element.State)
+                                                    UIClickHandled = true
+                                                end
+                                            elseif IsToggleHovered and Mouse.Clicked then
+                                                Element:SetState(not Element.State)
+                                                UIClickHandled = true
+                                            end
+                                        elseif Element.Type == "Slider" and Element.Background.Visible then
+                                            if ActiveWindow:IsHovered(Element.Background) then
+                                                if Mouse.Clicked then
+                                                    Element.Dragging = true
+                                                    UIClickHandled = true
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        CheckButtonClick(CurrentTabContent.LeftSections)
+                        CheckButtonClick(CurrentTabContent.RightSections)
+                    end
+                end
+            end
+
+            if ActiveWindow.ActiveTab then
+                local CurrentTabContent = ActiveWindow.TabContents[ActiveWindow.ActiveTab]
+                if CurrentTabContent then
+                    local function UpdateButtonVisuals(Sections)
+                        for _, Section in ipairs(Sections) do
+                            if Section.Visible and Section.Interfaces then
+                                for _, Element in ipairs(Section.Interfaces) do
+                                    if Element.Type == "Button" then
+                                        local Hovered = ActiveWindow:IsHovered(Element.ButtonBackground)
+                                        if Hovered then
+                                            IsHovered = true
+                                            HoveredButton = Element
+                                            Element.ButtonBorder.Color = Colors["Accent"]
+                                        else
+                                            Element.ButtonBorder.Color = Element.DefaultBorderColor
+                                        end
+                                    elseif Element.Type == "Toggle" then
+                                        local ToggleX = Element.OuterBox.Position.x
+                                        local ToggleY = Element.OuterBox.Position.y
+                                        local ToggleWidth = Element.OuterBox.Size.x
+                                        local ToggleHeight = Element.OuterBox.Size.y
+                                        local TextX = Element.Text.Position.x
+                                        local TextBoundsX = Element.Text.TextBounds.x
+                                        local IsToggleHovered = Mouse.X >= ToggleX and Mouse.X <= TextX + TextBoundsX and Mouse.Y >= ToggleY and Mouse.Y <= ToggleY + ToggleHeight
+                                        
+                                        if Element.KeybindBackground then
+                                            local KeybindX = Element.KeybindBackground.Position.x
+                                            local KeybindWidth = Element.KeybindBackground.Size.x
+                                            local IsKeybindHovered = Mouse.X >= KeybindX and Mouse.X <= KeybindX + KeybindWidth and Mouse.Y >= ToggleY and Mouse.Y <= ToggleY + ToggleHeight
+                                            
+                                            if IsKeybindHovered then
+                                                IsHovered = true
+                                                HoveredButton = Element
+                                                Element.KeybindBorder.Color = Colors["Accent"]
+                                                Element.OuterBox.Color = Element.DefaultBorderColor
+                                            elseif IsToggleHovered then
+                                                IsHovered = true
+                                                HoveredButton = Element
+                                                Element.OuterBox.Color = Colors["Accent"]
+                                                Element.KeybindBorder.Color = Element.DefaultBorderColor
+                                            else
+                                                Element.OuterBox.Color = Element.DefaultBorderColor
+                                                Element.KeybindBorder.Color = Element.DefaultBorderColor
+                                            end
+                                        elseif IsToggleHovered then
+                                            IsHovered = true
+                                            HoveredButton = Element
+                                            Element.OuterBox.Color = Colors["Accent"]
+                                        else
+                                            Element.OuterBox.Color = Element.DefaultBorderColor
+                                        end
+                                    elseif Element.Type == "Slider" then
+                                        local Hovered = ActiveWindow:IsHovered(Element.Background)
+                                        if Hovered or Element.Dragging then
+                                            IsHovered = true
+                                            HoveredButton = Element
+                                            Element.Border.Color = Colors["Accent"]
+                                        else
+                                            Element.Border.Color = Element.DefaultBorderColor
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    UpdateButtonVisuals(CurrentTabContent.LeftSections)
+                    UpdateButtonVisuals(CurrentTabContent.RightSections)
+                end
+            end
+
+            local ActiveSlider = nil
+            if ActiveWindow.ActiveTab then
+                local CurrentTabContent = ActiveWindow.TabContents[ActiveWindow.ActiveTab]
+                if CurrentTabContent then
+                    local function FindDraggingSlider(Sections)
+                        for _, Section in ipairs(Sections) do
+                            if Section.Visible and Section.Interfaces then
+                                for _, Element in ipairs(Section.Interfaces) do
+                                    if Element.Type == "Slider" and Element.Dragging then
+                                        return Element
+                                    end
+                                end
+                            end
+                        end
+                        return nil
+                    end
+                    ActiveSlider = FindDraggingSlider(CurrentTabContent.LeftSections) or FindDraggingSlider(CurrentTabContent.RightSections)
+                end
+            end
+
+            if ActiveSlider and Mouse.Pressed then
+                IsHovered = true
+                UIClickHandled = true
+                local MouseX = Mouse.X
+                local SliderX = ActiveSlider.Background.Position.x
+                local SliderW = ActiveSlider.Background.Size.x
+                if SliderW > 0 then
+                    local Ratio = math.clamp((MouseX - SliderX) / SliderW, 0, 1)
+                    local RawValue = ActiveSlider.Min + (ActiveSlider.Max - ActiveSlider.Min) * Ratio
+                    ActiveSlider:SetValue(RawValue)
+                end
+            end
+
+            if not Mouse.Pressed then
                 if ActiveWindow.ActiveTab then
-                    local CurrentTab = ActiveWindow.TabButtons[ActiveWindow.ActiveTab]
-                    if CurrentTab and CurrentTab.Content then
-                        -- Check left sections
-                        for _, Section in ipairs(CurrentTab.Content.LeftSections) do
-                            if Section.Interfaces then
-                                for _, Interface in ipairs(Section.Interfaces) do
-                                    -- Handle button clicks
-                                    if Interface.Type == "Button" and Interface.ButtonBackground and AugmentUI:IsHovered(Interface.ButtonBackground) then
-                                        -- Visual feedback
-                                        Interface.ButtonBackground.Color = Theme.Accent
-                                        Interface.ButtonText.Color = {255, 255, 255}
-                                        
-                                        -- Execute callback
-                                        spawn(Interface.Callback)
-                                        
-                                        -- Reset appearance after a short delay
-                                        spawn(function()
-                                            wait(0.1)
-                                            Interface.ButtonBackground.Color = Theme.Background
-                                            Interface.ButtonText.Color = Theme.Text
-                                        end)
-                                    -- Handle toggle clicks
-                                    elseif Interface.Type == "Toggle" then
-                                        local ToggleClicked = AugmentUI:IsHovered(Interface.OuterBox) or AugmentUI:IsHovered(Interface.Text)
-                                        if ToggleClicked then
-                                            Interface:SetState(not Interface.State)
+                    local CurrentTabContent = ActiveWindow.TabContents[ActiveWindow.ActiveTab]
+                    if CurrentTabContent then
+                        local function StopDraggingSliders(Sections)
+                            for _, Section in ipairs(Sections) do
+                                if Section.Visible and Section.Interfaces then
+                                    for _, Element in ipairs(Section.Interfaces) do
+                                        if Element.Type == "Slider" and Element.Dragging then
+                                            Element.Dragging = false
                                         end
                                     end
                                 end
                             end
                         end
-                        
-                        -- Check right sections
-                        for _, Section in ipairs(CurrentTab.Content.RightSections) do
-                            if Section.Interfaces then
-                                for _, Interface in ipairs(Section.Interfaces) do
-                                    -- Handle button clicks
-                                    if Interface.Type == "Button" and Interface.ButtonBackground and AugmentUI:IsHovered(Interface.ButtonBackground) then
-                                        -- Visual feedback
-                                        Interface.ButtonBackground.Color = Theme.Accent
-                                        Interface.ButtonText.Color = {255, 255, 255}
-                                        
-                                        -- Execute callback
-                                        spawn(Interface.Callback)
-                                        
-                                        -- Reset appearance after a short delay
-                                        spawn(function()
-                                            wait(0.1)
-                                            Interface.ButtonBackground.Color = Theme.Background
-                                            Interface.ButtonText.Color = Theme.Text
-                                        end)
-                                    -- Handle toggle clicks
-                                    elseif Interface.Type == "Toggle" then
-                                        local ToggleClicked = AugmentUI:IsHovered(Interface.OuterBox) or AugmentUI:IsHovered(Interface.Text)
-                                        if ToggleClicked then
-                                            Interface:SetState(not Interface.State)
-                                        end
-                                    end
-                                end
-                            end
-                        end
+                        StopDraggingSliders(CurrentTabContent.LeftSections)
+                        StopDraggingSliders(CurrentTabContent.RightSections)
                     end
                 end
             end
             
-            -- Handle slider dragging
             if ActiveWindow.ActiveTab then
-                local CurrentTab = ActiveWindow.TabButtons[ActiveWindow.ActiveTab]
-                if CurrentTab and CurrentTab.Content then
-                    local function ProcessSliders(Sections)
+                local CurrentTabContent = ActiveWindow.TabContents[ActiveWindow.ActiveTab]
+                if CurrentTabContent then
+                    local function CheckKeybindListening(Sections)
                         for _, Section in ipairs(Sections) do
-                            if Section.Interfaces then
-                                for _, Interface in ipairs(Section.Interfaces) do
-                                    if Interface.Type == "Slider" then
-                                        -- Start dragging
-                                        if AugmentUI:IsHovered(Interface.Background) and Mouse.Pressed then
-                                            Interface.Dragging = true
-                                        end
-                                        
-                                        -- Handle dragging
-                                        if Interface.Dragging then
-                                            if Mouse.Pressed then
-                                                local SliderWidth = Interface.Background.Size[1]
-                                                local RelativeX = math.clamp(Mouse.X - Interface.Background.Position.x, 0, SliderWidth)
-                                                local NewValue = Interface.Min + ((RelativeX / SliderWidth) * (Interface.Max - Interface.Min))
-                                                Interface:SetValue(NewValue)
-                                            else
-                                                Interface.Dragging = false
-                                            end
-                                        end
-                                        
-                                        -- Visual feedback
-                                        if AugmentUI:IsHovered(Interface.Background) or Interface.Dragging then
-                                            Interface.Border.Color = Theme.Accent
-                                        else
-                                            Interface.Border.Color = Theme.WindowBorder
-                                        end
-                                    elseif Interface.Type == "Button" then
-                                        -- Button hover effect
-                                        if AugmentUI:IsHovered(Interface.ButtonBackground) then
-                                            Interface.ButtonBorder.Color = Theme.Accent
-                                        else
-                                            Interface.ButtonBorder.Color = Theme.WindowBorder
-                                        end
-                                    elseif Interface.Type == "Toggle" then
-                                        -- Toggle hover effect
-                                        if AugmentUI:IsHovered(Interface.OuterBox) or AugmentUI:IsHovered(Interface.Text) then
-                                            if not Interface.State then
-                                                Interface.OuterBox.Color = Theme.Accent
-                                            end
-                                        else
-                                            if not Interface.State then
-                                                Interface.OuterBox.Color = Theme.WindowBorder
+                            if Section.Visible and Section.Interfaces then
+                                for _, Element in ipairs(Section.Interfaces) do
+                                    if Element.Type == "Toggle" and Element.Listening then
+                                        local Keys = getpressedkeys()
+                                        if #Keys > 0 then
+                                            local Key = Keys[1]
+                                            if Key == "Escape" then
+                                                Element.KeybindValue = nil
+                                                Element.KeybindText.Text = "None"
+                                                Element.Listening = false
+                                                if Element.KeybindCallback then
+                                                    spawn(function() Element.KeybindCallback(nil, Element.KeybindMode) end)
+                                                end
+                                            elseif Key ~= "MouseButton1" 
+                                            and Key ~= "MouseButton2" 
+                                            and not Key:find("Mouse") then
+                                                Element.KeybindValue = Key
+                                                Element.KeybindText.Text = Key
+                                                Element.Listening = false
+                                                if Element.KeybindCallback then
+                                                    spawn(function() Element.KeybindCallback(Key, Element.KeybindMode) end)
+                                                end
                                             end
                                         end
                                     end
@@ -1063,36 +1227,73 @@ spawn(function()
                             end
                         end
                     end
-                    
-                    -- Process both left and right sections
-                    ProcessSliders(CurrentTab.Content.LeftSections)
-                    ProcessSliders(CurrentTab.Content.RightSections)
+
+                    local function CheckModeSelectorClick(Sections)
+                        for _, Section in ipairs(Sections) do
+                            if Section.Visible and Section.Interfaces then
+                                for _, Element in ipairs(Section.Interfaces) do
+                                    if Element.Type == "Toggle" and Element.ModeSelectorBackground and Element.ModeSelectorBackground.Visible then
+                                        local SelectorPos = Element.ModeSelectorBackground.Position
+                                        local SelectorSize = Element.ModeSelectorBackground.Size
+                                        if Mouse.Clicked then
+                                            if Mouse.X >= SelectorPos.x and Mouse.X <= SelectorPos.x + SelectorSize.x and
+                                               Mouse.Y >= SelectorPos.y and Mouse.Y <= SelectorPos.y + (SelectorSize.y / 2) then
+                                                Element.KeybindMode = "Hold"
+                                                Element:ToggleModeSelector(false)
+                                                UIClickHandled = true
+                                            elseif Mouse.X >= SelectorPos.x and Mouse.X <= SelectorPos.x + SelectorSize.x and
+                                                   Mouse.Y >= SelectorPos.y + (SelectorSize.y / 2) and Mouse.Y <= SelectorPos.y + SelectorSize.y then
+                                                Element.KeybindMode = "Toggle"
+                                                Element:ToggleModeSelector(false)
+                                                UIClickHandled = true
+                                            elseif not (Mouse.X >= SelectorPos.x and Mouse.X <= SelectorPos.x + SelectorSize.x and
+                                                      Mouse.Y >= SelectorPos.y and Mouse.Y <= SelectorPos.y + SelectorSize.y) then
+                                                Element:ToggleModeSelector(false)
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+
+                    local function CheckKeybindStates(Sections)
+                        for _, Section in ipairs(Sections) do
+                            if Section.Visible and Section.Interfaces then
+                                for _, Element in ipairs(Section.Interfaces) do
+                                    if Element.Type == "Toggle" and Element.KeybindValue and not Element.Listening then
+                                        local Keys = getpressedkeys()
+                                        local KeyPressed = false
+                                        for _, K in ipairs(Keys) do
+                                            if K == Element.KeybindValue then
+                                                KeyPressed = true
+                                                break
+                                            end
+                                        end
+                                        
+                                        if Element.KeybindMode == "Hold" then
+                                            Element:SetState(KeyPressed)
+                                        elseif Element.KeybindMode == "Toggle" and KeyPressed and not Element.LastKeyState then
+                                            Element:SetState(not Element.State)
+                                        end
+                                        Element.LastKeyState = KeyPressed
+                                    end
+                                end
+                            end
+                        end
+                    end
+
+                    CheckKeybindListening(CurrentTabContent.LeftSections)
+                    CheckKeybindListening(CurrentTabContent.RightSections)
+                    CheckModeSelectorClick(CurrentTabContent.LeftSections)
+                    CheckModeSelectorClick(CurrentTabContent.RightSections)
+                    CheckKeybindStates(CurrentTabContent.LeftSections)
+                    CheckKeybindStates(CurrentTabContent.RightSections)
                 end
             end
         end
-        
         wait()
     end
 end)
 
--- Set up toggle keybind (P key by default)
-spawn(function()
-    while Running do
-        local Keys = getpressedkeys()
-        for _, Key in pairs(Keys) do
-            if Key == "P" then
-                IsToggled = true
-                break
-            end
-        end
-        
-        if IsToggled then
-            AugmentUI:ToggleVisibility()
-        end
-        
-        IsToggled = false
-        wait(0.1)
-    end
-end)
-
-return AugmentUI 
+return Library
