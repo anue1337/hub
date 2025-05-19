@@ -174,6 +174,14 @@ function ToggleUI()
         SetVisibility(Main.WindowBackground2, IsVisible)
         SetVisibility(Main.Window2Border, IsVisible)
         SetVisibility(Main.WindowBorder, IsVisible)
+        
+        -- Toggling new UI elements
+        SetVisibility(Main.TopBar, IsVisible)
+        SetVisibility(Main.TabHeader, IsVisible)
+        SetVisibility(Main.TabHeaderText, IsVisible)
+        SetVisibility(Main.ContentHeader, IsVisible)
+        SetVisibility(Main.ContentHeaderText, IsVisible)
+        
         for _, Tab in ipairs(Main.Tabs) do
             SetVisibility(Tab.Button, IsVisible)
             SetVisibility(Tab.ButtonBorder, IsVisible)
@@ -417,7 +425,7 @@ function Library:Create(Options)
         local BaseY = ParentPos.y
         local LeftColumnX = BaseX + Padding
         local RightColumnX = LeftColumnX + ColumnWidth + Padding
-        local InitialY = BaseY + Padding + 5
+        local InitialY = BaseY + Padding + 30  -- Ajustado para começar abaixo do cabeçalho de conteúdo
         local CurrentLeftY = InitialY
         local CurrentRightY = InitialY
 
@@ -466,7 +474,7 @@ function Library:Create(Options)
                         CurrentInternalY = CurrentInternalY + ButtonHeight + Padding
                     elseif Element.Type == "Toggle" then
                         local ToggleHeight = 16
-                        local ToggleWidth = 16
+                        local ToggleWidth = 36  -- Atualizado para o novo formato de toggle
                         local TextWidth = InnerWidth - ToggleWidth - Padding
                         local ToggleX = ColumnX + Padding + Padding
                         local ToggleY = CurrentInternalY
@@ -475,7 +483,13 @@ function Library:Create(Options)
                         SetVisibility(Element.Text, true)
                         Element.OuterBox.Position = {ToggleX, ToggleY}
                         Element.OuterBox.Size = {ToggleWidth, ToggleHeight}
-                        Element.InnerBox.Position = {ToggleX + 1, ToggleY + 1}
+                        
+                        -- Posicionamento do inner box (botão do toggle) baseado no estado
+                        if Element.State then
+                            Element.InnerBox.Position = {ToggleX + 20, ToggleY + 1}
+                        else
+                            Element.InnerBox.Position = {ToggleX + 2, ToggleY + 1}
+                        end
                         Element.InnerBox.Size = {14, 14}
                         Element.Text.Position = {ToggleX + ToggleWidth + Padding, ToggleY + math.floor(ToggleHeight / 2) - 6}
                         Element.Text.Center = false
@@ -498,20 +512,9 @@ function Library:Create(Options)
                             Element.KeybindText.Center = true
                         end
                         
-                        if Element.OuterBox and Element.OuterBox.Position then
-                            local OuterBoxX = Element.OuterBox.Position.x
-                            local OuterBoxY = Element.OuterBox.Position.y
-                            
-                            if Element.State then
-                                Element.InnerBox.Position = {OuterBoxX + 20, OuterBoxY + 2}
-                            else
-                                Element.InnerBox.Position = {OuterBoxX + 2, OuterBoxY + 2}
-                            end
-                        end
-                        
                         CurrentInternalY = CurrentInternalY + ToggleHeight + Padding
                     elseif Element.Type == "Slider" then
-                        local SliderHeight = 15
+                        local SliderHeight = 25  -- Aumentado para acomodar o knob
                         local SliderWidth = InnerWidth - (Padding * 2)
                         local SliderX = ColumnX + Padding + Padding
                         local SliderY = CurrentInternalY + 14
@@ -520,18 +523,42 @@ function Library:Create(Options)
                         SetVisibility(Element.Fill, true)
                         SetVisibility(Element.Text, true)
                         SetVisibility(Element.ValueText, true)
+                        
+                        -- Configurar elementos adicionais do slider
+                        if Element.Track then SetVisibility(Element.Track, true) end
+                        if Element.Knob then SetVisibility(Element.Knob, true) end
+                        
                         Element.Background.Position = {SliderX, SliderY}
                         Element.Background.Size = {SliderWidth, SliderHeight}
                         Element.Border.Position = {SliderX, SliderY}
                         Element.Border.Size = {SliderWidth, SliderHeight}
-                        Element.Fill.Position = {SliderX, SliderY}
-                        Element.Fill.Size = {((Element.Value - Element.Min) / (Element.Max - Element.Min)) * SliderWidth, SliderHeight}
+                        
+                        -- Posicionar track e fill
+                        if Element.Track then
+                            local TrackY = SliderY + (SliderHeight / 2) - 2
+                            Element.Track.Position = {SliderX, TrackY}
+                            Element.Track.Size = {SliderWidth, 4}
+                            
+                            local FillWidth = ((Element.Value - Element.Min) / (Element.Max - Element.Min)) * SliderWidth
+                            Element.Fill.Position = {SliderX, TrackY}
+                            Element.Fill.Size = {FillWidth, 4}
+                            
+                            -- Posicionar knob
+                            if Element.Knob then
+                                local KnobX = SliderX + FillWidth - (Element.Knob.Size.x / 2)
+                                local KnobY = TrackY - ((Element.Knob.Size.y - 4) / 2)
+                                Element.Knob.Position = {KnobX, KnobY}
+                            end
+                        else
+                            local FillWidth = ((Element.Value - Element.Min) / (Element.Max - Element.Min)) * SliderWidth
+                            Element.Fill.Position = {SliderX, SliderY}
+                            Element.Fill.Size = {FillWidth, SliderHeight}
+                        end
+                        
                         Element.Text.Position = {SliderX, SliderY - 15}
-                        local SliderCenterX = SliderX + (SliderWidth / 2)
-                        local SliderCenterY = SliderY + (SliderHeight / 2) - 6.5
-                        Element.ValueText.Position = {SliderCenterX, SliderCenterY}
+                        Element.ValueText.Position = {SliderX + (SliderWidth / 2), SliderY + SliderHeight + 5}
                         Element.ValueText.Center = true
-                        CurrentInternalY = CurrentInternalY + SliderHeight + Padding + 15
+                        CurrentInternalY = CurrentInternalY + SliderHeight + Padding + 25  -- Ajustado para acomodar o texto de valor
                     end
                 end
             end
@@ -1030,15 +1057,21 @@ function Library:Create(Options)
                             local TrackY = BgPos.y + (BgSize.y / 2) - 2
                             self.Track.Position = {BgPos.x, TrackY}
                             self.Track.Size = {BgSize.x, 4}
+                            
+                            local FillWidth = ((self.Value - self.Min) / (self.Max - self.Min)) * self.Background.Size.x
                             self.Fill.Position = {BgPos.x, TrackY}
-                        end
-                        
-                        if self.Knob and self.Background.Position then
-                            local BgPos = self.Background.Position
-                            local BgSize = self.Background.Size
-                            local KnobX = BgPos.x + FillWidth - (self.Knob.Size.x / 2)
-                            local KnobY = BgPos.y + (BgSize.y / 2) - (self.Knob.Size.y / 2)
-                            self.Knob.Position = {KnobX, KnobY}
+                            self.Fill.Size = {FillWidth, 4}
+                            
+                            -- Posicionar knob
+                            if self.Knob and self.Background.Position then
+                                local KnobX = BgPos.x + FillWidth - (self.Knob.Size.x / 2)
+                                local KnobY = BgPos.y + (BgSize.y / 2) - (self.Knob.Size.y / 2)
+                                self.Knob.Position = {KnobX, KnobY}
+                            end
+                        else
+                            local FillWidth = ((self.Value - self.Min) / (self.Max - self.Min)) * self.Background.Size.x
+                            self.Fill.Position = {BgPos.x, BgPos.y}
+                            self.Fill.Size = {FillWidth, self.Background.Size.y}
                         end
                         
                         local SliderCenterX = self.Background.Position.x + (self.Background.Size.x / 2)
