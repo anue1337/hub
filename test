@@ -531,20 +531,10 @@ function Library:Create(Options)
             Section.Border.Size = {InnerWidth + BorderThickness * 2, TotalSectionHeight + BorderThickness - Padding}
             Section.CalculatedHeight = TotalSectionHeight
 
-            -- Posição dos cantos arredondados
-            if Section.TopLeftCorner then Section.TopLeftCorner.Position = {ColumnX + Padding - 3, StartY + Padding - 3} end
-            if Section.TopRightCorner then Section.TopRightCorner.Position = {ColumnX + Padding + InnerWidth + 3, StartY + Padding - 3} end
-            if Section.BottomLeftCorner then Section.BottomLeftCorner.Position = {ColumnX + Padding - 3, StartY + TotalSectionHeight - 3} end
-            if Section.BottomRightCorner then Section.BottomRightCorner.Position = {ColumnX + Padding + InnerWidth + 3, StartY + TotalSectionHeight - 3} end
-            
             -- Posição do ícone da seção
             if Section.Icon then Section.Icon.Position = {ColumnX + Padding + 8, StartY + Padding + LineThickness + Padding} end
             if Section.Title then Section.Title.Position = {ColumnX + Padding + 16, StartY + Padding + LineThickness + Padding - 1.5} end
             
-            SetVisibility(Section.TopLeftCorner, true)
-            SetVisibility(Section.TopRightCorner, true)
-            SetVisibility(Section.BottomLeftCorner, true)
-            SetVisibility(Section.BottomRightCorner, true)
             SetVisibility(Section.Icon, true)
 
             return StartY + TotalSectionHeight + Padding
@@ -632,39 +622,6 @@ function Library:Create(Options)
             SectionBackground.Transparency = 0.97
             SectionBackground.Visible = false
             
-            -- Cantos arredondados (simulação com círculos)
-            local TopLeftCorner = Drawing.new("Circle")
-            TopLeftCorner.Radius = 4
-            TopLeftCorner.Filled = true
-            TopLeftCorner.Color = Colors["DarkContrast"]
-            TopLeftCorner.Transparency = 0.97
-            TopLeftCorner.NumSides = 12
-            TopLeftCorner.Visible = false
-            
-            local TopRightCorner = Drawing.new("Circle")
-            TopRightCorner.Radius = 4
-            TopRightCorner.Filled = true
-            TopRightCorner.Color = Colors["DarkContrast"]
-            TopRightCorner.Transparency = 0.97
-            TopRightCorner.NumSides = 12
-            TopRightCorner.Visible = false
-            
-            local BottomLeftCorner = Drawing.new("Circle")
-            BottomLeftCorner.Radius = 4
-            BottomLeftCorner.Filled = true
-            BottomLeftCorner.Color = Colors["DarkContrast"]
-            BottomLeftCorner.Transparency = 0.97
-            BottomLeftCorner.NumSides = 12
-            BottomLeftCorner.Visible = false
-            
-            local BottomRightCorner = Drawing.new("Circle")
-            BottomRightCorner.Radius = 4
-            BottomRightCorner.Filled = true
-            BottomRightCorner.Color = Colors["DarkContrast"]
-            BottomRightCorner.Transparency = 0.97
-            BottomRightCorner.NumSides = 12
-            BottomRightCorner.Visible = false
-            
             local SectionBorder = Drawing.new("Square")
             SectionBorder.Color = Colors["Border"]
             SectionBorder.Filled = false
@@ -695,16 +652,12 @@ function Library:Create(Options)
                 Border = SectionBorder,
                 Title = SectionTitle,
                 SectionTopLine = SectionTopLine,
-                TopLeftCorner = TopLeftCorner,
-                TopRightCorner = TopRightCorner,
-                BottomLeftCorner = BottomLeftCorner,
-                BottomRightCorner = BottomRightCorner,
                 Icon = Drawing.new("Circle"),
                 Interfaces = {},
                 Visible = false,
                 CalculatedHeight = 0
             }
-
+            
             -- Initialize the section icon
             Section.Icon.Radius = 3
             Section.Icon.Filled = true
