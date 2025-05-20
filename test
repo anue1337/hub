@@ -684,10 +684,23 @@ function Library:Create(Options)
                 Border = SectionBorder,
                 Title = SectionTitle,
                 SectionTopLine = SectionTopLine,
+                TopLeftCorner = TopLeftCorner,
+                TopRightCorner = TopRightCorner,
+                BottomLeftCorner = BottomLeftCorner,
+                BottomRightCorner = BottomRightCorner,
+                Icon = Drawing.new("Circle"),
                 Interfaces = {},
                 Visible = false,
                 CalculatedHeight = 0
             }
+
+            -- Initialize the section icon
+            Section.Icon.Radius = 3
+            Section.Icon.Filled = true
+            Section.Icon.Color = Colors["Accent"]
+            Section.Icon.Transparency = 0.8
+            Section.Icon.NumSides = 20
+            Section.Icon.Visible = false
 
             function Section:Button(Options)
                 local ButtonName = Options.Name or "Button"
