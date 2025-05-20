@@ -197,7 +197,17 @@ function Library:Create(Options)
         if Object and Object.Visible ~= nil then SetVisibility(Object, IsVisible) end
     end
 
-    -- Adicionando decoração de fundo
+    -- Painel principal (criar PRIMEIRO)
+    Main.WindowBackground = Drawing.new("Square")
+    Main.WindowBackground.Size = {850, 500}
+    Main.WindowBackground.Position = {350, 100}
+    Main.WindowBackground.Color = Colors["DarkContrast"]
+    Main.WindowBackground.Filled = true
+    Main.WindowBackground.Thickness = 1
+    Main.WindowBackground.Transparency = 0.98
+    SetInitialVisibility(Main.WindowBackground)
+
+    -- Adicionando decoração de fundo (DEPOIS do painel principal)
     Main.BackgroundDecor1 = Drawing.new("Circle")
     Main.BackgroundDecor1.Position = {Main.WindowBackground.Position.x + 100, Main.WindowBackground.Position.y + 120}
     Main.BackgroundDecor1.Radius = 70
@@ -217,16 +227,6 @@ function Library:Create(Options)
     Main.BackgroundDecor2.NumSides = 20
     Main.BackgroundDecor2.Visible = true
     SetInitialVisibility(Main.BackgroundDecor2)
-
-    -- Painel principal
-    Main.WindowBackground = Drawing.new("Square")
-    Main.WindowBackground.Size = {850, 500}
-    Main.WindowBackground.Position = {350, 100}
-    Main.WindowBackground.Color = Colors["DarkContrast"]
-    Main.WindowBackground.Filled = true
-    Main.WindowBackground.Thickness = 1
-    Main.WindowBackground.Transparency = 0.98
-    SetInitialVisibility(Main.WindowBackground)
 
     -- Logo/Ícone
     Main.LogoCircle = Drawing.new("Circle")
