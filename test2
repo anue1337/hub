@@ -473,6 +473,99 @@ function Section:AddChild(child)
     return child
 end
 
+function Section:AddLabel(text, position, size, color)
+    local yOffset = self.ContentY
+    
+    local label = Label.new(text, {
+        self.Position[1] + self.Padding + (position and position[1] or 0), 
+        self.Position[2] + yOffset + (position and position[2] or 0)
+    }, size, color)
+    
+    return self:AddChild(label)
+end
+
+function Section:AddButton(text, position, size, callback)
+    local yOffset = self.ContentY
+    
+    local button = Button.new(text, {
+        self.Position[1] + self.Padding + (position and position[1] or 0), 
+        self.Position[2] + yOffset + (position and position[2] or 0)
+    }, size, callback)
+    
+    return self:AddChild(button)
+end
+
+function Section:AddCheckbox(label, position, defaultState, onToggle)
+    local yOffset = self.ContentY
+    
+    local checkbox = Checkbox.new(label, {
+        self.Position[1] + self.Padding + (position and position[1] or 0), 
+        self.Position[2] + yOffset + (position and position[2] or 0)
+    }, defaultState, onToggle)
+    
+    return self:AddChild(checkbox)
+end
+
+function Section:AddSlider(label, position, size, min, max, default, step, onChange)
+    local yOffset = self.ContentY
+    
+    local slider = Slider.new(label, {
+        self.Position[1] + self.Padding + (position and position[1] or 0), 
+        self.Position[2] + yOffset + (position and position[2] or 0)
+    }, size, min, max, default, step, onChange)
+    
+    return self:AddChild(slider)
+end
+
+function Section:AddDivider(position, length, isVertical, color)
+    local yOffset = self.ContentY
+    
+    local divider = Divider.new({
+        self.Position[1] + self.Padding + (position and position[1] or 0), 
+        self.Position[2] + yOffset + (position and position[2] or 0)
+    }, length, isVertical, color)
+    
+    return self:AddChild(divider)
+end
+
+function Section:SetPosition(position)
+    local deltaX = position[1] - self.Position[1]
+    local deltaY = position[2] - self.Position[2]
+    
+    self.Position = position
+    self:Render()
+    
+    -- Update child positions
+    for _, child in ipairs(self.Children) do
+        if child.Position then
+            child:SetPosition({
+                child.Position[1] + deltaX,
+                child.Position[2] + deltaY
+            })
+        end
+    end
+end
+
+function Section:SetVisible(state)
+    Object.SetVisible(self, state)
+    
+    -- Update children visibility
+    for _, child in ipairs(self.Children) do
+        child:SetVisible(state)
+    end
+end
+
+function Section:Destroy()
+    Object.Destroy(self)
+    
+    -- Destroy children
+    for _, child in ipairs(self.Children) do
+        child:Destroy()
+    end
+    self.Children = {}
+    self = nil
+end
+
 -- Tab Component
 local Tab = {}
 Tab.__index = Tab
@@ -1570,209 +1663,6 @@ function Window:Destroy()
     self.Tabs = {}
     
     -- Destroy direct children
-    for _, child in ipairs(self.Children) do
-        child:Destroy()
-    end
-    self.Children = {}
-    self = nil
-end
-
--- Section Component
-local Section = {}
-Section.__index = Section
-setmetatable(Section, {__index = Object})
-
-function Section.new(title, position, size, parent)
-    local self = setmetatable(Object.new(), Section)
-    
-    self.Title = title or "Section"
-    self.Position = position or {0, 0}
-    self.Size = size or {200, 150}
-    self.Parent = parent
-    self.Children = {}
-    self.Padding = Theme.ContentPadding
-    self.HeaderHeight = 20
-    self.ContentY = self.HeaderHeight + 5
-    self.Type = "Section"
-    
-    self:Render()
-    return self
-end
-
-function Section:Render()
-    -- Remove old elements if they exist
-    for _, element in ipairs(self.Elements) do
-        if element.Remove then
-            element:Remove()
-        end
-    end
-    self.Elements = {}
-    
-    -- Section border
-    self.Border = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1] - 1, self.Position[2] - 1},
-        Size = {self.Size[1] + 2, self.Size[2] + 2},
-        Filled = false,
-        Color = Theme.Border,
-        Transparency = 1,
-        Thickness = 1,
-        Visible = self.Visible,
-        zIndex = 1
-    }))
-    
-    -- Section background
-    self.Background = self:AddElement(DrawService.New("Square", {
-        Position = self.Position,
-        Size = self.Size,
-        Filled = true,
-        Color = Theme.SectionBackground,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 2
-    }))
-    
-    -- Section header background
-    self.HeaderBg = self:AddElement(DrawService.New("Square", {
-        Position = self.Position,
-        Size = {self.Size[1], self.HeaderHeight},
-        Filled = true,
-        Color = Theme.BackgroundDark,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 3
-    }))
-    
-    -- Header divider line
-    self.HeaderDivider = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1], self.Position[2] + self.HeaderHeight},
-        Size = {self.Size[1], 1},
-        Filled = true,
-        Color = Theme.Border,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 4
-    }))
-    
-    -- Title text
-    self.TitleText = self:AddElement(DrawService.New("Text", {
-        Text = self.Title,
-        Position = {self.Position[1] + 6, self.Position[2] + (self.HeaderHeight/2) - 7},
-        Size = 13,
-        Color = Theme.Text,
-        Outline = false,
-        Font = Theme.DefaultFont,
-        Visible = self.Visible,
-        zIndex = 5
-    }))
-    
-    -- Small accent detail in header
-    self.HeaderAccent = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1], self.Position[2]},
-        Size = {2, self.HeaderHeight},
-        Filled = true,
-        Color = Theme.Accent,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 6
-    }))
-end
-
-function Section:AddChild(child)
-    table.insert(self.Children, child)
-    child.Parent = self
-    return child
-end
-
-function Section:AddLabel(text, position, size, color)
-    local yOffset = self.ContentY
-    
-    local label = Label.new(text, {
-        self.Position[1] + self.Padding + (position and position[1] or 0), 
-        self.Position[2] + yOffset + (position and position[2] or 0)
-    }, size, color)
-    
-    return self:AddChild(label)
-end
-
-function Section:AddButton(text, position, size, callback)
-    local yOffset = self.ContentY
-    
-    local button = Button.new(text, {
-        self.Position[1] + self.Padding + (position and position[1] or 0), 
-        self.Position[2] + yOffset + (position and position[2] or 0)
-    }, size, callback)
-    
-    return self:AddChild(button)
-end
-
-function Section:AddCheckbox(label, position, defaultState, onToggle)
-    local yOffset = self.ContentY
-    
-    local checkbox = Checkbox.new(label, {
-        self.Position[1] + self.Padding + (position and position[1] or 0), 
-        self.Position[2] + yOffset + (position and position[2] or 0)
-    }, defaultState, onToggle)
-    
-    return self:AddChild(checkbox)
-end
-
-function Section:AddSlider(label, position, size, min, max, default, step, onChange)
-    local yOffset = self.ContentY
-    
-    local slider = Slider.new(label, {
-        self.Position[1] + self.Padding + (position and position[1] or 0), 
-        self.Position[2] + yOffset + (position and position[2] or 0)
-    }, size, min, max, default, step, onChange)
-    
-    return self:AddChild(slider)
-end
-
-function Section:AddDivider(position, length, isVertical, color)
-    local yOffset = self.ContentY
-    
-    local divider = Divider.new({
-        self.Position[1] + self.Padding + (position and position[1] or 0), 
-        self.Position[2] + yOffset + (position and position[2] or 0)
-    }, length, isVertical, color)
-    
-    return self:AddChild(divider)
-end
-
-function Section:SetPosition(position)
-    local deltaX = position[1] - self.Position[1]
-    local deltaY = position[2] - self.Position[2]
-    
-    self.Position = position
-    self:Render()
-    
-    -- Update child positions
-    for _, child in ipairs(self.Children) do
-        if child.Position then
-            child:SetPosition({
-                child.Position[1] + deltaX,
-                child.Position[2] + deltaY
-            })
-        end
-    end
-end
-
-function Section:SetVisible(state)
-    Object.SetVisible(self, state)
-    
-    -- Update children visibility
-    for _, child in ipairs(self.Children) do
-        child:SetVisible(state)
-    end
-end
-
-function Section:Destroy()
-    Object.Destroy(self)
-    
-    -- Destroy children
     for _, child in ipairs(self.Children) do
         child:Destroy()
     end
