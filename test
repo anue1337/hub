@@ -1067,7 +1067,8 @@ function Library:Create(Options)
             ButtonBorder = TabButtonBorder,
             ButtonText = TabButtonText,
             SelectedHighlight = SelectedHighlight,
-            Content = TabContent
+            Content = TabContent,
+            Icon = TabIcon
         }
         table.insert(Main.Tabs, Tab)
         Main.TabButtons[TabName] = Tab
