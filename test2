@@ -42,10 +42,13 @@ local UIManager = {
     Elements = {},
     Windows = {},
     Running = true,
-    MousePosition = {x = 0, y = 0},
-    MouseLeftClicked = false,
-    MouseLeftPressed = false,
-    PreviousLeftClicked = false,
+    Mouse = {
+        X = 0,
+        Y = 0,
+        Clicked = false,
+        Pressed = false,
+        WasClicked = false
+    },
     HoveredElement = nil,
     ActiveElement = nil,
     LastFrameTime = 0,
@@ -70,12 +73,13 @@ function UIManager:Update()
     self.DeltaTime = currentTime - self.LastFrameTime
     self.LastFrameTime = currentTime
     
-    -- Update mouse state
-    local mousePos = getmouseposition()
-    self.MousePosition = mousePos
-    self.PreviousLeftClicked = self.MouseLeftClicked
-    self.MouseLeftClicked = isleftclicked()
-    self.MouseLeftPressed = isleftpressed()
+    -- Update mouse state using the original library's approach
+    local mouseLocation = getmouselocation(findservice(Game, "MouseService"))
+    self.Mouse.X = mouseLocation.x
+    self.Mouse.Y = mouseLocation.y
+    self.Mouse.WasClicked = self.Mouse.Clicked
+    self.Mouse.Clicked = isleftclicked()
+    self.Mouse.Pressed = isleftpressed()
     
     -- Handle window updates first (since they contain tabs and elements)
     for _, window in ipairs(self.Windows) do
@@ -95,9 +99,9 @@ end
 function UIManager:ProcessWindow(window)
     -- Check for window dragging
     if window.Dragging then
-        if self.MouseLeftPressed then
-            local newX = self.MousePosition.x - window.DragOffset[1]
-            local newY = self.MousePosition.y - window.DragOffset[2]
+        if self.Mouse.Pressed then
+            local newX = self.Mouse.X - window.DragOffset[1]
+            local newY = self.Mouse.Y - window.DragOffset[2]
             window:SetPosition({newX, newY})
         else
             window.Dragging = false
@@ -105,16 +109,16 @@ function UIManager:ProcessWindow(window)
     else
         -- Check if starting a drag operation
         local isInHeader = self:IsPointInRect(
-            self.MousePosition.x, self.MousePosition.y,
+            self.Mouse.X, self.Mouse.Y,
             window.Position[1], window.Position[2],
             window.Size[1], window.HeaderHeight
         )
         
-        if isInHeader and self.MouseLeftClicked and not self.PreviousLeftClicked then
+        if isInHeader and self.Mouse.Clicked and not self.Mouse.WasClicked then
             window.Dragging = true
             window.DragOffset = {
-                self.MousePosition.x - window.Position[1],
-                self.MousePosition.y - window.Position[2]
+                self.Mouse.X - window.Position[1],
+                self.Mouse.Y - window.Position[2]
             }
         end
     end
@@ -123,12 +127,12 @@ function UIManager:ProcessWindow(window)
     if #window.Tabs > 0 then
         for _, tab in ipairs(window.Tabs) do
             local isInTabButton = self:IsPointInRect(
-                self.MousePosition.x, self.MousePosition.y,
+                self.Mouse.X, self.Mouse.Y,
                 tab.ButtonPosition[1], tab.ButtonPosition[2],
                 tab.ButtonSize[1], tab.ButtonSize[2]
             )
             
-            if isInTabButton and self.MouseLeftClicked and not self.PreviousLeftClicked then
+            if isInTabButton and self.Mouse.Clicked and not self.Mouse.WasClicked then
                 window:SelectTab(tab.Name)
             end
         end
@@ -165,7 +169,7 @@ end
 
 function UIManager:ProcessButton(button)
     local isHovered = self:IsPointInRect(
-        self.MousePosition.x, self.MousePosition.y,
+        self.Mouse.X, self.Mouse.Y,
         button.Position[1], button.Position[2],
         button.Size[1], button.Size[2]
     )
@@ -173,13 +177,13 @@ function UIManager:ProcessButton(button)
     local oldState = button.State
     
     if isHovered then
-        if self.MouseLeftPressed then
+        if self.Mouse.Pressed then
             button.State = "Pressed"
         else
             button.State = "Hover"
             
             -- Check for click completion (release while hovering)
-            if oldState == "Pressed" and not self.MouseLeftPressed and self.PreviousLeftClicked then
+            if oldState == "Pressed" and not self.Mouse.Pressed and self.Mouse.WasClicked then
                 spawn(function() 
                     button.Callback() 
                 end)
@@ -201,13 +205,13 @@ function UIManager:ProcessCheckbox(checkbox)
     local clickableWidth = checkbox.Size + 5 + labelWidth
     
     local isHovered = self:IsPointInRect(
-        self.MousePosition.x, self.MousePosition.y,
+        self.Mouse.X, self.Mouse.Y,
         checkbox.Position[1], checkbox.Position[2],
         clickableWidth, checkbox.Size
     )
     
     -- Handle click
-    if isHovered and self.MouseLeftClicked and not self.PreviousLeftClicked then
+    if isHovered and self.Mouse.Clicked and not self.Mouse.WasClicked then
         checkbox.Value = not checkbox.Value
         checkbox:Render()
         
@@ -235,27 +239,27 @@ function UIManager:ProcessSlider(slider)
     }
     
     local isInHandleArea = self:IsPointInRect(
-        self.MousePosition.x, self.MousePosition.y,
+        self.Mouse.X, self.Mouse.Y,
         handleArea.x1, handleArea.y1,
         handleArea.x2 - handleArea.x1, handleArea.y2 - handleArea.y1
     )
     
     local isInSliderArea = self:IsPointInRect(
-        self.MousePosition.x, self.MousePosition.y,
+        self.Mouse.X, self.Mouse.Y,
         sliderArea.x1, sliderArea.y1,
         sliderArea.x2 - sliderArea.x1, sliderArea.y2 - sliderArea.y1
     )
     
     -- Start dragging on click
-    if self.MouseLeftClicked and not self.PreviousLeftClicked and (isInHandleArea or isInSliderArea) then
+    if self.Mouse.Clicked and not self.Mouse.WasClicked and (isInHandleArea or isInSliderArea) then
         slider.Dragging = true
     end
     
     -- Handle dragging
     if slider.Dragging then
-        if self.MouseLeftPressed then
+        if self.Mouse.Pressed then
             -- Calculate new value based on mouse position
-            local clampedX = math.clamp(self.MousePosition.x, slider.Position[1], slider.Position[1] + slider.Size[1])
+            local clampedX = math.clamp(self.Mouse.X, slider.Position[1], slider.Position[1] + slider.Size[1])
             local percentage = (clampedX - slider.Position[1]) / slider.Size[1]
             local rawValue = slider.Min + percentage * (slider.Max - slider.Min)
             
@@ -536,13 +540,15 @@ function Slider:Render()
     local percentage = (self.Value - self.Min) / (self.Max - self.Min)
     local handleX = self.Position[1] + percentage * self.Size[1]
     
-    -- Determine if the slider is being hovered/dragged
+    -- Determine if the slider is being hovered/dragged using MouseService
     local isActive = self.Dragging
-    local mousePos = getmouseposition()
-    local isHovered = mousePos.x >= self.Position[1] - 5 and 
-                      mousePos.x <= self.Position[1] + self.Size[1] + 5 and
-                      mousePos.y >= self.Position[2] - 5 and 
-                      mousePos.y <= self.Position[2] + self.Size[2] + 5
+    local mouseLocation = getmouselocation(findservice(Game, "MouseService"))
+    local mouseX = mouseLocation.x
+    local mouseY = mouseLocation.y
+    local isHovered = mouseX >= self.Position[1] - 5 and 
+                      mouseX <= self.Position[1] + self.Size[1] + 5 and
+                      mouseY >= self.Position[2] - 5 and 
+                      mouseY <= self.Position[2] + self.Size[2] + 5
     
     -- Slider label with value
     self.TextObj = self:AddElement(DrawService.New("Text", {
@@ -737,15 +743,17 @@ function Checkbox:Render()
     end
     self.Elements = {}
     
-    -- Determine if the checkbox is being hovered (need to get this from UIManager)
+    -- Determine if the checkbox is being hovered using MouseService
     local isHovered = false
-    local mousePos = getmouseposition()
+    local mouseLocation = getmouselocation(findservice(Game, "MouseService"))
+    local mouseX = mouseLocation.x
+    local mouseY = mouseLocation.y
     local labelWidth = 100 -- Approximate, improve this with actual text width when possible
     
-    isHovered = mousePos.x >= self.Position[1] and 
-                mousePos.x <= self.Position[1] + self.Size + 5 + labelWidth and
-                mousePos.y >= self.Position[2] and 
-                mousePos.y <= self.Position[2] + self.Size
+    isHovered = mouseX >= self.Position[1] and 
+                mouseX <= self.Position[1] + self.Size + 5 + labelWidth and
+                mouseY >= self.Position[2] and 
+                mouseY <= self.Position[2] + self.Size
     
     -- Checkbox outer border - slightly larger for better visual
     self.OuterBorder = self:AddElement(DrawService.New("Square", {
