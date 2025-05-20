@@ -40,12 +40,15 @@ function Library:Unload()
                 if Tab.ButtonBorder then Tab.ButtonBorder:Remove() end
                 if Tab.ButtonText then Tab.ButtonText:Remove() end
                 if Tab.SelectedHighlight then Tab.SelectedHighlight:Remove() end
+                if Tab.Icon then Tab.Icon:Remove() end
                 if Tab.Content then
                     if Tab.Content.LeftSections then
                         for _, Section in ipairs(Tab.Content.LeftSections) do
                             if Section.Background then Section.Background:Remove() end
                             if Section.Border then Section.Border:Remove() end
                             if Section.Title then Section.Title:Remove() end
+                            if Section.Icon then Section.Icon:Remove() end
+                            if Section.SectionTopLine then Section.SectionTopLine:Remove() end
                             if Section.Interfaces then
                                 for _, Interface in ipairs(Section.Interfaces) do
                                     if Interface.Type == "Button" then
@@ -70,7 +73,6 @@ function Library:Unload()
                                         if Interface.Fill then Interface.Fill:Remove() end
                                         if Interface.Text then Interface.Text:Remove() end
                                         if Interface.ValueText then Interface.ValueText:Remove() end
-                                        if Section.SectionTopLine then Section.SectionTopLine:Remove() end
                                     end
                                 end
                             end
@@ -81,6 +83,8 @@ function Library:Unload()
                             if Section.Background then Section.Background:Remove() end
                             if Section.Border then Section.Border:Remove() end
                             if Section.Title then Section.Title:Remove() end
+                            if Section.Icon then Section.Icon:Remove() end
+                            if Section.SectionTopLine then Section.SectionTopLine:Remove() end
                             if Section.Interfaces then
                                 for _, Interface in ipairs(Section.Interfaces) do
                                     if Interface.Type == "Button" then
@@ -105,7 +109,6 @@ function Library:Unload()
                                         if Interface.Fill then Interface.Fill:Remove() end
                                         if Interface.Text then Interface.Text:Remove() end
                                         if Interface.ValueText then Interface.ValueText:Remove() end
-                                        if Section.SectionTopLine then Section.SectionTopLine:Remove() end
                                     end
                                 end
                             end
@@ -115,9 +118,14 @@ function Library:Unload()
             end
         end
         if ActiveWindow.WindowBackground then ActiveWindow.WindowBackground:Remove() end
+        if ActiveWindow.BackgroundDecor1 then ActiveWindow.BackgroundDecor1:Remove() end
+        if ActiveWindow.BackgroundDecor2 then ActiveWindow.BackgroundDecor2:Remove() end
+        if ActiveWindow.LogoCircle then ActiveWindow.LogoCircle:Remove() end
         if ActiveWindow.Title then ActiveWindow.Title:Remove() end
+        if ActiveWindow.TitleUnderline then ActiveWindow.TitleUnderline:Remove() end
         if ActiveWindow.TabBackground then ActiveWindow.TabBackground:Remove() end
         if ActiveWindow.TabBorder then ActiveWindow.TabBorder:Remove() end
+        if ActiveWindow.TabSeparator then ActiveWindow.TabSeparator:Remove() end
         if ActiveWindow.WindowBackground2 then ActiveWindow.WindowBackground2:Remove() end
         if ActiveWindow.Window2Border then ActiveWindow.Window2Border:Remove() end
         if ActiveWindow.WindowBorder then ActiveWindow.WindowBorder:Remove() end
@@ -164,9 +172,14 @@ function ToggleUI()
     if ActiveWindow then
         local Main = ActiveWindow
         SetVisibility(Main.WindowBackground, IsVisible)
+        SetVisibility(Main.BackgroundDecor1, IsVisible)
+        SetVisibility(Main.BackgroundDecor2, IsVisible)
+        SetVisibility(Main.LogoCircle, IsVisible)
         SetVisibility(Main.Title, IsVisible)
+        SetVisibility(Main.TitleUnderline, IsVisible)
         SetVisibility(Main.TabBackground, IsVisible)
         SetVisibility(Main.TabBorder, IsVisible)
+        SetVisibility(Main.TabSeparator, IsVisible)
         SetVisibility(Main.WindowBackground2, IsVisible)
         SetVisibility(Main.Window2Border, IsVisible)
         SetVisibility(Main.WindowBorder, IsVisible)
@@ -174,6 +187,7 @@ function ToggleUI()
             SetVisibility(Tab.Button, IsVisible)
             SetVisibility(Tab.ButtonBorder, IsVisible)
             SetVisibility(Tab.ButtonText, IsVisible)
+            SetVisibility(Tab.Icon, IsVisible)
             local ActiveTab = Tab.Name == Main.ActiveTab
             SetVisibility(Tab.SelectedHighlight, IsVisible and ActiveTab)
             SetInterfaceVisibility(Tab.Content.LeftSections, IsVisible and ActiveTab)
@@ -530,7 +544,7 @@ function Library:Create(Options)
             Section.Background.Size = {InnerWidth, TotalSectionHeight}
             Section.Border.Size = {InnerWidth + BorderThickness * 2, TotalSectionHeight + BorderThickness - Padding}
             Section.CalculatedHeight = TotalSectionHeight
-
+            
             -- Posição do ícone da seção
             if Section.Icon then Section.Icon.Position = {ColumnX + Padding + 8, StartY + Padding + LineThickness + Padding} end
             if Section.Title then Section.Title.Position = {ColumnX + Padding + 16, StartY + Padding + LineThickness + Padding - 1.5} end
