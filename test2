@@ -363,7 +363,637 @@ function Object:Destroy()
     self.Elements = {}
 end
 
--- Section Component (moved above Tab since Tab depends on Section)
+-- Label Component
+local Label = {}
+Label.__index = Label
+setmetatable(Label, {__index = Object})
+
+function Label.new(text, position, size, color)
+    local self = setmetatable(Object.new(), Label)
+    
+    self.Text = text or ""
+    self.Position = position or {0, 0}
+    self.Size = size or 13
+    self.Color = color or Theme.Text
+    self.Type = "Label"
+    
+    self:Render()
+    return self
+end
+
+function Label:Render()
+    if self.TextObj then
+        self.TextObj:Remove()
+    end
+    
+    self.TextObj = self:AddElement(DrawService.New("Text", {
+        Text = self.Text,
+        Position = self.Position,
+        Size = self.Size,
+        Color = self.Color,
+        Outline = false,
+        Font = Theme.DefaultFont,
+        Visible = self.Visible
+    }))
+end
+
+function Label:SetText(text)
+    self.Text = text
+    if self.TextObj then
+        self.TextObj.Text = text
+    end
+end
+
+function Label:SetPosition(position)
+    self.Position = position
+    if self.TextObj then
+        self.TextObj.Position = position
+    end
+end
+
+function Label:SetColor(color)
+    self.Color = color
+    if self.TextObj then
+        self.TextObj.Color = color
+    end
+end
+
+function Label:SetSize(size)
+    self.Size = size
+    if self.TextObj then
+        self.TextObj.Size = size
+    end
+end
+
+-- Button Component
+local Button = {}
+Button.__index = Button
+setmetatable(Button, {__index = Object})
+
+function Button.new(text, position, size, callback)
+    local self = setmetatable(Object.new(), Button)
+    
+    self.Text = text or "Button"
+    self.Position = position or {0, 0}
+    self.Size = size or {100, 25}
+    self.Callback = callback or function() end
+    self.State = "Idle" -- Idle, Hover, Pressed
+    self.Type = "Button"
+    
+    self:Render()
+    return self
+end
+
+function Button:Render()
+    -- Remove old elements if they exist
+    for _, element in ipairs(self.Elements) do
+        if element.Remove then
+            element:Remove()
+        end
+    end
+    self.Elements = {}
+    
+    -- Background color based on current state
+    local bgColor = Theme.ButtonIdle
+    local borderColor = Theme.Border
+    local textColor = Theme.Text
+    
+    if self.State == "Hover" then
+        bgColor = Theme.ButtonHover
+        borderColor = Theme.Accent
+    elseif self.State == "Pressed" then
+        bgColor = Theme.ButtonPressed
+        textColor = Theme.Text
+    end
+    
+    -- Button shadow (slight offset for depth)
+    self.Shadow = self:AddElement(DrawService.New("Square", {
+        Position = {self.Position[1] + 1, self.Position[2] + 1},
+        Size = {self.Size[1], self.Size[2]},
+        Filled = true,
+        Color = Theme.ShadowColor,
+        Transparency = 0.3,
+        Thickness = 0,
+        Visible = self.Visible,
+        zIndex = 1
+    }))
+    
+    -- Button border
+    self.Border = self:AddElement(DrawService.New("Square", {
+        Position = self.Position,
+        Size = self.Size,
+        Filled = false,
+        Color = borderColor,
+        Transparency = 1,
+        Thickness = 1,
+        Visible = self.Visible,
+        zIndex = 2
+    }))
+    
+    -- Button background
+    self.Background = self:AddElement(DrawService.New("Square", {
+        Position = {self.Position[1] + 1, self.Position[2] + 1},
+        Size = {self.Size[1] - 2, self.Size[2] - 2},
+        Filled = true,
+        Color = bgColor,
+        Transparency = 1,
+        Thickness = 0,
+        Visible = self.Visible,
+        zIndex = 3
+    }))
+    
+    -- Add subtle accent top border when hovered
+    if self.State == "Hover" or self.State == "Pressed" then
+        self.AccentTop = self:AddElement(DrawService.New("Square", {
+            Position = {self.Position[1], self.Position[2]},
+            Size = {self.Size[1], 1},
+            Filled = true,
+            Color = Theme.Accent,
+            Transparency = 1,
+            Thickness = 0,
+            Visible = self.Visible,
+            zIndex = 4
+        }))
+    end
+    
+    -- Text (centered)
+    local textX = self.Position[1] + (self.Size[1] / 2)
+    local textY = self.Position[2] + (self.Size[2] / 2) - 7 -- Adjust for text centering
+    
+    self.TextObj = self:AddElement(DrawService.New("Text", {
+        Text = self.Text,
+        Position = {textX, textY},
+        Size = 13,
+        Color = textColor,
+        Outline = false,
+        Center = true,
+        Font = Theme.DefaultFont,
+        Visible = self.Visible,
+        zIndex = 5
+    }))
+end
+
+function Button:SetPosition(position)
+    self.Position = position
+    self:Render()
+end
+
+function Button:SetSize(size)
+    self.Size = size
+    self:Render()
+end
+
+function Button:SetText(text)
+    self.Text = text
+    if self.TextObj then
+        self.TextObj.Text = text
+    end
+end
+
+function Button:SetCallback(callback)
+    self.Callback = callback or function() end
+end
+
+-- Checkbox Component
+local Checkbox = {}
+Checkbox.__index = Checkbox
+setmetatable(Checkbox, {__index = Object})
+
+function Checkbox.new(label, position, defaultState, onToggle)
+    local self = setmetatable(Object.new(), Checkbox)
+    
+    self.Label = label or "Checkbox"
+    self.Position = position or {0, 0}
+    self.Value = defaultState or false
+    self.OnToggle = onToggle or function() end
+    self.Size = 12 -- Fixed size for checkbox
+    self.Type = "Checkbox"
+    
+    self:Render()
+    return self
+end
+
+function Checkbox:Render()
+    -- Remove old elements if they exist
+    for _, element in ipairs(self.Elements) do
+        if element.Remove then
+            element:Remove()
+        end
+    end
+    self.Elements = {}
+    
+    -- Determine if the checkbox is being hovered using MouseService
+    local isHovered = false
+    local mouseLocation = getmouselocation(findservice(Game, "MouseService"))
+    local mouseX = mouseLocation.x
+    local mouseY = mouseLocation.y
+    local labelWidth = 100 -- Approximate, improve this with actual text width when possible
+    
+    isHovered = mouseX >= self.Position[1] and 
+                mouseX <= self.Position[1] + self.Size + 5 + labelWidth and
+                mouseY >= self.Position[2] and 
+                mouseY <= self.Position[2] + self.Size
+    
+    -- Checkbox outer border - slightly larger for better visual
+    self.OuterBorder = self:AddElement(DrawService.New("Square", {
+        Position = {self.Position[1] - 1, self.Position[2] - 1},
+        Size = {self.Size + 2, self.Size + 2},
+        Filled = false,
+        Color = isHovered and Theme.Accent or Theme.BorderDark,
+        Transparency = 1,
+        Thickness = 1,
+        Visible = self.Visible,
+        zIndex = 1
+    }))
+    
+    -- Checkbox background
+    self.Background = self:AddElement(DrawService.New("Square", {
+        Position = self.Position,
+        Size = {self.Size, self.Size},
+        Filled = true,
+        Color = isHovered and Theme.ButtonHover or Theme.ButtonIdle,
+        Transparency = 1,
+        Thickness = 0,
+        Visible = self.Visible,
+        zIndex = 2
+    }))
+    
+    -- Checkbox inner border
+    self.Border = self:AddElement(DrawService.New("Square", {
+        Position = self.Position,
+        Size = {self.Size, self.Size},
+        Filled = false,
+        Color = isHovered and Theme.CheckboxHover or Theme.CheckboxBorder,
+        Transparency = 1,
+        Thickness = 1,
+        Visible = self.Visible,
+        zIndex = 3
+    }))
+    
+    -- Checkbox fill (inner square) - only visible when checked
+    if self.Value then
+        -- Inner fill
+        self.Fill = self:AddElement(DrawService.New("Square", {
+            Position = {self.Position[1] + 2, self.Position[2] + 2},
+            Size = {self.Size - 4, self.Size - 4},
+            Filled = true,
+            Color = Theme.Accent,
+            Transparency = 1,
+            Thickness = 0,
+            Visible = self.Visible,
+            zIndex = 4
+        }))
+        
+        -- Checkmark (using smaller squares to simulate a checkmark)
+        self.CheckMark1 = self:AddElement(DrawService.New("Line", {
+            From = {self.Position[1] + 3, self.Position[2] + self.Size/2},
+            To = {self.Position[1] + self.Size/2 - 1, self.Position[2] + self.Size - 4},
+            Thickness = 1,
+            Color = Theme.Text,
+            Transparency = 1,
+            Visible = self.Visible,
+            zIndex = 5
+        }))
+        
+        self.CheckMark2 = self:AddElement(DrawService.New("Line", {
+            From = {self.Position[1] + self.Size/2, self.Position[2] + self.Size - 4},
+            To = {self.Position[1] + self.Size - 3, self.Position[2] + 3},
+            Thickness = 1,
+            Color = Theme.Text,
+            Transparency = 1,
+            Visible = self.Visible,
+            zIndex = 5
+        }))
+    end
+    
+    -- Label text
+    self.TextObj = self:AddElement(DrawService.New("Text", {
+        Text = self.Label,
+        Position = {self.Position[1] + self.Size + 7, self.Position[2] - 2},
+        Size = 13,
+        Color = isHovered and Theme.TextAccent or Theme.Text,
+        Outline = false,
+        Font = Theme.DefaultFont,
+        Visible = self.Visible,
+        zIndex = 6
+    }))
+end
+
+function Checkbox:SetPosition(position)
+    self.Position = position
+    self:Render()
+end
+
+function Checkbox:SetValue(value)
+    if self.Value ~= value then
+        self.Value = value
+        self:Render()
+        
+        -- Call the callback
+        spawn(function() 
+            self.OnToggle(self.Value) 
+        end)
+    end
+end
+
+function Checkbox:GetValue()
+    return self.Value
+end
+
+function Checkbox:SetLabel(label)
+    self.Label = label
+    self:Render()
+end
+
+function Checkbox:SetCallback(callback)
+    self.OnToggle = callback or function() end
+end
+
+-- Slider Component
+local Slider = {}
+Slider.__index = Slider
+setmetatable(Slider, {__index = Object})
+
+function Slider.new(label, position, size, min, max, default, step, onChange)
+    local self = setmetatable(Object.new(), Slider)
+    
+    self.Label = label or "Slider"
+    self.Position = position or {0, 0}
+    self.Size = size or {150, 4} -- Width, height
+    self.Min = min or 0
+    self.Max = max or 100
+    self.Step = step or 1
+    self.Value = default or self.Min
+    self.OnChange = onChange or function() end
+    self.Dragging = false
+    self.Type = "Slider"
+    
+    -- Ensure value is within bounds and aligned to step
+    self.Value = math.clamp(self.Value, self.Min, self.Max)
+    local steps = math.floor((self.Value - self.Min) / self.Step + 0.5)
+    self.Value = self.Min + steps * self.Step
+    
+    self:Render()
+    return self
+end
+
+function Slider:Render()
+    -- Remove old elements if they exist
+    for _, element in ipairs(self.Elements) do
+        if element.Remove then
+            element:Remove()
+        end
+    end
+    self.Elements = {}
+    
+    -- Calculate handle position based on current value
+    local percentage = (self.Value - self.Min) / (self.Max - self.Min)
+    local handleX = self.Position[1] + percentage * self.Size[1]
+    
+    -- Determine if the slider is being hovered/dragged using MouseService
+    local isActive = self.Dragging
+    local mouseLocation = getmouselocation(findservice(Game, "MouseService"))
+    local mouseX = mouseLocation.x
+    local mouseY = mouseLocation.y
+    local isHovered = mouseX >= self.Position[1] - 5 and 
+                      mouseX <= self.Position[1] + self.Size[1] + 5 and
+                      mouseY >= self.Position[2] - 5 and 
+                      mouseY <= self.Position[2] + self.Size[2] + 5
+    
+    -- Slider label with value
+    self.TextObj = self:AddElement(DrawService.New("Text", {
+        Text = self.Label .. ": " .. self.Value,
+        Position = {self.Position[1], self.Position[2] - 16},
+        Size = 13,
+        Color = isHovered and Theme.TextAccent or Theme.Text,
+        Outline = false,
+        Font = Theme.DefaultFont,
+        Visible = self.Visible,
+        zIndex = 1
+    }))
+    
+    -- Slider background border
+    self.BorderBg = self:AddElement(DrawService.New("Square", {
+        Position = {self.Position[1] - 1, self.Position[2] - 1},
+        Size = {self.Size[1] + 2, self.Size[2] + 2},
+        Filled = false,
+        Color = Theme.BorderDark,
+        Transparency = 1,
+        Thickness = 1,
+        Visible = self.Visible,
+        zIndex = 2
+    }))
+    
+    -- Slider rail (background track)
+    self.Rail = self:AddElement(DrawService.New("Square", {
+        Position = self.Position,
+        Size = {self.Size[1], self.Size[2]},
+        Filled = true,
+        Color = Theme.SliderRail,
+        Transparency = 1,
+        Thickness = 0,
+        Visible = self.Visible,
+        zIndex = 3
+    }))
+    
+    -- Slider background (darker underneath)
+    self.Background = self:AddElement(DrawService.New("Square", {
+        Position = {self.Position[1] + 1, self.Position[2] + 1},
+        Size = {self.Size[1] - 2, self.Size[2] - 2},
+        Filled = true,
+        Color = Theme.SliderBg,
+        Transparency = 1,
+        Thickness = 0,
+        Visible = self.Visible,
+        zIndex = 4
+    }))
+    
+    -- Filled progress area
+    if percentage > 0 then
+        self.Fill = self:AddElement(DrawService.New("Square", {
+            Position = {self.Position[1] + 1, self.Position[2] + 1},
+            Size = {(handleX - self.Position[1]) - 1, self.Size[2] - 2},
+            Filled = true,
+            Color = isActive and Theme.AccentDarker or Theme.Accent,
+            Transparency = 1,
+            Thickness = 0,
+            Visible = self.Visible,
+            zIndex = 5
+        }))
+    end
+    
+    -- Handle shadow
+    self.HandleShadow = self:AddElement(DrawService.New("Square", {
+        Position = {handleX - 5, self.Position[2] - 3},
+        Size = {10, 10},
+        Filled = true,
+        Color = Theme.ShadowColor,
+        Transparency = 0.3,
+        Thickness = 0,
+        Visible = self.Visible,
+        zIndex = 6
+    }))
+    
+    -- Handle border
+    self.HandleBorder = self:AddElement(DrawService.New("Square", {
+        Position = {handleX - 4, self.Position[2] - 2},
+        Size = {8, 8},
+        Filled = false,
+        Color = isActive and Theme.Accent or Theme.Border,
+        Transparency = 1,
+        Thickness = 1,
+        Visible = self.Visible,
+        zIndex = 7
+    }))
+    
+    -- Handle
+    self.Handle = self:AddElement(DrawService.New("Square", {
+        Position = {handleX - 3, self.Position[2] - 1},
+        Size = {6, 6},
+        Filled = true,
+        Color = isActive and Theme.AccentDarker or (isHovered and Theme.Accent or Theme.ButtonHover),
+        Transparency = 1,
+        Thickness = 0,
+        Visible = self.Visible,
+        zIndex = 8
+    }))
+    
+    -- Value tooltip (only shown when dragging or hovering)
+    if isActive or isHovered then
+        self.ValueTooltip = self:AddElement(DrawService.New("Text", {
+            Text = tostring(self.Value),
+            Position = {handleX, self.Position[2] - 20},
+            Size = 12,
+            Color = Theme.TextAccent,
+            Outline = true,
+            Center = true,
+            OutlineColor = Theme.BackgroundDark,
+            Font = Theme.DefaultFont,
+            Visible = self.Visible,
+            zIndex = 9
+        }))
+    end
+end
+
+function Slider:SetPosition(position)
+    self.Position = position
+    self:Render()
+end
+
+function Slider:SetSize(size)
+    self.Size = size
+    self:Render()
+end
+
+function Slider:SetValue(value)
+    local newValue = math.clamp(value, self.Min, self.Max)
+    local steps = math.floor((newValue - self.Min) / self.Step + 0.5)
+    newValue = self.Min + steps * self.Step
+    
+    if newValue ~= self.Value then
+        self.Value = newValue
+        self:Render()
+        
+        -- Call the callback
+        spawn(function() 
+            self.OnChange(self.Value) 
+        end)
+    end
+end
+
+function Slider:GetValue()
+    return self.Value
+end
+
+function Slider:SetLabel(label)
+    self.Label = label
+    self:Render()
+end
+
+function Slider:SetCallback(callback)
+    self.OnChange = callback or function() end
+end
+
+function Slider:SetMinMax(min, max)
+    self.Min = min
+    self.Max = max
+    self:SetValue(self.Value) -- This will clamp the value and re-render
+end
+
+function Slider:SetStep(step)
+    self.Step = step
+    self:SetValue(self.Value) -- This will align to step and re-render
+end
+
+-- Divider Component
+local Divider = {}
+Divider.__index = Divider
+setmetatable(Divider, {__index = Object})
+
+function Divider.new(position, length, isVertical, color)
+    local self = setmetatable(Object.new(), Divider)
+    
+    self.Position = position or {0, 0}
+    self.Length = length or 100
+    self.IsVertical = isVertical or false
+    self.Color = color or Theme.Divider
+    self.Type = "Divider"
+    
+    self:Render()
+    return self
+end
+
+function Divider:Render()
+    -- Remove old elements if they exist
+    for _, element in ipairs(self.Elements) do
+        if element.Remove then
+            element:Remove()
+        end
+    end
+    self.Elements = {}
+    
+    -- Create divider line
+    if self.IsVertical then
+        self.Line = self:AddElement(DrawService.New("Line", {
+            From = {self.Position[1], self.Position[2]},
+            To = {self.Position[1], self.Position[2] + self.Length},
+            Thickness = 1,
+            Color = self.Color,
+            Transparency = 1,
+            Visible = self.Visible,
+            zIndex = 1
+        }))
+    else
+        self.Line = self:AddElement(DrawService.New("Line", {
+            From = {self.Position[1], self.Position[2]},
+            To = {self.Position[1] + self.Length, self.Position[2]},
+            Thickness = 1,
+            Color = self.Color,
+            Transparency = 1,
+            Visible = self.Visible,
+            zIndex = 1
+        }))
+    end
+end
+
+function Divider:SetPosition(position)
+    self.Position = position
+    self:Render()
+end
+
+function Divider:SetLength(length)
+    self.Length = length
+    self:Render()
+end
+
+function Divider:SetColor(color)
+    self.Color = color
+    if self.Line then
+        self.Line.Color = color
+    end
+end
+
+-- Section Component (moved after all the components it depends on)
 local Section = {}
 Section.__index = Section
 setmetatable(Section, {__index = Object})
@@ -644,568 +1274,6 @@ end
 function Tab:AddSection(title, position, size)
     local section = Section.new(title, position, size, self)
     return self:AddChild(section)
-end
-
--- Label Component
-local Label = {}
-Label.__index = Label
-setmetatable(Label, {__index = Object})
-
-function Label.new(text, position, size, color)
-    local self = setmetatable(Object.new(), Label)
-    
-    self.Text = text or ""
-    self.Position = position or {0, 0}
-    self.Size = size or 13
-    self.Color = color or Theme.Text
-    self.Type = "Label"
-    
-    self:Render()
-    return self
-end
-
-function Label:Render()
-    if self.TextObj then
-        self.TextObj:Remove()
-    end
-    
-    self.TextObj = self:AddElement(DrawService.New("Text", {
-        Text = self.Text,
-        Position = self.Position,
-        Size = self.Size,
-        Color = self.Color,
-        Outline = false,
-        Font = Theme.DefaultFont,
-        Visible = self.Visible
-    }))
-end
-
-function Label:SetText(text)
-    self.Text = text
-    if self.TextObj then
-        self.TextObj.Text = text
-    end
-end
-
-function Label:SetPosition(position)
-    self.Position = position
-    if self.TextObj then
-        self.TextObj.Position = position
-    end
-end
-
-function Label:SetColor(color)
-    self.Color = color
-    if self.TextObj then
-        self.TextObj.Color = color
-    end
-end
-
-function Label:SetSize(size)
-    self.Size = size
-    if self.TextObj then
-        self.TextObj.Size = size
-    end
-end
-
--- Slider Component
-local Slider = {}
-Slider.__index = Slider
-setmetatable(Slider, {__index = Object})
-
-function Slider.new(label, position, size, min, max, default, step, onChange)
-    local self = setmetatable(Object.new(), Slider)
-    
-    self.Label = label or "Slider"
-    self.Position = position or {0, 0}
-    self.Size = size or {150, 4} -- Width, height
-    self.Min = min or 0
-    self.Max = max or 100
-    self.Step = step or 1
-    self.Value = default or self.Min
-    self.OnChange = onChange or function() end
-    self.Dragging = false
-    self.Type = "Slider"
-    
-    -- Ensure value is within bounds and aligned to step
-    self.Value = math.clamp(self.Value, self.Min, self.Max)
-    local steps = math.floor((self.Value - self.Min) / self.Step + 0.5)
-    self.Value = self.Min + steps * self.Step
-    
-    self:Render()
-    return self
-end
-
-function Slider:Render()
-    -- Remove old elements if they exist
-    for _, element in ipairs(self.Elements) do
-        if element.Remove then
-            element:Remove()
-        end
-    end
-    self.Elements = {}
-    
-    -- Calculate handle position based on current value
-    local percentage = (self.Value - self.Min) / (self.Max - self.Min)
-    local handleX = self.Position[1] + percentage * self.Size[1]
-    
-    -- Determine if the slider is being hovered/dragged using MouseService
-    local isActive = self.Dragging
-    local mouseLocation = getmouselocation(findservice(Game, "MouseService"))
-    local mouseX = mouseLocation.x
-    local mouseY = mouseLocation.y
-    local isHovered = mouseX >= self.Position[1] - 5 and 
-                      mouseX <= self.Position[1] + self.Size[1] + 5 and
-                      mouseY >= self.Position[2] - 5 and 
-                      mouseY <= self.Position[2] + self.Size[2] + 5
-    
-    -- Slider label with value
-    self.TextObj = self:AddElement(DrawService.New("Text", {
-        Text = self.Label .. ": " .. self.Value,
-        Position = {self.Position[1], self.Position[2] - 16},
-        Size = 13,
-        Color = isHovered and Theme.TextAccent or Theme.Text,
-        Outline = false,
-        Font = Theme.DefaultFont,
-        Visible = self.Visible,
-        zIndex = 1
-    }))
-    
-    -- Slider background border
-    self.BorderBg = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1] - 1, self.Position[2] - 1},
-        Size = {self.Size[1] + 2, self.Size[2] + 2},
-        Filled = false,
-        Color = Theme.BorderDark,
-        Transparency = 1,
-        Thickness = 1,
-        Visible = self.Visible,
-        zIndex = 2
-    }))
-    
-    -- Slider rail (background track)
-    self.Rail = self:AddElement(DrawService.New("Square", {
-        Position = self.Position,
-        Size = {self.Size[1], self.Size[2]},
-        Filled = true,
-        Color = Theme.SliderRail,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 3
-    }))
-    
-    -- Slider background (darker underneath)
-    self.Background = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1] + 1, self.Position[2] + 1},
-        Size = {self.Size[1] - 2, self.Size[2] - 2},
-        Filled = true,
-        Color = Theme.SliderBg,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 4
-    }))
-    
-    -- Filled progress area
-    if percentage > 0 then
-        self.Fill = self:AddElement(DrawService.New("Square", {
-            Position = {self.Position[1] + 1, self.Position[2] + 1},
-            Size = {(handleX - self.Position[1]) - 1, self.Size[2] - 2},
-            Filled = true,
-            Color = isActive and Theme.AccentDarker or Theme.Accent,
-            Transparency = 1,
-            Thickness = 0,
-            Visible = self.Visible,
-            zIndex = 5
-        }))
-    end
-    
-    -- Handle shadow
-    self.HandleShadow = self:AddElement(DrawService.New("Square", {
-        Position = {handleX - 5, self.Position[2] - 3},
-        Size = {10, 10},
-        Filled = true,
-        Color = Theme.ShadowColor,
-        Transparency = 0.3,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 6
-    }))
-    
-    -- Handle border
-    self.HandleBorder = self:AddElement(DrawService.New("Square", {
-        Position = {handleX - 4, self.Position[2] - 2},
-        Size = {8, 8},
-        Filled = false,
-        Color = isActive and Theme.Accent or Theme.Border,
-        Transparency = 1,
-        Thickness = 1,
-        Visible = self.Visible,
-        zIndex = 7
-    }))
-    
-    -- Handle
-    self.Handle = self:AddElement(DrawService.New("Square", {
-        Position = {handleX - 3, self.Position[2] - 1},
-        Size = {6, 6},
-        Filled = true,
-        Color = isActive and Theme.AccentDarker or (isHovered and Theme.Accent or Theme.ButtonHover),
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 8
-    }))
-    
-    -- Value tooltip (only shown when dragging or hovering)
-    if isActive or isHovered then
-        self.ValueTooltip = self:AddElement(DrawService.New("Text", {
-            Text = tostring(self.Value),
-            Position = {handleX, self.Position[2] - 20},
-            Size = 12,
-            Color = Theme.TextAccent,
-            Outline = true,
-            Center = true,
-            OutlineColor = Theme.BackgroundDark,
-            Font = Theme.DefaultFont,
-            Visible = self.Visible,
-            zIndex = 9
-        }))
-    end
-end
-
-function Slider:SetPosition(position)
-    self.Position = position
-    self:Render()
-end
-
-function Slider:SetSize(size)
-    self.Size = size
-    self:Render()
-end
-
-function Slider:SetValue(value)
-    local newValue = math.clamp(value, self.Min, self.Max)
-    local steps = math.floor((newValue - self.Min) / self.Step + 0.5)
-    newValue = self.Min + steps * self.Step
-    
-    if newValue ~= self.Value then
-        self.Value = newValue
-        self:Render()
-        
-        -- Call the callback
-        spawn(function() 
-            self.OnChange(self.Value) 
-        end)
-    end
-end
-
-function Slider:GetValue()
-    return self.Value
-end
-
-function Slider:SetLabel(label)
-    self.Label = label
-    self:Render()
-end
-
-function Slider:SetCallback(callback)
-    self.OnChange = callback or function() end
-end
-
-function Slider:SetMinMax(min, max)
-    self.Min = min
-    self.Max = max
-    self:SetValue(self.Value) -- This will clamp the value and re-render
-end
-
-function Slider:SetStep(step)
-    self.Step = step
-    self:SetValue(self.Value) -- This will align to step and re-render
-end
-
--- Checkbox Component
-local Checkbox = {}
-Checkbox.__index = Checkbox
-setmetatable(Checkbox, {__index = Object})
-
-function Checkbox.new(label, position, defaultState, onToggle)
-    local self = setmetatable(Object.new(), Checkbox)
-    
-    self.Label = label or "Checkbox"
-    self.Position = position or {0, 0}
-    self.Value = defaultState or false
-    self.OnToggle = onToggle or function() end
-    self.Size = 12 -- Fixed size for checkbox
-    self.Type = "Checkbox"
-    
-    self:Render()
-    return self
-end
-
-function Checkbox:Render()
-    -- Remove old elements if they exist
-    for _, element in ipairs(self.Elements) do
-        if element.Remove then
-            element:Remove()
-        end
-    end
-    self.Elements = {}
-    
-    -- Determine if the checkbox is being hovered using MouseService
-    local isHovered = false
-    local mouseLocation = getmouselocation(findservice(Game, "MouseService"))
-    local mouseX = mouseLocation.x
-    local mouseY = mouseLocation.y
-    local labelWidth = 100 -- Approximate, improve this with actual text width when possible
-    
-    isHovered = mouseX >= self.Position[1] and 
-                mouseX <= self.Position[1] + self.Size + 5 + labelWidth and
-                mouseY >= self.Position[2] and 
-                mouseY <= self.Position[2] + self.Size
-    
-    -- Checkbox outer border - slightly larger for better visual
-    self.OuterBorder = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1] - 1, self.Position[2] - 1},
-        Size = {self.Size + 2, self.Size + 2},
-        Filled = false,
-        Color = isHovered and Theme.Accent or Theme.BorderDark,
-        Transparency = 1,
-        Thickness = 1,
-        Visible = self.Visible,
-        zIndex = 1
-    }))
-    
-    -- Checkbox background
-    self.Background = self:AddElement(DrawService.New("Square", {
-        Position = self.Position,
-        Size = {self.Size, self.Size},
-        Filled = true,
-        Color = isHovered and Theme.ButtonHover or Theme.ButtonIdle,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 2
-    }))
-    
-    -- Checkbox inner border
-    self.Border = self:AddElement(DrawService.New("Square", {
-        Position = self.Position,
-        Size = {self.Size, self.Size},
-        Filled = false,
-        Color = isHovered and Theme.CheckboxHover or Theme.CheckboxBorder,
-        Transparency = 1,
-        Thickness = 1,
-        Visible = self.Visible,
-        zIndex = 3
-    }))
-    
-    -- Checkbox fill (inner square) - only visible when checked
-    if self.Value then
-        -- Inner fill
-        self.Fill = self:AddElement(DrawService.New("Square", {
-            Position = {self.Position[1] + 2, self.Position[2] + 2},
-            Size = {self.Size - 4, self.Size - 4},
-            Filled = true,
-            Color = Theme.Accent,
-            Transparency = 1,
-            Thickness = 0,
-            Visible = self.Visible,
-            zIndex = 4
-        }))
-        
-        -- Checkmark (using smaller squares to simulate a checkmark)
-        self.CheckMark1 = self:AddElement(DrawService.New("Line", {
-            From = {self.Position[1] + 3, self.Position[2] + self.Size/2},
-            To = {self.Position[1] + self.Size/2 - 1, self.Position[2] + self.Size - 4},
-            Thickness = 1,
-            Color = Theme.Text,
-            Transparency = 1,
-            Visible = self.Visible,
-            zIndex = 5
-        }))
-        
-        self.CheckMark2 = self:AddElement(DrawService.New("Line", {
-            From = {self.Position[1] + self.Size/2, self.Position[2] + self.Size - 4},
-            To = {self.Position[1] + self.Size - 3, self.Position[2] + 3},
-            Thickness = 1,
-            Color = Theme.Text,
-            Transparency = 1,
-            Visible = self.Visible,
-            zIndex = 5
-        }))
-    end
-    
-    -- Label text
-    self.TextObj = self:AddElement(DrawService.New("Text", {
-        Text = self.Label,
-        Position = {self.Position[1] + self.Size + 7, self.Position[2] - 2},
-        Size = 13,
-        Color = isHovered and Theme.TextAccent or Theme.Text,
-        Outline = false,
-        Font = Theme.DefaultFont,
-        Visible = self.Visible,
-        zIndex = 6
-    }))
-end
-
-function Checkbox:SetPosition(position)
-    self.Position = position
-    self:Render()
-end
-
-function Checkbox:SetValue(value)
-    if self.Value ~= value then
-        self.Value = value
-        self:Render()
-        
-        -- Call the callback
-        spawn(function() 
-            self.OnToggle(self.Value) 
-        end)
-    end
-end
-
-function Checkbox:GetValue()
-    return self.Value
-end
-
-function Checkbox:SetLabel(label)
-    self.Label = label
-    self:Render()
-end
-
-function Checkbox:SetCallback(callback)
-    self.OnToggle = callback or function() end
-end
-
--- Button Component
-local Button = {}
-Button.__index = Button
-setmetatable(Button, {__index = Object})
-
-function Button.new(text, position, size, callback)
-    local self = setmetatable(Object.new(), Button)
-    
-    self.Text = text or "Button"
-    self.Position = position or {0, 0}
-    self.Size = size or {100, 25}
-    self.Callback = callback or function() end
-    self.State = "Idle" -- Idle, Hover, Pressed
-    self.Type = "Button"
-    
-    self:Render()
-    return self
-end
-
-function Button:Render()
-    -- Remove old elements if they exist
-    for _, element in ipairs(self.Elements) do
-        if element.Remove then
-            element:Remove()
-        end
-    end
-    self.Elements = {}
-    
-    -- Background color based on current state
-    local bgColor = Theme.ButtonIdle
-    local borderColor = Theme.Border
-    local textColor = Theme.Text
-    
-    if self.State == "Hover" then
-        bgColor = Theme.ButtonHover
-        borderColor = Theme.Accent
-    elseif self.State == "Pressed" then
-        bgColor = Theme.ButtonPressed
-        textColor = Theme.Text
-    end
-    
-    -- Button shadow (slight offset for depth)
-    self.Shadow = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1] + 1, self.Position[2] + 1},
-        Size = {self.Size[1], self.Size[2]},
-        Filled = true,
-        Color = Theme.ShadowColor,
-        Transparency = 0.3,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 1
-    }))
-    
-    -- Button border
-    self.Border = self:AddElement(DrawService.New("Square", {
-        Position = self.Position,
-        Size = self.Size,
-        Filled = false,
-        Color = borderColor,
-        Transparency = 1,
-        Thickness = 1,
-        Visible = self.Visible,
-        zIndex = 2
-    }))
-    
-    -- Button background
-    self.Background = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1] + 1, self.Position[2] + 1},
-        Size = {self.Size[1] - 2, self.Size[2] - 2},
-        Filled = true,
-        Color = bgColor,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 3
-    }))
-    
-    -- Add subtle accent top border when hovered
-    if self.State == "Hover" or self.State == "Pressed" then
-        self.AccentTop = self:AddElement(DrawService.New("Square", {
-            Position = {self.Position[1], self.Position[2]},
-            Size = {self.Size[1], 1},
-            Filled = true,
-            Color = Theme.Accent,
-            Transparency = 1,
-            Thickness = 0,
-            Visible = self.Visible,
-            zIndex = 4
-        }))
-    end
-    
-    -- Text (centered)
-    local textX = self.Position[1] + (self.Size[1] / 2)
-    local textY = self.Position[2] + (self.Size[2] / 2) - 7 -- Adjust for text centering
-    
-    self.TextObj = self:AddElement(DrawService.New("Text", {
-        Text = self.Text,
-        Position = {textX, textY},
-        Size = 13,
-        Color = textColor,
-        Outline = false,
-        Center = true,
-        Font = Theme.DefaultFont,
-        Visible = self.Visible,
-        zIndex = 5
-    }))
-end
-
-function Button:SetPosition(position)
-    self.Position = position
-    self:Render()
-end
-
-function Button:SetSize(size)
-    self.Size = size
-    self:Render()
-end
-
-function Button:SetText(text)
-    self.Text = text
-    if self.TextObj then
-        self.TextObj.Text = text
-    end
-end
-
-function Button:SetCallback(callback)
-    self.Callback = callback or function() end
 end
 
 -- Window Component (Container)
@@ -1668,74 +1736,6 @@ function Window:Destroy()
     end
     self.Children = {}
     self = nil
-end
-
--- Divider Component
-local Divider = {}
-Divider.__index = Divider
-setmetatable(Divider, {__index = Object})
-
-function Divider.new(position, length, isVertical, color)
-    local self = setmetatable(Object.new(), Divider)
-    
-    self.Position = position or {0, 0}
-    self.Length = length or 100
-    self.IsVertical = isVertical or false
-    self.Color = color or Theme.Divider
-    self.Type = "Divider"
-    
-    self:Render()
-    return self
-end
-
-function Divider:Render()
-    -- Remove old elements if they exist
-    for _, element in ipairs(self.Elements) do
-        if element.Remove then
-            element:Remove()
-        end
-    end
-    self.Elements = {}
-    
-    -- Create divider line
-    if self.IsVertical then
-        self.Line = self:AddElement(DrawService.New("Line", {
-            From = {self.Position[1], self.Position[2]},
-            To = {self.Position[1], self.Position[2] + self.Length},
-            Thickness = 1,
-            Color = self.Color,
-            Transparency = 1,
-            Visible = self.Visible,
-            zIndex = 1
-        }))
-    else
-        self.Line = self:AddElement(DrawService.New("Line", {
-            From = {self.Position[1], self.Position[2]},
-            To = {self.Position[1] + self.Length, self.Position[2]},
-            Thickness = 1,
-            Color = self.Color,
-            Transparency = 1,
-            Visible = self.Visible,
-            zIndex = 1
-        }))
-    end
-end
-
-function Divider:SetPosition(position)
-    self.Position = position
-    self:Render()
-end
-
-function Divider:SetLength(length)
-    self.Length = length
-    self:Render()
-end
-
-function Divider:SetColor(color)
-    self.Color = color
-    if self.Line then
-        self.Line.Color = color
-    end
 end
 
 -- Initialize the UIManager
