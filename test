@@ -131,7 +131,7 @@ function Library:Unload()
 end
 
 local function SetVisibility(Object, Visible)
-    if Object and Object.Visible ~= nil then Object.Visible = Visible end
+    if Object and type(Object) == "table" and Object.Visible ~= nil then Object.Visible = Visible end
 end
 
 local function SetInterfaceVisibility(UI, Visible)
@@ -532,14 +532,14 @@ function Library:Create(Options)
             Section.CalculatedHeight = TotalSectionHeight
 
             -- Posição dos cantos arredondados
-            Section.TopLeftCorner.Position = {ColumnX + Padding - 3, StartY + Padding - 3}
-            Section.TopRightCorner.Position = {ColumnX + Padding + InnerWidth + 3, StartY + Padding - 3}
-            Section.BottomLeftCorner.Position = {ColumnX + Padding - 3, StartY + TotalSectionHeight - 3}
-            Section.BottomRightCorner.Position = {ColumnX + Padding + InnerWidth + 3, StartY + TotalSectionHeight - 3}
+            if Section.TopLeftCorner then Section.TopLeftCorner.Position = {ColumnX + Padding - 3, StartY + Padding - 3} end
+            if Section.TopRightCorner then Section.TopRightCorner.Position = {ColumnX + Padding + InnerWidth + 3, StartY + Padding - 3} end
+            if Section.BottomLeftCorner then Section.BottomLeftCorner.Position = {ColumnX + Padding - 3, StartY + TotalSectionHeight - 3} end
+            if Section.BottomRightCorner then Section.BottomRightCorner.Position = {ColumnX + Padding + InnerWidth + 3, StartY + TotalSectionHeight - 3} end
             
             -- Posição do ícone da seção
-            Section.Icon.Position = {ColumnX + Padding + 8, StartY + Padding + LineThickness + Padding}
-            Section.Title.Position = {ColumnX + Padding + 16, StartY + Padding + LineThickness + Padding - 1.5}
+            if Section.Icon then Section.Icon.Position = {ColumnX + Padding + 8, StartY + Padding + LineThickness + Padding} end
+            if Section.Title then Section.Title.Position = {ColumnX + Padding + 16, StartY + Padding + LineThickness + Padding - 1.5} end
             
             SetVisibility(Section.TopLeftCorner, true)
             SetVisibility(Section.TopRightCorner, true)
@@ -654,6 +654,17 @@ function Library:Create(Options)
             BottomLeftCorner.Filled = true
             BottomLeftCorner.Color = Colors["DarkContrast"]
             BottomLeftCorner.Transparency = 0.97
+            BottomLeftCorner.NumSides = 12
+            BottomLeftCorner.Visible = false
+            
+            local BottomRightCorner = Drawing.new("Circle")
+            BottomRightCorner.Radius = 4
+            BottomRightCorner.Filled = true
+            BottomRightCorner.Color = Colors["DarkContrast"]
+            BottomRightCorner.Transparency = 0.97
+            BottomRightCorner.NumSides = 12
+            BottomRightCorner.Visible = false
+            
             local SectionBorder = Drawing.new("Square")
             SectionBorder.Color = Colors["Border"]
             SectionBorder.Filled = false
