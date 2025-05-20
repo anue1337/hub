@@ -19,7 +19,12 @@ local Theme = {
 }
 
 -- Utility variables
-local Mouse = {X = 0, Y = 0, Clicked = false, Pressed = false}
+local Mouse = {
+    X = 0,
+    Y = 0,
+    Clicked = false,
+    Pressed = false
+}
 local Windows = {}
 local ActiveWindow = nil
 local IsDragging = false
@@ -310,10 +315,9 @@ end
 -- Mouse movement tracking
 spawn(function()
     while Running do
-        -- Update mouse position and states
-        local mousePos = getmouseposition()
-        Mouse.X = mousePos.x
-        Mouse.Y = mousePos.y
+        local MousePosition = getmouseposition()
+        Mouse.X = MousePosition.x
+        Mouse.Y = MousePosition.y
         Mouse.Clicked = isleftclicked()
         Mouse.Pressed = isleftpressed()
         
