@@ -1,8 +1,9 @@
 local SevereUI = {}
 
 local Drawing = Drawing or (getgenv and getgenv().Drawing)
-local findservice = game and game.GetService or function(_, name) return game[name] end
-local MouseService = findservice(game, "MouseService")
+local Game = game
+local findservice = Game and Game.GetService or function(_, name) return Game[name] end
+local MouseService = findservice(Game, "MouseService")
 
 -- Color theme
 local Theme = {
@@ -25,6 +26,7 @@ local IsDragging = false
 local DragOffsetX, DragOffsetY = 0, 0
 local IsVisible = true
 local Running = true
+local IsToggling = false
 
 -- Utility functions
 local function SetVisibility(Object, Visible)
@@ -69,21 +71,11 @@ end
 -- Create image from URL (for logo)
 local function CreateImage(Props)
     local Image = Drawing.new("Image")
-    Image.Data = Props.Data or ""
+    Image.Url = Props.Url or ""
     Image.Size = Props.Size or {100, 100}
     Image.Position = Props.Position or {0, 0}
     Image.Transparency = Props.Transparency or 1
     Image.Visible = Props.Visible ~= nil and Props.Visible or IsVisible
-    
-    if Props.Url then
-        local success, data = pcall(function()
-            return game:HttpGet(Props.Url)
-        end)
-        if success then
-            Image.Data = data
-        end
-    end
-    
     return Image
 end
 
@@ -319,9 +311,9 @@ end
 spawn(function()
     while Running do
         -- Update mouse position and states
-        local MouseLocation = getmouselocation(MouseService)
-        Mouse.X = MouseLocation.x
-        Mouse.Y = MouseLocation.y
+        local mousePos = getmouseposition()
+        Mouse.X = mousePos.x
+        Mouse.Y = mousePos.y
         Mouse.Clicked = isleftclicked()
         Mouse.Pressed = isleftpressed()
         
@@ -332,7 +324,8 @@ spawn(function()
             
             -- Start dragging
             if Mouse.Clicked and not IsDragging and Mouse.Y < DragAreaYMax and 
-               IsPointInRect({X = Mouse.X, Y = Mouse.Y}, WindowBG) then
+               Mouse.X >= WindowBG.Position.x and Mouse.X <= WindowBG.Position.x + WindowBG.Size.x and
+               Mouse.Y >= WindowBG.Position.y and Mouse.Y <= WindowBG.Position.y + DragAreaYMax then
                 IsDragging = true
                 DragOffsetX = Mouse.X - WindowBG.Position.x
                 DragOffsetY = Mouse.Y - WindowBG.Position.y
@@ -350,7 +343,8 @@ spawn(function()
             -- Handle tab clicks
             if Mouse.Clicked and not IsDragging then
                 for _, Tab in ipairs(ActiveWindow.Tabs) do
-                    if ActiveWindow:IsHovered(Tab.Button) then
+                    if Mouse.X >= Tab.Button.Position.x and Mouse.X <= Tab.Button.Position.x + Tab.Button.Size.x and
+                       Mouse.Y >= Tab.Button.Position.y and Mouse.Y <= Tab.Button.Position.y + Tab.Button.Size.y then
                         ActiveWindow:SelectTab(Tab.Text.Text)
                         break
                     end
