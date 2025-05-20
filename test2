@@ -1,759 +1,328 @@
 local Library = {}
-local Colors = {
-    Main = {120, 120, 240},
-    Background = {20, 20, 30},
-    LightBackground = {30, 30, 40},
-    Border = {45, 45, 60},
-    Text = {240, 240, 240},
-    Accent = {120, 120, 240},
-    DarkAccent = {90, 90, 180},
-    Disabled = {100, 100, 100}
-}
-
+local Utility = {}
 local Windows = {}
-local ActiveWindow = nil
-local MouseService = findservice(Game, "MouseService")
-local Mouse = {
-    Position = {X = 0, Y = 0},
-    Pressed = false,
-    Clicked = false
+
+-- Colors (inspired by Splix and original lib)
+local Colors = {
+    ["Accent"] = {120, 120, 240},
+    ["DarkBackground"] = {20, 20, 30},
+    ["LightBackground"] = {30, 30, 45},
+    ["Border"] = {45, 45, 60},
+    ["Text"] = {240, 240, 240},
+    ["DisabledText"] = {110, 110, 110},
+    ["Selected"] = {255, 255, 255}
 }
 
-local function NewInstance(Type)
-    return Drawing.new(Type)
+-- Utility functions
+function Utility:GetMousePosition()
+    return {x = getmouseposition().x, y = getmouseposition().y}
 end
 
-local function SetProperties(Object, Properties)
-    for Property, Value in pairs(Properties) do
-        Object[Property] = Value
-    end
-    return Object
+function Utility:IsInBounds(position, size, mousePosition)
+    return mousePosition.x >= position.x and mousePosition.x <= position.x + size.x and
+           mousePosition.y >= position.y and mousePosition.y <= position.y + size.y
 end
 
-function Library:Create(Options)
-    local Window = {}
-    Window.Name = Options.Name or "Severe UI"
-    Window.Position = Options.Position or {300, 100}
-    Window.Size = Options.Size or {500, 400}
-    Window.Elements = {}
-    Window.Tabs = {}
-    Window.Visible = true
-    Window.CurrentTab = nil
+-- Main UI Library
+function Library:Init(options)
+    options = options or {}
+    local name = options.Name or "Severe UI"
+    local size = options.Size or {x = 600, y = 500}
+    local position = options.Position or {x = 300, y = 100}
+    
+    local window = {
+        Name = name,
+        Size = size,
+        Position = position,
+        Tabs = {},
+        ActiveTab = nil,
+        Visible = true,
+        Dragging = false,
+        DragOffset = {x = 0, y = 0}
+    }
     
     -- Main window background
-    Window.Background = SetProperties(NewInstance("Square"), {
-        Size = Window.Size,
-        Position = Window.Position,
-        Color = Colors.Background,
-        Filled = true,
-        Thickness = 1,
-        Transparency = 1,
-        Visible = true
-    })
+    window.Background = Drawing.new("Square")
+    window.Background.Size = {size.x, size.y}
+    window.Background.Position = {position.x, position.y}
+    window.Background.Color = Colors.DarkBackground
+    window.Background.Filled = true
+    window.Background.Transparency = 1
+    window.Background.Visible = true
     
-    -- Border
-    Window.Border = SetProperties(NewInstance("Square"), {
-        Size = Window.Size,
-        Position = Window.Position,
-        Color = Colors.Border,
-        Filled = false,
-        Thickness = 1,
-        Transparency = 1,
-        Visible = true
-    })
+    -- Window border
+    window.Border = Drawing.new("Square")
+    window.Border.Size = {size.x, size.y}
+    window.Border.Position = {position.x, position.y}
+    window.Border.Color = Colors.Border
+    window.Border.Filled = false
+    window.Border.Thickness = 1
+    window.Border.Transparency = 1
+    window.Border.Visible = true
     
-    -- Title bar
-    Window.TitleBar = SetProperties(NewInstance("Square"), {
-        Size = {Window.Size[1], 30},
-        Position = Window.Position,
-        Color = Colors.LightBackground,
-        Filled = true,
-        Thickness = 1,
-        Transparency = 1,
-        Visible = true
-    })
-    
-    -- Title text
-    Window.TitleText = SetProperties(NewInstance("Text"), {
-        Text = Window.Name,
-        Size = 16,
-        Font = 5,
-        Color = Colors.Text,
-        Outline = true,
-        OutlineColor = {0, 0, 0},
-        Position = {Window.Position[1] + 10, Window.Position[2] + 5},
-        Transparency = 1,
-        Center = false,
-        Visible = true
-    })
+    -- Window title
+    window.Title = Drawing.new("Text")
+    window.Title.Text = name
+    window.Title.Size = 18
+    window.Title.Font = 2
+    window.Title.Color = Colors.Text
+    window.Title.Position = {position.x + 10, position.y + 8}
+    window.Title.Outline = true
+    window.Title.OutlineColor = {0, 0, 0}
+    window.Title.Transparency = 1
+    window.Title.Visible = true
     
     -- Tab container
-    Window.TabContainer = SetProperties(NewInstance("Square"), {
-        Size = {Window.Size[1], 25},
-        Position = {Window.Position[1], Window.Position[2] + 30},
-        Color = Colors.LightBackground,
-        Filled = true,
-        Thickness = 1,
-        Transparency = 1,
-        Visible = true
-    })
+    window.TabContainer = Drawing.new("Square")
+    window.TabContainer.Size = {size.x - 20, 25}
+    window.TabContainer.Position = {position.x + 10, position.y + 35}
+    window.TabContainer.Color = Colors.LightBackground
+    window.TabContainer.Filled = true
+    window.TabContainer.Transparency = 1
+    window.TabContainer.Visible = true
     
     -- Tab container border
-    Window.TabContainerBorder = SetProperties(NewInstance("Square"), {
-        Size = {Window.Size[1], 25},
-        Position = {Window.Position[1], Window.Position[2] + 30},
-        Color = Colors.Border,
-        Filled = false,
-        Thickness = 1,
-        Transparency = 1,
-        Visible = true
-    })
+    window.TabBorder = Drawing.new("Square")
+    window.TabBorder.Size = {size.x - 20, 25}
+    window.TabBorder.Position = {position.x + 10, position.y + 35}
+    window.TabBorder.Color = Colors.Border
+    window.TabBorder.Filled = false
+    window.TabBorder.Thickness = 1
+    window.TabBorder.Transparency = 1
+    window.TabBorder.Visible = true
     
     -- Content container
-    Window.ContentContainer = SetProperties(NewInstance("Square"), {
-        Size = {Window.Size[1], Window.Size[2] - 55},
-        Position = {Window.Position[1], Window.Position[2] + 55},
-        Color = Colors.LightBackground,
-        Filled = true,
-        Thickness = 1,
-        Transparency = 1,
-        Visible = true
-    })
+    window.ContentContainer = Drawing.new("Square")
+    window.ContentContainer.Size = {size.x - 20, size.y - 70}
+    window.ContentContainer.Position = {position.x + 10, position.y + 70}
+    window.ContentContainer.Color = Colors.LightBackground
+    window.ContentContainer.Filled = true
+    window.ContentContainer.Transparency = 1
+    window.ContentContainer.Visible = true
     
     -- Content container border
-    Window.ContentContainerBorder = SetProperties(NewInstance("Square"), {
-        Size = {Window.Size[1], Window.Size[2] - 55},
-        Position = {Window.Position[1], Window.Position[2] + 55},
-        Color = Colors.Border,
-        Filled = false,
-        Thickness = 1,
-        Transparency = 1,
-        Visible = true
-    })
+    window.ContentBorder = Drawing.new("Square")
+    window.ContentBorder.Size = {size.x - 20, size.y - 70}
+    window.ContentBorder.Position = {position.x + 10, position.y + 70}
+    window.ContentBorder.Color = Colors.Border
+    window.ContentBorder.Filled = false
+    window.ContentBorder.Thickness = 1
+    window.ContentBorder.Transparency = 1
+    window.ContentBorder.Visible = true
     
-    -- Dragging functionality
-    Window.Dragging = false
-    Window.DragOffset = {0, 0}
-    
-    function Window:UpdatePosition()
-        local Pos = self.Position
-        
-        self.Background.Position = Pos
-        self.Border.Position = Pos
-        self.TitleBar.Position = Pos
-        self.TitleText.Position = {Pos[1] + 10, Pos[2] + 5}
-        self.TabContainer.Position = {Pos[1], Pos[2] + 30}
-        self.TabContainerBorder.Position = {Pos[1], Pos[2] + 30}
-        self.ContentContainer.Position = {Pos[1], Pos[2] + 55}
-        self.ContentContainerBorder.Position = {Pos[1], Pos[2] + 55}
+    -- Methods
+    function window:UpdatePosition(newPosition)
+        self.Position = newPosition
+        self.Background.Position = {newPosition.x, newPosition.y}
+        self.Border.Position = {newPosition.x, newPosition.y}
+        self.Title.Position = {newPosition.x + 10, newPosition.y + 8}
+        self.TabContainer.Position = {newPosition.x + 10, newPosition.y + 35}
+        self.TabBorder.Position = {newPosition.x + 10, newPosition.y + 35}
+        self.ContentContainer.Position = {newPosition.x + 10, newPosition.y + 70}
+        self.ContentBorder.Position = {newPosition.x + 10, newPosition.y + 70}
         
         -- Update tab positions
-        local TabWidth = math.floor(self.Size[1] / #self.Tabs)
-        for i, Tab in ipairs(self.Tabs) do
-            local TabX = self.Position[1] + ((i - 1) * TabWidth)
-            Tab.Button.Position = {TabX, self.Position[2] + 30}
-            Tab.ButtonBorder.Position = {TabX, self.Position[2] + 30}
-            Tab.ButtonText.Position = {TabX + (TabWidth / 2), self.Position[2] + 30 + 6}
+        self:UpdateTabPositions()
+    end
+    
+    function window:UpdateTabPositions()
+        local tabCount = #self.Tabs
+        if tabCount == 0 then return end
+        
+        local tabWidth = self.TabContainer.Size[1] / tabCount
+        for i, tab in ipairs(self.Tabs) do
+            local tabX = self.TabContainer.Position[1] + (i - 1) * tabWidth
+            tab.Button.Position = {tabX, self.TabContainer.Position[2]}
+            tab.Button.Size = {tabWidth, self.TabContainer.Size[2]}
+            tab.ButtonBorder.Position = {tabX, self.TabContainer.Position[2]}
+            tab.ButtonBorder.Size = {tabWidth, self.TabContainer.Size[2]}
             
-            for _, Section in ipairs(Tab.Sections) do
-                Section:UpdatePosition()
+            -- Center the text
+            local textX = tabX + (tabWidth / 2) - (tab.ButtonText.TextBounds.x / 2)
+            local textY = self.TabContainer.Position[2] + (self.TabContainer.Size[2] / 2) - 8
+            tab.ButtonText.Position = {textX, textY}
+            
+            if tab.Highlight then
+                tab.Highlight.Position = {tabX, self.TabContainer.Position[2]}
+                tab.Highlight.Size = {tabWidth, self.TabContainer.Size[2]}
             end
         end
     end
     
-    function Window:Tab(Options)
-        local Tab = {}
-        Tab.Name = Options.Name or "Tab"
-        Tab.Sections = {}
+    function window:AddTab(name)
+        local tab = {
+            Name = name,
+            Visible = false,
+            Sections = {
+                Left = {},
+                Right = {}
+            }
+        }
         
-        local TabCount = #self.Tabs + 1
-        local TabWidth = math.floor(self.Size[1] / TabCount)
-        local TabX = self.Position[1] + ((TabCount - 1) * TabWidth)
+        -- Tab button
+        tab.Button = Drawing.new("Square")
+        tab.Button.Filled = true
+        tab.Button.Color = Colors.LightBackground
+        tab.Button.Transparency = 1
+        tab.Button.Visible = true
         
-        -- Recalculate all tab widths
-        for i, ExistingTab in ipairs(self.Tabs) do
-            local NewWidth = math.floor(self.Size[1] / TabCount)
-            local NewX = self.Position[1] + ((i - 1) * NewWidth)
-            
-            ExistingTab.Button.Size = {NewWidth, 25}
-            ExistingTab.Button.Position = {NewX, self.Position[2] + 30}
-            
-            ExistingTab.ButtonBorder.Size = {NewWidth, 25}
-            ExistingTab.ButtonBorder.Position = {NewX, self.Position[2] + 30}
-            
-            ExistingTab.ButtonText.Position = {NewX + (NewWidth / 2), self.Position[2] + 30 + 6}
-        end
+        -- Tab button border
+        tab.ButtonBorder = Drawing.new("Square")
+        tab.ButtonBorder.Filled = false
+        tab.ButtonBorder.Color = Colors.Border
+        tab.ButtonBorder.Thickness = 1
+        tab.ButtonBorder.Transparency = 1
+        tab.ButtonBorder.Visible = true
         
-        -- Create tab button
-        Tab.Button = SetProperties(NewInstance("Square"), {
-            Size = {TabWidth, 25},
-            Position = {TabX, self.Position[2] + 30},
-            Color = Colors.LightBackground,
-            Filled = true,
-            Thickness = 1,
-            Transparency = 1,
-            Visible = true
-        })
+        -- Tab text
+        tab.ButtonText = Drawing.new("Text")
+        tab.ButtonText.Text = name
+        tab.ButtonText.Size = 14
+        tab.ButtonText.Font = 2
+        tab.ButtonText.Color = Colors.Text
+        tab.ButtonText.Outline = true
+        tab.ButtonText.OutlineColor = {0, 0, 0}
+        tab.ButtonText.Transparency = 1
+        tab.ButtonText.Visible = true
+        tab.ButtonText.Center = true
         
-        Tab.ButtonBorder = SetProperties(NewInstance("Square"), {
-            Size = {TabWidth, 25},
-            Position = {TabX, self.Position[2] + 30},
-            Color = Colors.Border,
-            Filled = false,
-            Thickness = 1,
-            Transparency = 1,
-            Visible = true
-        })
+        -- Tab highlight (shown when tab is active)
+        tab.Highlight = Drawing.new("Square")
+        tab.Highlight.Filled = true
+        tab.Highlight.Color = Colors.Selected
+        tab.Highlight.Transparency = 0.1
+        tab.Highlight.Visible = false
         
-        Tab.ButtonText = SetProperties(NewInstance("Text"), {
-            Text = Tab.Name,
-            Size = 14,
-            Font = 5,
-            Color = Colors.Text,
-            Outline = true,
-            OutlineColor = {0, 0, 0},
-            Position = {TabX + (TabWidth / 2), self.Position[2] + 30 + 6},
-            Transparency = 1,
-            Center = true,
-            Visible = true
-        })
+        -- Add tab to window
+        table.insert(self.Tabs, tab)
         
-        -- Section management
-        function Tab:Section(Options)
-            local Section = {}
-            Section.Name = Options.Name or "Section"
-            Section.Side = Options.Side or "Left"
-            Section.Elements = {}
-            
-            -- Figure out positioning based on Side
-            local SectionWidth = Window.ContentContainer.Size[1] / 2 - 15
-            local SectionX = Window.ContentContainer.Position[1] + (Section.Side == "Left" and 10 or (Window.ContentContainer.Size[1] / 2 + 5))
-            local SectionY = Window.ContentContainer.Position[2] + 10
-            
-            -- Adjust for existing sections on the same side
-            local SectionsOnSameSide = 0
-            for _, ExistingSection in ipairs(Tab.Sections) do
-                if ExistingSection.Side == Section.Side then
-                    SectionsOnSameSide = SectionsOnSameSide + ExistingSection.TotalHeight + 10
-                end
-            end
-            
-            SectionY = SectionY + SectionsOnSameSide
-            Section.TotalHeight = 0
-            
-            Section.Background = SetProperties(NewInstance("Square"), {
-                Size = {SectionWidth, 10}, -- Initial size, will be updated
-                Position = {SectionX, SectionY},
-                Color = Colors.Background,
-                Filled = true,
-                Thickness = 1,
-                Transparency = 1,
-                Visible = false
-            })
-            
-            Section.Border = SetProperties(NewInstance("Square"), {
-                Size = {SectionWidth, 10}, -- Initial size, will be updated
-                Position = {SectionX, SectionY},
-                Color = Colors.Border,
-                Filled = false,
-                Thickness = 1,
-                Transparency = 1,
-                Visible = false
-            })
-            
-            Section.Title = SetProperties(NewInstance("Text"), {
-                Text = Section.Name,
-                Size = 14,
-                Font = 5,
-                Color = Colors.Text,
-                Outline = true,
-                OutlineColor = {0, 0, 0},
-                Position = {SectionX + 10, SectionY + 5},
-                Transparency = 1,
-                Center = false,
-                Visible = false
-            })
-            
-            function Section:UpdatePosition()
-                local SectionWidth = Window.ContentContainer.Size[1] / 2 - 15
-                local SectionX = Window.ContentContainer.Position[1] + (self.Side == "Left" and 10 or (Window.ContentContainer.Size[1] / 2 + 5))
-                local SectionY = Window.ContentContainer.Position[2] + 10
-                
-                -- Adjust for existing sections on the same side
-                local SectionsOnSameSide = 0
-                for i, ExistingSection in ipairs(Tab.Sections) do
-                    if ExistingSection == self then break end
-                    if ExistingSection.Side == self.Side then
-                        SectionsOnSameSide = SectionsOnSameSide + ExistingSection.TotalHeight + 10
-                    end
-                end
-                
-                SectionY = SectionY + SectionsOnSameSide
-                
-                self.Background.Size = {SectionWidth, self.TotalHeight}
-                self.Background.Position = {SectionX, SectionY}
-                
-                self.Border.Size = {SectionWidth, self.TotalHeight}
-                self.Border.Position = {SectionX, SectionY}
-                
-                self.Title.Position = {SectionX + 10, SectionY + 5}
-                
-                -- Update elements
-                local ElementY = SectionY + 25
-                for _, Element in ipairs(self.Elements) do
-                    Element:UpdatePosition(SectionX, ElementY, SectionWidth)
-                    ElementY = ElementY + Element.Height + 5
-                end
-            end
-            
-            function Section:Button(Options)
-                local Button = {}
-                Button.Name = Options.Name or "Button"
-                Button.Callback = Options.Callback or function() end
-                Button.Height = 25
-                
-                local ButtonX = Section.Background.Position[1] + 10
-                local ButtonY = Section.Background.Position[2] + 25 + Section.TotalHeight
-                local ButtonWidth = Section.Background.Size[1] - 20
-                
-                Button.Background = SetProperties(NewInstance("Square"), {
-                    Size = {ButtonWidth, Button.Height},
-                    Position = {ButtonX, ButtonY},
-                    Color = Colors.LightBackground,
-                    Filled = true,
-                    Thickness = 1,
-                    Transparency = 1,
-                    Visible = false
-                })
-                
-                Button.Border = SetProperties(NewInstance("Square"), {
-                    Size = {ButtonWidth, Button.Height},
-                    Position = {ButtonX, ButtonY},
-                    Color = Colors.Border,
-                    Filled = false,
-                    Thickness = 1,
-                    Transparency = 1,
-                    Visible = false
-                })
-                
-                Button.Text = SetProperties(NewInstance("Text"), {
-                    Text = Button.Name,
-                    Size = 14,
-                    Font = 5,
-                    Color = Colors.Text,
-                    Outline = true,
-                    OutlineColor = {0, 0, 0},
-                    Position = {ButtonX + (ButtonWidth / 2), ButtonY + (Button.Height / 2) - 7},
-                    Transparency = 1,
-                    Center = true,
-                    Visible = false
-                })
-                
-                function Button:UpdatePosition(SectionX, ElementY, SectionWidth)
-                    local ButtonX = SectionX + 10
-                    local ButtonWidth = SectionWidth - 20
-                    
-                    self.Background.Size = {ButtonWidth, self.Height}
-                    self.Background.Position = {ButtonX, ElementY}
-                    
-                    self.Border.Size = {ButtonWidth, self.Height}
-                    self.Border.Position = {ButtonX, ElementY}
-                    
-                    self.Text.Position = {ButtonX + (ButtonWidth / 2), ElementY + (self.Height / 2) - 7}
-                }
-                
-                Section.TotalHeight = Section.TotalHeight + Button.Height + 5
-                table.insert(Section.Elements, Button)
-                Section:UpdatePosition()
-                
-                if Window.CurrentTab == Tab.Name then
-                    Button.Background.Visible = true
-                    Button.Border.Visible = true
-                    Button.Text.Visible = true
-                end
-                
-                return Button
-            end
-            
-            function Section:Toggle(Options)
-                local Toggle = {}
-                Toggle.Name = Options.Name or "Toggle"
-                Toggle.Default = Options.Default or false
-                Toggle.Callback = Options.Callback or function() end
-                Toggle.State = Toggle.Default
-                Toggle.Height = 25
-                
-                local ToggleX = Section.Background.Position[1] + 10
-                local ToggleY = Section.Background.Position[2] + 25 + Section.TotalHeight
-                local ToggleWidth = Section.Background.Size[1] - 20
-                
-                Toggle.Background = SetProperties(NewInstance("Square"), {
-                    Size = {ToggleWidth, Toggle.Height},
-                    Position = {ToggleX, ToggleY},
-                    Color = Colors.LightBackground,
-                    Filled = true,
-                    Thickness = 1,
-                    Transparency = 1,
-                    Visible = false
-                })
-                
-                Toggle.Border = SetProperties(NewInstance("Square"), {
-                    Size = {ToggleWidth, Toggle.Height},
-                    Position = {ToggleX, ToggleY},
-                    Color = Colors.Border,
-                    Filled = false,
-                    Thickness = 1,
-                    Transparency = 1,
-                    Visible = false
-                })
-                
-                Toggle.Text = SetProperties(NewInstance("Text"), {
-                    Text = Toggle.Name,
-                    Size = 14,
-                    Font = 5,
-                    Color = Colors.Text,
-                    Outline = true,
-                    OutlineColor = {0, 0, 0},
-                    Position = {ToggleX + 25, ToggleY + (Toggle.Height / 2) - 7},
-                    Transparency = 1,
-                    Center = false,
-                    Visible = false
-                })
-                
-                Toggle.Indicator = SetProperties(NewInstance("Square"), {
-                    Size = {16, 16},
-                    Position = {ToggleX + 5, ToggleY + 4},
-                    Color = Toggle.State and Colors.Accent or Colors.Disabled,
-                    Filled = true,
-                    Thickness = 1,
-                    Transparency = 1,
-                    Visible = false
-                })
-                
-                Toggle.IndicatorBorder = SetProperties(NewInstance("Square"), {
-                    Size = {16, 16},
-                    Position = {ToggleX + 5, ToggleY + 4},
-                    Color = Colors.Border,
-                    Filled = false,
-                    Thickness = 1,
-                    Transparency = 1,
-                    Visible = false
-                })
-                
-                function Toggle:Set(State)
-                    self.State = State
-                    self.Indicator.Color = State and Colors.Accent or Colors.Disabled
-                    self.Callback(State)
-                end
-                
-                function Toggle:UpdatePosition(SectionX, ElementY, SectionWidth)
-                    local ToggleX = SectionX + 10
-                    local ToggleWidth = SectionWidth - 20
-                    
-                    self.Background.Size = {ToggleWidth, self.Height}
-                    self.Background.Position = {ToggleX, ElementY}
-                    
-                    self.Border.Size = {ToggleWidth, self.Height}
-                    self.Border.Position = {ToggleX, ElementY}
-                    
-                    self.Text.Position = {ToggleX + 25, ElementY + (self.Height / 2) - 7}
-                    
-                    self.Indicator.Position = {ToggleX + 5, ElementY + 4}
-                    self.IndicatorBorder.Position = {ToggleX + 5, ElementY + 4}
-                }
-                
-                Section.TotalHeight = Section.TotalHeight + Toggle.Height + 5
-                table.insert(Section.Elements, Toggle)
-                Section:UpdatePosition()
-                
-                if Window.CurrentTab == Tab.Name then
-                    Toggle.Background.Visible = true
-                    Toggle.Border.Visible = true
-                    Toggle.Text.Visible = true
-                    Toggle.Indicator.Visible = true
-                    Toggle.IndicatorBorder.Visible = true
-                end
-                
-                return Toggle
-            end
-            
-            function Section:Slider(Options)
-                local Slider = {}
-                Slider.Name = Options.Name or "Slider"
-                Slider.Min = Options.Min or 0
-                Slider.Max = Options.Max or 100
-                Slider.Default = Options.Default or Slider.Min
-                Slider.Value = Slider.Default
-                Slider.Callback = Options.Callback or function() end
-                Slider.Height = 40
-                
-                local SliderX = Section.Background.Position[1] + 10
-                local SliderY = Section.Background.Position[2] + 25 + Section.TotalHeight
-                local SliderWidth = Section.Background.Size[1] - 20
-                
-                Slider.Text = SetProperties(NewInstance("Text"), {
-                    Text = Slider.Name,
-                    Size = 14,
-                    Font = 5,
-                    Color = Colors.Text,
-                    Outline = true,
-                    OutlineColor = {0, 0, 0},
-                    Position = {SliderX, SliderY},
-                    Transparency = 1,
-                    Center = false,
-                    Visible = false
-                })
-                
-                Slider.ValueText = SetProperties(NewInstance("Text"), {
-                    Text = tostring(Slider.Value),
-                    Size = 14,
-                    Font = 5,
-                    Color = Colors.Text,
-                    Outline = true,
-                    OutlineColor = {0, 0, 0},
-                    Position = {SliderX + SliderWidth - 30, SliderY},
-                    Transparency = 1,
-                    Center = false,
-                    Visible = false
-                })
-                
-                Slider.Background = SetProperties(NewInstance("Square"), {
-                    Size = {SliderWidth, 10},
-                    Position = {SliderX, SliderY + 20},
-                    Color = Colors.LightBackground,
-                    Filled = true,
-                    Thickness = 1,
-                    Transparency = 1,
-                    Visible = false
-                })
-                
-                Slider.Border = SetProperties(NewInstance("Square"), {
-                    Size = {SliderWidth, 10},
-                    Position = {SliderX, SliderY + 20},
-                    Color = Colors.Border,
-                    Filled = false,
-                    Thickness = 1,
-                    Transparency = 1,
-                    Visible = false
-                })
-                
-                local ValueRange = Slider.Max - Slider.Min
-                local ValueRatio = (Slider.Value - Slider.Min) / ValueRange
-                local FilledWidth = SliderWidth * ValueRatio
-                
-                Slider.Fill = SetProperties(NewInstance("Square"), {
-                    Size = {FilledWidth, 10},
-                    Position = {SliderX, SliderY + 20},
-                    Color = Colors.Accent,
-                    Filled = true,
-                    Thickness = 1,
-                    Transparency = 1,
-                    Visible = false
-                })
-                
-                function Slider:Set(Value)
-                    self.Value = math.clamp(Value, self.Min, self.Max)
-                    self.ValueText.Text = tostring(self.Value)
-                    
-                    local ValueRange = self.Max - self.Min
-                    local ValueRatio = (self.Value - self.Min) / ValueRange
-                    local FilledWidth = self.Background.Size[1] * ValueRatio
-                    
-                    self.Fill.Size = {FilledWidth, 10}
-                    self.Callback(self.Value)
-                end
-                
-                function Slider:UpdatePosition(SectionX, ElementY, SectionWidth)
-                    local SliderX = SectionX + 10
-                    local SliderWidth = SectionWidth - 20
-                    
-                    self.Text.Position = {SliderX, ElementY}
-                    self.ValueText.Position = {SliderX + SliderWidth - 30, ElementY}
-                    
-                    self.Background.Size = {SliderWidth, 10}
-                    self.Background.Position = {SliderX, ElementY + 20}
-                    
-                    self.Border.Size = {SliderWidth, 10}
-                    self.Border.Position = {SliderX, ElementY + 20}
-                    
-                    local ValueRange = self.Max - self.Min
-                    local ValueRatio = (self.Value - self.Min) / ValueRange
-                    local FilledWidth = SliderWidth * ValueRatio
-                    
-                    self.Fill.Size = {FilledWidth, 10}
-                    self.Fill.Position = {SliderX, ElementY + 20}
-                }
-                
-                Section.TotalHeight = Section.TotalHeight + Slider.Height + 5
-                table.insert(Section.Elements, Slider)
-                Section:UpdatePosition()
-                
-                if Window.CurrentTab == Tab.Name then
-                    Slider.Text.Visible = true
-                    Slider.ValueText.Visible = true
-                    Slider.Background.Visible = true
-                    Slider.Border.Visible = true
-                    Slider.Fill.Visible = true
-                end
-                
-                return Slider
-            end
-            
-            table.insert(Tab.Sections, Section)
-            
-            if Window.CurrentTab == Tab.Name then
-                Section.Background.Visible = true
-                Section.Border.Visible = true
-                Section.Title.Visible = true
-            end
-            
-            return Section
-        end
+        -- Update tab positions
+        self:UpdateTabPositions()
         
-        table.insert(self.Tabs, Tab)
-        
-        -- Select the first tab if this is the first one
+        -- If this is the first tab, make it active
         if #self.Tabs == 1 then
-            self:SelectTab(Tab.Name)
+            self:SelectTab(1)
         end
         
-        return Tab
+        -- Add section creation method to the tab
+        function tab:AddSection(options)
+            options = options or {}
+            local name = options.Name or "Section"
+            local side = options.Side or "Left"
+            
+            local section = {
+                Name = name,
+                Side = side,
+                Elements = {}
+            }
+            
+            -- We'll implement section rendering later
+            
+            if side == "Left" then
+                table.insert(self.Sections.Left, section)
+            else
+                table.insert(self.Sections.Right, section)
+            end
+            
+            return section
+        end
+        
+        return tab
     end
     
-    function Window:SelectTab(TabName)
-        -- Hide current tab if there is one
-        if self.CurrentTab then
-            for _, Tab in ipairs(self.Tabs) do
-                if Tab.Name == self.CurrentTab then
-                    for _, Section in ipairs(Tab.Sections) do
-                        Section.Background.Visible = false
-                        Section.Border.Visible = false
-                        Section.Title.Visible = false
-                        
-                        for _, Element in ipairs(Section.Elements) do
-                            for _, Object in pairs(Element) do
-                                if type(Object) == "table" and Object.Visible ~= nil then
-                                    Object.Visible = false
-                                end
-                            end
-                        end
-                    end
-                end
+    function window:SelectTab(index)
+        if self.ActiveTab then
+            self.Tabs[self.ActiveTab].Highlight.Visible = false
+            -- Hide all elements from active tab (will implement later)
+        end
+        
+        self.ActiveTab = index
+        self.Tabs[index].Highlight.Visible = true
+        -- Show all elements from new active tab (will implement later)
+    end
+    
+    function window:IsHovered()
+        local mouse = Utility:GetMousePosition()
+        return Utility:IsInBounds(
+            {x = self.Position.x, y = self.Position.y},
+            {x = self.Size.x, y = self.Size.y},
+            mouse
+        )
+    end
+    
+    function window:IsTabAreaHovered()
+        local mouse = Utility:GetMousePosition()
+        return Utility:IsInBounds(
+            {x = self.TabContainer.Position[1], y = self.TabContainer.Position[2]},
+            {x = self.TabContainer.Size[1], y = self.TabContainer.Size[2]},
+            mouse
+        )
+    end
+    
+    function window:GetHoveredTab()
+        if not self:IsTabAreaHovered() then return nil end
+        
+        local mouse = Utility:GetMousePosition()
+        local tabWidth = self.TabContainer.Size[1] / #self.Tabs
+        
+        for i, tab in ipairs(self.Tabs) do
+            local tabX = self.TabContainer.Position[1] + (i - 1) * tabWidth
+            if mouse.x >= tabX and mouse.x < tabX + tabWidth then
+                return i
             end
         end
         
-        -- Show the selected tab
-        self.CurrentTab = TabName
-        for _, Tab in ipairs(self.Tabs) do
-            if Tab.Name == TabName then
-                for _, Section in ipairs(Tab.Sections) do
-                    Section.Background.Visible = true
-                    Section.Border.Visible = true
-                    Section.Title.Visible = true
-                    
-                    for _, Element in ipairs(Section.Elements) do
-                        for _, Object in pairs(Element) do
-                            if type(Object) == "table" and Object.Visible ~= nil then
-                                Object.Visible = true
-                            end
-                        end
-                    end
-                end
-            end
-        end
+        return nil
     end
     
-    table.insert(Windows, Window)
-    ActiveWindow = Window
-    return Window
+    -- Add window to windows list
+    table.insert(Windows, window)
+    
+    return window
 end
 
--- Input handling
+-- Input handling loop
+local isRunning = true
 spawn(function()
-    while true do
-        -- Update mouse
-        local MouseLocation = getmouselocation(MouseService)
-        Mouse.Position.X = MouseLocation.x
-        Mouse.Position.Y = MouseLocation.y
-        Mouse.Clicked = isleftclicked()
-        Mouse.Pressed = isleftpressed()
+    while isRunning do
+        local mousePosition = Utility:GetMousePosition()
+        local mouseClicked = isleftclicked()
+        local mousePressed = isleftpressed()
         
-        if ActiveWindow then
-            -- Check for dragging
-            if Mouse.Pressed and not ActiveWindow.Dragging then
-                -- Check if clicking on title bar
-                local TitleBarX = ActiveWindow.TitleBar.Position[1]
-                local TitleBarY = ActiveWindow.TitleBar.Position[2]
-                local TitleBarW = ActiveWindow.TitleBar.Size[1]
-                local TitleBarH = ActiveWindow.TitleBar.Size[2]
-                
-                if Mouse.Position.X >= TitleBarX and Mouse.Position.X <= TitleBarX + TitleBarW and
-                   Mouse.Position.Y >= TitleBarY and Mouse.Position.Y <= TitleBarY + TitleBarH then
-                    ActiveWindow.Dragging = true
-                    ActiveWindow.DragOffset = {
-                        Mouse.Position.X - ActiveWindow.Position[1],
-                        Mouse.Position.Y - ActiveWindow.Position[2]
-                    }
-                end
-            elseif Mouse.Pressed and ActiveWindow.Dragging then
-                -- Update window position while dragging
-                local NewX = Mouse.Position.X - ActiveWindow.DragOffset[1]
-                local NewY = Mouse.Position.Y - ActiveWindow.DragOffset[2]
-                ActiveWindow.Position = {NewX, NewY}
-                ActiveWindow:UpdatePosition()
-            elseif not Mouse.Pressed and ActiveWindow.Dragging then
-                ActiveWindow.Dragging = false
-            end
-            
-            -- Check for tab clicks
-            if Mouse.Clicked and not ActiveWindow.Dragging then
-                for _, Tab in ipairs(ActiveWindow.Tabs) do
-                    local TabX = Tab.Button.Position[1]
-                    local TabY = Tab.Button.Position[2]
-                    local TabW = Tab.Button.Size[1]
-                    local TabH = Tab.Button.Size[2]
-                    
-                    if Mouse.Position.X >= TabX and Mouse.Position.X <= TabX + TabW and
-                       Mouse.Position.Y >= TabY and Mouse.Position.Y <= TabY + TabH then
-                        ActiveWindow:SelectTab(Tab.Name)
-                        break
+        for _, window in ipairs(Windows) do
+            if window.Visible then
+                -- Dragging logic
+                if mouseClicked and not window.Dragging then
+                    if Utility:IsInBounds(
+                        {x = window.Position.x, y = window.Position.y},
+                        {x = window.Size.x, y = 35}, -- Title bar area
+                        mousePosition
+                    ) then
+                        window.Dragging = true
+                        window.DragOffset = {
+                            x = mousePosition.x - window.Position.x,
+                            y = mousePosition.y - window.Position.y
+                        }
                     end
                 end
                 
-                -- Check for element interactions (buttons, toggles, sliders)
-                if ActiveWindow.CurrentTab then
-                    for _, Tab in ipairs(ActiveWindow.Tabs) do
-                        if Tab.Name == ActiveWindow.CurrentTab then
-                            for _, Section in ipairs(Tab.Sections) do
-                                for _, Element in ipairs(Section.Elements) do
-                                    if Element.Background then
-                                        local ElementX = Element.Background.Position[1]
-                                        local ElementY = Element.Background.Position[2]
-                                        local ElementW = Element.Background.Size[1]
-                                        local ElementH = Element.Background.Size[2]
-                                        
-                                        if Mouse.Position.X >= ElementX and Mouse.Position.X <= ElementX + ElementW and
-                                           Mouse.Position.Y >= ElementY and Mouse.Position.Y <= ElementY + ElementH then
-                                            
-                                            -- Handle different element types
-                                            if Element.Callback then -- Button
-                                                Element.Callback()
-                                            elseif Element.Set and Element.State ~= nil then -- Toggle
-                                                Element:Set(not Element.State)
-                                            elseif Element.Set and Element.Min ~= nil then -- Slider
-                                                local SliderX = Element.Background.Position[1]
-                                                local SliderW = Element.Background.Size[1]
-                                                local ValueRatio = (Mouse.Position.X - SliderX) / SliderW
-                                                local Value = Element.Min + (Element.Max - Element.Min) * ValueRatio
-                                                Element:Set(Value)
-                                            end
-                                            
-                                            break
-                                        end
-                                    end
-                                end
-                            end
-                        end
+                if window.Dragging then
+                    if mousePressed then
+                        local newPosition = {
+                            x = mousePosition.x - window.DragOffset.x,
+                            y = mousePosition.y - window.DragOffset.y
+                        }
+                        window:UpdatePosition(newPosition)
+                    else
+                        window.Dragging = false
+                    end
+                end
+                
+                -- Tab selection
+                if mouseClicked and not window.Dragging then
+                    local hoveredTab = window:GetHoveredTab()
+                    if hoveredTab then
+                        window:SelectTab(hoveredTab)
                     end
                 end
             end
@@ -763,41 +332,30 @@ spawn(function()
     end
 end)
 
-function Library:Unload()
-    for _, Window in ipairs(Windows) do
-        for _, Tab in ipairs(Window.Tabs) do
-            for _, Section in ipairs(Tab.Sections) do
-                for _, Element in ipairs(Section.Elements) do
-                    for _, Object in pairs(Element) do
-                        if type(Object) == "table" and Object.Remove then
-                            Object:Remove()
-                        end
-                    end
-                end
-                
-                if Section.Background then Section.Background:Remove() end
-                if Section.Border then Section.Border:Remove() end
-                if Section.Title then Section.Title:Remove() end
-            end
-            
-            if Tab.Button then Tab.Button:Remove() end
-            if Tab.ButtonBorder then Tab.ButtonBorder:Remove() end
-            if Tab.ButtonText then Tab.ButtonText:Remove() end
-        end
+-- Clean up function
+function Library:Destroy()
+    isRunning = false
+    
+    for _, window in ipairs(Windows) do
+        window.Background:Remove()
+        window.Border:Remove()
+        window.Title:Remove()
+        window.TabContainer:Remove()
+        window.TabBorder:Remove()
+        window.ContentContainer:Remove()
+        window.ContentBorder:Remove()
         
-        if Window.Background then Window.Background:Remove() end
-        if Window.Border then Window.Border:Remove() end
-        if Window.TitleBar then Window.TitleBar:Remove() end
-        if Window.TitleText then Window.TitleText:Remove() end
-        if Window.TabContainer then Window.TabContainer:Remove() end
-        if Window.TabContainerBorder then Window.TabContainerBorder:Remove() end
-        if Window.ContentContainer then Window.ContentContainer:Remove() end
-        if Window.ContentContainerBorder then Window.ContentContainerBorder:Remove() end
+        for _, tab in ipairs(window.Tabs) do
+            tab.Button:Remove()
+            tab.ButtonBorder:Remove()
+            tab.ButtonText:Remove()
+            tab.Highlight:Remove()
+            
+            -- Will add cleanup for sections and elements later
+        end
     end
     
     Windows = {}
-    ActiveWindow = nil
-    Drawing.clear()
 end
 
 return Library
