@@ -1,1815 +1,261 @@
---[[
-    Anue UI Library for Severe
-    Inspired by gamesense.cc aesthetics
-    Uses Drawing library exclusively
-]]
+local Library = {}
+local Windows = {}
+local ZIndexCounter = 1
 
--- Theme System
-local Theme = {
-    Background = {25, 25, 25},
-    BackgroundLight = {30, 30, 30},
-    BackgroundDark = {20, 20, 20},
-    Accent = {0, 190, 255},
-    AccentDarker = {0, 150, 220},
-    AccentTransparent = {0, 190, 255, 0.5},
-    Text = {255, 255, 255},
-    TextDim = {200, 200, 200},
-    TextAccent = {0, 190, 255},
-    Border = {50, 50, 50},
-    BorderDark = {35, 35, 35},
-    ButtonIdle = {40, 40, 40},
-    ButtonHover = {50, 50, 50},
-    ButtonPressed = {0, 170, 230},
-    CheckboxBorder = {80, 80, 80},
-    CheckboxHover = {100, 100, 100},
-    SliderBg = {40, 40, 40},
-    SliderRail = {60, 60, 60},
-    TabActive = {35, 35, 35},
-    TabInactive = {30, 30, 30},
-    TabHover = {40, 40, 40},
-    SectionBackground = {27, 27, 27},
-    ShadowColor = {10, 10, 10, 0.5},
-    GroupBackground = {30, 30, 30},
-    Divider = {50, 50, 50},
-    DefaultFont = 2,
-    ContentPadding = 8,
-    ElementSpacing = 5,
-    CornerRadius = 0 -- Flat design for skeet.cc aesthetic
-}
+-- Store UI elements for cleanup
+local DrawingObjects = {}
 
--- UIManager (Central update system)
-local UIManager = {
-    Elements = {},
-    Windows = {},
-    Running = true,
-    Mouse = {
-        X = 0,
-        Y = 0,
-        Clicked = false,
-        Pressed = false,
-        WasClicked = false
-    },
-    HoveredElement = nil,
-    ActiveElement = nil,
-    LastFrameTime = 0,
-    DeltaTime = 0
-}
+-- Mouse utility
+local function GetMousePosition()
+    local MouseService = game:FindService("UserInputService")
+    local mouse = getmouseposition()
+    return {x = mouse.x, y = mouse.y}
+end
 
-function UIManager:Initialize()
-    -- Start the update loop
+-- Create a drawing object and store it for cleanup
+local function CreateDrawingObject(type, properties)
+    local Object = Drawing.new(type)
+    
+    -- Set all properties
+    for property, value in pairs(properties or {}) do
+        Object[property] = value
+    end
+    
+    -- Store reference for cleanup
+    table.insert(DrawingObjects, Object)
+    
+    return Object
+end
+
+-- Increment zIndex counter
+local function GetNewZIndex()
+    ZIndexCounter = ZIndexCounter + 1
+    return ZIndexCounter
+end
+
+-- Check if a point is inside a rectangle
+local function IsInRect(x, y, rectX, rectY, rectWidth, rectHeight)
+    return x >= rectX and x <= rectX + rectWidth and
+           y >= rectY and y <= rectY + rectHeight
+end
+
+function Library:CreateWindow(config)
+    config = config or {}
+    
+    local Window = {
+        Title = config.Title or "Severe UI",
+        Size = config.Size or {400, 300},
+        Position = config.Position or {100, 100},
+        Padding = config.Padding or 12,
+        HeaderHeight = 30,
+        AccentColor = config.AccentColor or {0, 190, 255},
+        BackgroundColor = config.BackgroundColor or {20, 20, 20},
+        HeaderColor = config.HeaderColor or {40, 40, 40},
+        TextColor = config.TextColor or {255, 255, 255},
+        _children = {},
+        _tabs = {},
+        _activeTab = nil,
+        
+        -- Drag functionality
+        Dragging = false,
+        DragOffset = {x = 0, y = 0},
+        Visible = true,
+        ZIndex = GetNewZIndex()
+    }
+    
+    -- Create window background
+    Window.Background = CreateDrawingObject("Square", {
+        Size = Window.Size,
+        Position = Window.Position,
+        Color = Window.BackgroundColor,
+        Filled = true,
+        Transparency = 0.95,
+        Visible = true,
+        ZIndex = Window.ZIndex
+    })
+    
+    -- Create header bar
+    Window.Header = CreateDrawingObject("Square", {
+        Size = {Window.Size[1], Window.HeaderHeight},
+        Position = Window.Position,
+        Color = Window.HeaderColor,
+        Filled = true,
+        Transparency = 1,
+        Visible = true,
+        ZIndex = Window.ZIndex + 1
+    })
+    
+    -- Create accent line
+    Window.AccentLine = CreateDrawingObject("Square", {
+        Size = {Window.Size[1], 2},
+        Position = {Window.Position[1], Window.Position[2] + Window.HeaderHeight},
+        Color = Window.AccentColor,
+        Filled = true,
+        Transparency = 1,
+        Visible = true,
+        ZIndex = Window.ZIndex + 2
+    })
+    
+    -- Create title text
+    Window.TitleText = CreateDrawingObject("Text", {
+        Text = Window.Title,
+        Size = 14,
+        Center = true,
+        Font = 2,
+        Position = {Window.Position[1] + Window.Size[1]/2, Window.Position[2] + Window.HeaderHeight/2 - 7},
+        Color = Window.TextColor,
+        Outline = true,
+        OutlineColor = {0, 0, 0},
+        Visible = true,
+        ZIndex = Window.ZIndex + 3
+    })
+    
+    -- Close button
+    Window.CloseButton = CreateDrawingObject("Text", {
+        Text = "X",
+        Size = 13,
+        Position = {Window.Position[1] + Window.Size[1] - 25, Window.Position[2] + 8},
+        Color = Window.TextColor,
+        Outline = true,
+        OutlineColor = {0, 0, 0},
+        Visible = true,
+        ZIndex = Window.ZIndex + 3
+    })
+    
+    -- Update window position
+    function Window:SetPosition(x, y)
+        self.Position = {x, y}
+        
+        -- Update UI elements
+        self.Background.Position = {x, y}
+        self.Header.Position = {x, y}
+        self.AccentLine.Position = {x, y + self.HeaderHeight}
+        self.TitleText.Position = {x + self.Size[1]/2, y + self.HeaderHeight/2 - 7}
+        self.CloseButton.Position = {x + self.Size[1] - 25, y + 8}
+        
+        -- Update children positions
+        self:UpdateChildrenPositions()
+    end
+    
+    -- Check if mouse is in header (for drag)
+    function Window:IsInHeader(x, y)
+        return IsInRect(x, y, self.Position[1], self.Position[2], self.Size[1], self.HeaderHeight)
+    end
+    
+    -- Check if mouse is in close button
+    function Window:IsInCloseButton(x, y)
+        return IsInRect(x, y, self.CloseButton.Position.x - 5, self.CloseButton.Position.y - 5, 20, 20)
+    end
+    
+    -- Toggle window visibility
+    function Window:Toggle()
+        self.Visible = not self.Visible
+        self.Background.Visible = self.Visible
+        self.Header.Visible = self.Visible
+        self.AccentLine.Visible = self.Visible
+        self.TitleText.Visible = self.Visible
+        self.CloseButton.Visible = self.Visible
+        
+        -- Toggle visibility of children
+        for _, child in ipairs(self._children) do
+            if child.Visible ~= nil then
+                child.Visible = self.Visible
+            end
+        end
+    end
+    
+    -- Update child element positions when window moves
+    function Window:UpdateChildrenPositions()
+        -- For now, this is a placeholder
+        -- Will be implemented as we add UI elements
+    end
+    
+    -- Add the window to the list
+    table.insert(Windows, Window)
+    
+    -- Start input handling for this window
     spawn(function()
-        while self.Running do
-            self:Update()
-            wait(0.01) -- Small delay to prevent excessive CPU usage
+        local IsPressed = false
+        
+        while wait() do
+            -- Check if Library still exists
+            if not Library then break end
+            
+            local Mouse = GetMousePosition()
+            local Pressed = isleftpressed()
+            local Clicked = isleftclicked()
+            
+            -- Handle dragging
+            if Window:IsInHeader(Mouse.x, Mouse.y) then
+                if Pressed and not IsPressed then
+                    Window.Dragging = true
+                    Window.DragOffset = {
+                        x = Mouse.x - Window.Position[1],
+                        y = Mouse.y - Window.Position[2]
+                    }
+                end
+            end
+            
+            -- Update position while dragging
+            if Window.Dragging and Pressed then
+                Window:SetPosition(
+                    Mouse.x - Window.DragOffset.x,
+                    Mouse.y - Window.DragOffset.y
+                )
+            else
+                Window.Dragging = false
+            end
+            
+            -- Handle close button
+            if Window:IsInCloseButton(Mouse.x, Mouse.y) and Clicked then
+                Window:Toggle()
+            end
+            
+            IsPressed = Pressed
         end
     end)
     
-    return self
+    -- Add functions for UI elements here as we develop
+    function Window:AddButton(config)
+        -- This would create a button element
+        -- Example placeholder
+    end
+    
+    function Window:AddToggle(config)
+        -- This would create a toggle switch
+        -- Example placeholder
+    end
+    
+    function Window:AddSlider(config)
+        -- This would create a slider element
+        -- Example placeholder
+    end
+    
+    return Window
 end
 
-function UIManager:Update()
-    -- Calculate delta time
-    local currentTime = tick()
-    self.DeltaTime = currentTime - self.LastFrameTime
-    self.LastFrameTime = currentTime
-    
-    -- Update mouse state using the original library's approach
-    local mouseLocation = getmouselocation(findservice(Game, "MouseService"))
-    self.Mouse.X = mouseLocation.x
-    self.Mouse.Y = mouseLocation.y
-    self.Mouse.WasClicked = self.Mouse.Clicked
-    self.Mouse.Clicked = isleftclicked()
-    self.Mouse.Pressed = isleftpressed()
-    
-    -- Handle window updates first (since they contain tabs and elements)
-    for _, window in ipairs(self.Windows) do
-        if window.Visible then
-            self:ProcessWindow(window)
+function Library:Destroy()
+    -- Clean up all drawing objects
+    for _, object in ipairs(DrawingObjects) do
+        if object.Remove then
+            object:Remove()
         end
     end
     
-    -- Handle individual elements not in windows
-    for _, element in ipairs(self.Elements) do
-        if element.Visible then
-            self:ProcessElement(element)
-        end
-    end
-end
-
-function UIManager:ProcessWindow(window)
-    -- Check for window dragging
-    if window.Dragging then
-        if self.Mouse.Pressed then
-            local newX = self.Mouse.X - window.DragOffset[1]
-            local newY = self.Mouse.Y - window.DragOffset[2]
-            window:SetPosition({newX, newY})
-        else
-            window.Dragging = false
-        end
-    else
-        -- Check if starting a drag operation
-        local isInHeader = self:IsPointInRect(
-            self.Mouse.X, self.Mouse.Y,
-            window.Position[1], window.Position[2],
-            window.Size[1], window.HeaderHeight
-        )
-        
-        if isInHeader and self.Mouse.Clicked and not self.Mouse.WasClicked then
-            window.Dragging = true
-            window.DragOffset = {
-                self.Mouse.X - window.Position[1],
-                self.Mouse.Y - window.Position[2]
-            }
-        end
-    end
-    
-    -- Check tab interactions if window has tabs
-    if #window.Tabs > 0 then
-        for _, tab in ipairs(window.Tabs) do
-            local isInTabButton = self:IsPointInRect(
-                self.Mouse.X, self.Mouse.Y,
-                tab.ButtonPosition[1], tab.ButtonPosition[2],
-                tab.ButtonSize[1], tab.ButtonSize[2]
-            )
-            
-            if isInTabButton and self.Mouse.Clicked and not self.Mouse.WasClicked then
-                window:SelectTab(tab.Name)
-            end
-        end
-    end
-    
-    -- Process active tab elements or direct window elements
-    if window.ActiveTab then
-        for _, element in ipairs(window.ActiveTab.Children) do
-            if element.Visible then
-                self:ProcessElement(element)
-            end
-        end
-    end
-    
-    -- Process direct window elements
-    for _, element in ipairs(window.Children) do
-        if element.Visible then
-            self:ProcessElement(element)
-        end
-    end
-end
-
-function UIManager:ProcessElement(element)
-    -- Handle different element types
-    if element.Type == "Button" then
-        self:ProcessButton(element)
-    elseif element.Type == "Checkbox" then
-        self:ProcessCheckbox(element)
-    elseif element.Type == "Slider" then
-        self:ProcessSlider(element)
-    end
-    -- Add more element types as needed
-end
-
-function UIManager:ProcessButton(button)
-    local isHovered = self:IsPointInRect(
-        self.Mouse.X, self.Mouse.Y,
-        button.Position[1], button.Position[2],
-        button.Size[1], button.Size[2]
-    )
-    
-    local oldState = button.State
-    
-    if isHovered then
-        if self.Mouse.Pressed then
-            button.State = "Pressed"
-        else
-            button.State = "Hover"
-            
-            -- Check for click completion (release while hovering)
-            if oldState == "Pressed" and not self.Mouse.Pressed and self.Mouse.WasClicked then
-                spawn(function() 
-                    button.Callback() 
-                end)
-            end
-        end
-    else
-        button.State = "Idle"
-    end
-    
-    -- Re-render if state changed
-    if oldState ~= button.State then
-        button:Render()
-    end
-end
-
-function UIManager:ProcessCheckbox(checkbox)
-    -- Define the clickable area (includes both checkbox and label)
-    local labelWidth = checkbox.TextObj and checkbox.TextObj.TextBounds and checkbox.TextObj.TextBounds.x or 100
-    local clickableWidth = checkbox.Size + 5 + labelWidth
-    
-    local isHovered = self:IsPointInRect(
-        self.Mouse.X, self.Mouse.Y,
-        checkbox.Position[1], checkbox.Position[2],
-        clickableWidth, checkbox.Size
-    )
-    
-    -- Handle click
-    if isHovered and self.Mouse.Clicked and not self.Mouse.WasClicked then
-        checkbox.Value = not checkbox.Value
-        checkbox:Render()
-        
-        -- Call the callback
-        spawn(function() 
-            checkbox.OnToggle(checkbox.Value) 
-        end)
-    end
-end
-
-function UIManager:ProcessSlider(slider)
-    -- Define the clickable areas
-    local sliderArea = {
-        x1 = slider.Position[1] - 5,
-        y1 = slider.Position[2] - 5,
-        x2 = slider.Position[1] + slider.Size[1] + 5,
-        y2 = slider.Position[2] + slider.Size[2] + 5
-    }
-    
-    local handleArea = {
-        x1 = slider.Handle.Position.x - 2,
-        y1 = slider.Handle.Position.y - 2,
-        x2 = slider.Handle.Position.x + slider.Handle.Size.x + 2,
-        y2 = slider.Handle.Position.y + slider.Handle.Size.y + 2
-    }
-    
-    local isInHandleArea = self:IsPointInRect(
-        self.Mouse.X, self.Mouse.Y,
-        handleArea.x1, handleArea.y1,
-        handleArea.x2 - handleArea.x1, handleArea.y2 - handleArea.y1
-    )
-    
-    local isInSliderArea = self:IsPointInRect(
-        self.Mouse.X, self.Mouse.Y,
-        sliderArea.x1, sliderArea.y1,
-        sliderArea.x2 - sliderArea.x1, sliderArea.y2 - sliderArea.y1
-    )
-    
-    -- Start dragging on click
-    if self.Mouse.Clicked and not self.Mouse.WasClicked and (isInHandleArea or isInSliderArea) then
-        slider.Dragging = true
-    end
-    
-    -- Handle dragging
-    if slider.Dragging then
-        if self.Mouse.Pressed then
-            -- Calculate new value based on mouse position
-            local clampedX = math.clamp(self.Mouse.X, slider.Position[1], slider.Position[1] + slider.Size[1])
-            local percentage = (clampedX - slider.Position[1]) / slider.Size[1]
-            local rawValue = slider.Min + percentage * (slider.Max - slider.Min)
-            
-            -- Apply step increments
-            local steps = math.floor((rawValue - slider.Min) / slider.Step + 0.5)
-            local newValue = slider.Min + steps * slider.Step
-            
-            -- Only update if value changed
-            if newValue ~= slider.Value then
-                slider.Value = newValue
-                slider:Render()
-                
-                -- Call the callback
-                spawn(function() 
-                    slider.OnChange(slider.Value) 
-                end)
-            end
-        else
-            slider.Dragging = false
-        end
-    end
-end
-
-function UIManager:IsPointInRect(x, y, rectX, rectY, rectWidth, rectHeight)
-    return x >= rectX and x <= rectX + rectWidth and y >= rectY and y <= rectY + rectHeight
-end
-
-function UIManager:RegisterElement(element)
-    table.insert(self.Elements, element)
-    return element
-end
-
-function UIManager:RegisterWindow(window)
-    table.insert(self.Windows, window)
-    return window
-end
-
-function UIManager:Destroy()
-    self.Running = false
-    
-    -- Clear all elements
-    for _, element in ipairs(self.Elements) do
-        if element.Destroy then
-            element:Destroy()
-        end
-    end
+    -- Clear the objects table
+    DrawingObjects = {}
     
     -- Clear all windows
-    for _, window in ipairs(self.Windows) do
-        if window.Destroy then
-            window:Destroy()
-        end
-    end
-    
-    self.Elements = {}
-    self.Windows = {}
-end
-
--- DrawService Module
-local DrawService = {}
-
-function DrawService.New(type, props)
-    local drawObj = Drawing.new(type)
-    if props then
-        for prop, value in pairs(props) do
-            drawObj[prop] = value
-        end
-    end
-    return drawObj
-end
-
--- Object Base Class
-local Object = {}
-Object.__index = Object
-
-function Object.new()
-    local self = setmetatable({}, Object)
-    self.Elements = {}
-    self.Visible = true
-    return self
-end
-
-function Object:AddElement(drawObj)
-    table.insert(self.Elements, drawObj)
-    return drawObj
-end
-
-function Object:SetVisible(state)
-    self.Visible = state
-    for _, element in ipairs(self.Elements) do
-        element.Visible = state
-    end
-end
-
-function Object:Destroy()
-    for _, element in ipairs(self.Elements) do
-        if element.Remove then
-            element:Remove()
-        end
-    end
-    self.Elements = {}
-end
-
--- Label Component
-local Label = {}
-Label.__index = Label
-setmetatable(Label, {__index = Object})
-
-function Label.new(text, position, size, color)
-    local self = setmetatable(Object.new(), Label)
-    
-    self.Text = text or ""
-    self.Position = position or {0, 0}
-    self.Size = size or 13
-    self.Color = color or Theme.Text
-    self.Type = "Label"
-    
-    self:Render()
-    return self
-end
-
-function Label:Render()
-    if self.TextObj then
-        self.TextObj:Remove()
-    end
-    
-    self.TextObj = self:AddElement(DrawService.New("Text", {
-        Text = self.Text,
-        Position = self.Position,
-        Size = self.Size,
-        Color = self.Color,
-        Outline = false,
-        Font = Theme.DefaultFont,
-        Visible = self.Visible
-    }))
-end
-
-function Label:SetText(text)
-    self.Text = text
-    if self.TextObj then
-        self.TextObj.Text = text
-    end
-end
-
-function Label:SetPosition(position)
-    self.Position = position
-    if self.TextObj then
-        self.TextObj.Position = position
-    end
-end
-
-function Label:SetColor(color)
-    self.Color = color
-    if self.TextObj then
-        self.TextObj.Color = color
-    end
-end
-
-function Label:SetSize(size)
-    self.Size = size
-    if self.TextObj then
-        self.TextObj.Size = size
-    end
-end
-
--- Button Component
-local Button = {}
-Button.__index = Button
-setmetatable(Button, {__index = Object})
-
-function Button.new(text, position, size, callback)
-    local self = setmetatable(Object.new(), Button)
-    
-    self.Text = text or "Button"
-    self.Position = position or {0, 0}
-    self.Size = size or {100, 25}
-    self.Callback = callback or function() end
-    self.State = "Idle" -- Idle, Hover, Pressed
-    self.Type = "Button"
-    
-    self:Render()
-    return self
-end
-
-function Button:Render()
-    -- Remove old elements if they exist
-    for _, element in ipairs(self.Elements) do
-        if element.Remove then
-            element:Remove()
-        end
-    end
-    self.Elements = {}
-    
-    -- Background color based on current state
-    local bgColor = Theme.ButtonIdle
-    local borderColor = Theme.Border
-    local textColor = Theme.Text
-    
-    if self.State == "Hover" then
-        bgColor = Theme.ButtonHover
-        borderColor = Theme.Accent
-    elseif self.State == "Pressed" then
-        bgColor = Theme.ButtonPressed
-        textColor = Theme.Text
-    end
-    
-    -- Button shadow (slight offset for depth)
-    self.Shadow = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1] + 1, self.Position[2] + 1},
-        Size = {self.Size[1], self.Size[2]},
-        Filled = true,
-        Color = Theme.ShadowColor,
-        Transparency = 0.3,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 1
-    }))
-    
-    -- Button border
-    self.Border = self:AddElement(DrawService.New("Square", {
-        Position = self.Position,
-        Size = self.Size,
-        Filled = false,
-        Color = borderColor,
-        Transparency = 1,
-        Thickness = 1,
-        Visible = self.Visible,
-        zIndex = 2
-    }))
-    
-    -- Button background
-    self.Background = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1] + 1, self.Position[2] + 1},
-        Size = {self.Size[1] - 2, self.Size[2] - 2},
-        Filled = true,
-        Color = bgColor,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 3
-    }))
-    
-    -- Add subtle accent top border when hovered
-    if self.State == "Hover" or self.State == "Pressed" then
-        self.AccentTop = self:AddElement(DrawService.New("Square", {
-            Position = {self.Position[1], self.Position[2]},
-            Size = {self.Size[1], 1},
-            Filled = true,
-            Color = Theme.Accent,
-            Transparency = 1,
-            Thickness = 0,
-            Visible = self.Visible,
-            zIndex = 4
-        }))
-    end
-    
-    -- Text (centered)
-    local textX = self.Position[1] + (self.Size[1] / 2)
-    local textY = self.Position[2] + (self.Size[2] / 2) - 7 -- Adjust for text centering
-    
-    self.TextObj = self:AddElement(DrawService.New("Text", {
-        Text = self.Text,
-        Position = {textX, textY},
-        Size = 13,
-        Color = textColor,
-        Outline = false,
-        Center = true,
-        Font = Theme.DefaultFont,
-        Visible = self.Visible,
-        zIndex = 5
-    }))
-end
-
-function Button:SetPosition(position)
-    self.Position = position
-    self:Render()
-end
-
-function Button:SetSize(size)
-    self.Size = size
-    self:Render()
-end
-
-function Button:SetText(text)
-    self.Text = text
-    if self.TextObj then
-        self.TextObj.Text = text
-    end
-end
-
-function Button:SetCallback(callback)
-    self.Callback = callback or function() end
-end
-
--- Checkbox Component
-local Checkbox = {}
-Checkbox.__index = Checkbox
-setmetatable(Checkbox, {__index = Object})
-
-function Checkbox.new(label, position, defaultState, onToggle)
-    local self = setmetatable(Object.new(), Checkbox)
-    
-    self.Label = label or "Checkbox"
-    self.Position = position or {0, 0}
-    self.Value = defaultState or false
-    self.OnToggle = onToggle or function() end
-    self.Size = 12 -- Fixed size for checkbox
-    self.Type = "Checkbox"
-    
-    self:Render()
-    return self
-end
-
-function Checkbox:Render()
-    -- Remove old elements if they exist
-    for _, element in ipairs(self.Elements) do
-        if element.Remove then
-            element:Remove()
-        end
-    end
-    self.Elements = {}
-    
-    -- Determine if the checkbox is being hovered using MouseService
-    local isHovered = false
-    local mouseLocation = getmouselocation(findservice(Game, "MouseService"))
-    local mouseX = mouseLocation.x
-    local mouseY = mouseLocation.y
-    local labelWidth = 100 -- Approximate, improve this with actual text width when possible
-    
-    isHovered = mouseX >= self.Position[1] and 
-                mouseX <= self.Position[1] + self.Size + 5 + labelWidth and
-                mouseY >= self.Position[2] and 
-                mouseY <= self.Position[2] + self.Size
-    
-    -- Checkbox outer border - slightly larger for better visual
-    self.OuterBorder = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1] - 1, self.Position[2] - 1},
-        Size = {self.Size + 2, self.Size + 2},
-        Filled = false,
-        Color = isHovered and Theme.Accent or Theme.BorderDark,
-        Transparency = 1,
-        Thickness = 1,
-        Visible = self.Visible,
-        zIndex = 1
-    }))
-    
-    -- Checkbox background
-    self.Background = self:AddElement(DrawService.New("Square", {
-        Position = self.Position,
-        Size = {self.Size, self.Size},
-        Filled = true,
-        Color = isHovered and Theme.ButtonHover or Theme.ButtonIdle,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 2
-    }))
-    
-    -- Checkbox inner border
-    self.Border = self:AddElement(DrawService.New("Square", {
-        Position = self.Position,
-        Size = {self.Size, self.Size},
-        Filled = false,
-        Color = isHovered and Theme.CheckboxHover or Theme.CheckboxBorder,
-        Transparency = 1,
-        Thickness = 1,
-        Visible = self.Visible,
-        zIndex = 3
-    }))
-    
-    -- Checkbox fill (inner square) - only visible when checked
-    if self.Value then
-        -- Inner fill
-        self.Fill = self:AddElement(DrawService.New("Square", {
-            Position = {self.Position[1] + 2, self.Position[2] + 2},
-            Size = {self.Size - 4, self.Size - 4},
-            Filled = true,
-            Color = Theme.Accent,
-            Transparency = 1,
-            Thickness = 0,
-            Visible = self.Visible,
-            zIndex = 4
-        }))
-        
-        -- Checkmark (using smaller squares to simulate a checkmark)
-        self.CheckMark1 = self:AddElement(DrawService.New("Line", {
-            From = {self.Position[1] + 3, self.Position[2] + self.Size/2},
-            To = {self.Position[1] + self.Size/2 - 1, self.Position[2] + self.Size - 4},
-            Thickness = 1,
-            Color = Theme.Text,
-            Transparency = 1,
-            Visible = self.Visible,
-            zIndex = 5
-        }))
-        
-        self.CheckMark2 = self:AddElement(DrawService.New("Line", {
-            From = {self.Position[1] + self.Size/2, self.Position[2] + self.Size - 4},
-            To = {self.Position[1] + self.Size - 3, self.Position[2] + 3},
-            Thickness = 1,
-            Color = Theme.Text,
-            Transparency = 1,
-            Visible = self.Visible,
-            zIndex = 5
-        }))
-    end
-    
-    -- Label text
-    self.TextObj = self:AddElement(DrawService.New("Text", {
-        Text = self.Label,
-        Position = {self.Position[1] + self.Size + 7, self.Position[2] - 2},
-        Size = 13,
-        Color = isHovered and Theme.TextAccent or Theme.Text,
-        Outline = false,
-        Font = Theme.DefaultFont,
-        Visible = self.Visible,
-        zIndex = 6
-    }))
-end
-
-function Checkbox:SetPosition(position)
-    self.Position = position
-    self:Render()
-end
-
-function Checkbox:SetValue(value)
-    if self.Value ~= value then
-        self.Value = value
-        self:Render()
-        
-        -- Call the callback
-        spawn(function() 
-            self.OnToggle(self.Value) 
-        end)
-    end
-end
-
-function Checkbox:GetValue()
-    return self.Value
-end
-
-function Checkbox:SetLabel(label)
-    self.Label = label
-    self:Render()
-end
-
-function Checkbox:SetCallback(callback)
-    self.OnToggle = callback or function() end
-end
-
--- Slider Component
-local Slider = {}
-Slider.__index = Slider
-setmetatable(Slider, {__index = Object})
-
-function Slider.new(label, position, size, min, max, default, step, onChange)
-    local self = setmetatable(Object.new(), Slider)
-    
-    self.Label = label or "Slider"
-    self.Position = position or {0, 0}
-    self.Size = size or {150, 4} -- Width, height
-    self.Min = min or 0
-    self.Max = max or 100
-    self.Step = step or 1
-    self.Value = default or self.Min
-    self.OnChange = onChange or function() end
-    self.Dragging = false
-    self.Type = "Slider"
-    
-    -- Ensure value is within bounds and aligned to step
-    self.Value = math.clamp(self.Value, self.Min, self.Max)
-    local steps = math.floor((self.Value - self.Min) / self.Step + 0.5)
-    self.Value = self.Min + steps * self.Step
-    
-    self:Render()
-    return self
-end
-
-function Slider:Render()
-    -- Remove old elements if they exist
-    for _, element in ipairs(self.Elements) do
-        if element.Remove then
-            element:Remove()
-        end
-    end
-    self.Elements = {}
-    
-    -- Calculate handle position based on current value
-    local percentage = (self.Value - self.Min) / (self.Max - self.Min)
-    local handleX = self.Position[1] + percentage * self.Size[1]
-    
-    -- Determine if the slider is being hovered/dragged using MouseService
-    local isActive = self.Dragging
-    local mouseLocation = getmouselocation(findservice(Game, "MouseService"))
-    local mouseX = mouseLocation.x
-    local mouseY = mouseLocation.y
-    local isHovered = mouseX >= self.Position[1] - 5 and 
-                      mouseX <= self.Position[1] + self.Size[1] + 5 and
-                      mouseY >= self.Position[2] - 5 and 
-                      mouseY <= self.Position[2] + self.Size[2] + 5
-    
-    -- Slider label with value
-    self.TextObj = self:AddElement(DrawService.New("Text", {
-        Text = self.Label .. ": " .. self.Value,
-        Position = {self.Position[1], self.Position[2] - 16},
-        Size = 13,
-        Color = isHovered and Theme.TextAccent or Theme.Text,
-        Outline = false,
-        Font = Theme.DefaultFont,
-        Visible = self.Visible,
-        zIndex = 1
-    }))
-    
-    -- Slider background border
-    self.BorderBg = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1] - 1, self.Position[2] - 1},
-        Size = {self.Size[1] + 2, self.Size[2] + 2},
-        Filled = false,
-        Color = Theme.BorderDark,
-        Transparency = 1,
-        Thickness = 1,
-        Visible = self.Visible,
-        zIndex = 2
-    }))
-    
-    -- Slider rail (background track)
-    self.Rail = self:AddElement(DrawService.New("Square", {
-        Position = self.Position,
-        Size = {self.Size[1], self.Size[2]},
-        Filled = true,
-        Color = Theme.SliderRail,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 3
-    }))
-    
-    -- Slider background (darker underneath)
-    self.Background = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1] + 1, self.Position[2] + 1},
-        Size = {self.Size[1] - 2, self.Size[2] - 2},
-        Filled = true,
-        Color = Theme.SliderBg,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 4
-    }))
-    
-    -- Filled progress area
-    if percentage > 0 then
-        self.Fill = self:AddElement(DrawService.New("Square", {
-            Position = {self.Position[1] + 1, self.Position[2] + 1},
-            Size = {(handleX - self.Position[1]) - 1, self.Size[2] - 2},
-            Filled = true,
-            Color = isActive and Theme.AccentDarker or Theme.Accent,
-            Transparency = 1,
-            Thickness = 0,
-            Visible = self.Visible,
-            zIndex = 5
-        }))
-    end
-    
-    -- Handle shadow
-    self.HandleShadow = self:AddElement(DrawService.New("Square", {
-        Position = {handleX - 5, self.Position[2] - 3},
-        Size = {10, 10},
-        Filled = true,
-        Color = Theme.ShadowColor,
-        Transparency = 0.3,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 6
-    }))
-    
-    -- Handle border
-    self.HandleBorder = self:AddElement(DrawService.New("Square", {
-        Position = {handleX - 4, self.Position[2] - 2},
-        Size = {8, 8},
-        Filled = false,
-        Color = isActive and Theme.Accent or Theme.Border,
-        Transparency = 1,
-        Thickness = 1,
-        Visible = self.Visible,
-        zIndex = 7
-    }))
-    
-    -- Handle
-    self.Handle = self:AddElement(DrawService.New("Square", {
-        Position = {handleX - 3, self.Position[2] - 1},
-        Size = {6, 6},
-        Filled = true,
-        Color = isActive and Theme.AccentDarker or (isHovered and Theme.Accent or Theme.ButtonHover),
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 8
-    }))
-    
-    -- Value tooltip (only shown when dragging or hovering)
-    if isActive or isHovered then
-        self.ValueTooltip = self:AddElement(DrawService.New("Text", {
-            Text = tostring(self.Value),
-            Position = {handleX, self.Position[2] - 20},
-            Size = 12,
-            Color = Theme.TextAccent,
-            Outline = true,
-            Center = true,
-            OutlineColor = Theme.BackgroundDark,
-            Font = Theme.DefaultFont,
-            Visible = self.Visible,
-            zIndex = 9
-        }))
-    end
-end
-
-function Slider:SetPosition(position)
-    self.Position = position
-    self:Render()
-end
-
-function Slider:SetSize(size)
-    self.Size = size
-    self:Render()
-end
-
-function Slider:SetValue(value)
-    local newValue = math.clamp(value, self.Min, self.Max)
-    local steps = math.floor((newValue - self.Min) / self.Step + 0.5)
-    newValue = self.Min + steps * self.Step
-    
-    if newValue ~= self.Value then
-        self.Value = newValue
-        self:Render()
-        
-        -- Call the callback
-        spawn(function() 
-            self.OnChange(self.Value) 
-        end)
-    end
-end
-
-function Slider:GetValue()
-    return self.Value
-end
-
-function Slider:SetLabel(label)
-    self.Label = label
-    self:Render()
-end
-
-function Slider:SetCallback(callback)
-    self.OnChange = callback or function() end
-end
-
-function Slider:SetMinMax(min, max)
-    self.Min = min
-    self.Max = max
-    self:SetValue(self.Value) -- This will clamp the value and re-render
-end
-
-function Slider:SetStep(step)
-    self.Step = step
-    self:SetValue(self.Value) -- This will align to step and re-render
-end
-
--- Divider Component
-local Divider = {}
-Divider.__index = Divider
-setmetatable(Divider, {__index = Object})
-
-function Divider.new(position, length, isVertical, color)
-    local self = setmetatable(Object.new(), Divider)
-    
-    self.Position = position or {0, 0}
-    self.Length = length or 100
-    self.IsVertical = isVertical or false
-    self.Color = color or Theme.Divider
-    self.Type = "Divider"
-    
-    self:Render()
-    return self
-end
-
-function Divider:Render()
-    -- Remove old elements if they exist
-    for _, element in ipairs(self.Elements) do
-        if element.Remove then
-            element:Remove()
-        end
-    end
-    self.Elements = {}
-    
-    -- Create divider line
-    if self.IsVertical then
-        self.Line = self:AddElement(DrawService.New("Line", {
-            From = {self.Position[1], self.Position[2]},
-            To = {self.Position[1], self.Position[2] + self.Length},
-            Thickness = 1,
-            Color = self.Color,
-            Transparency = 1,
-            Visible = self.Visible,
-            zIndex = 1
-        }))
-    else
-        self.Line = self:AddElement(DrawService.New("Line", {
-            From = {self.Position[1], self.Position[2]},
-            To = {self.Position[1] + self.Length, self.Position[2]},
-            Thickness = 1,
-            Color = self.Color,
-            Transparency = 1,
-            Visible = self.Visible,
-            zIndex = 1
-        }))
-    end
-end
-
-function Divider:SetPosition(position)
-    self.Position = position
-    self:Render()
-end
-
-function Divider:SetLength(length)
-    self.Length = length
-    self:Render()
-end
-
-function Divider:SetColor(color)
-    self.Color = color
-    if self.Line then
-        self.Line.Color = color
-    end
-end
-
--- Section Component (moved after all the components it depends on)
-local Section = {}
-Section.__index = Section
-setmetatable(Section, {__index = Object})
-
-function Section.new(title, position, size, parent)
-    local self = setmetatable(Object.new(), Section)
-    
-    self.Title = title or "Section"
-    self.Position = position or {0, 0}
-    self.Size = size or {200, 150}
-    self.Parent = parent
-    self.Children = {}
-    self.Padding = Theme.ContentPadding
-    self.HeaderHeight = 20
-    self.ContentY = self.HeaderHeight + 5
-    self.Type = "Section"
-    
-    self:Render()
-    return self
-end
-
-function Section:Render()
-    -- Remove old elements if they exist
-    for _, element in ipairs(self.Elements) do
-        if element.Remove then
-            element:Remove()
-        end
-    end
-    self.Elements = {}
-    
-    -- Section border
-    self.Border = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1] - 1, self.Position[2] - 1},
-        Size = {self.Size[1] + 2, self.Size[2] + 2},
-        Filled = false,
-        Color = Theme.Border,
-        Transparency = 1,
-        Thickness = 1,
-        Visible = self.Visible,
-        zIndex = 1
-    }))
-    
-    -- Section background
-    self.Background = self:AddElement(DrawService.New("Square", {
-        Position = self.Position,
-        Size = self.Size,
-        Filled = true,
-        Color = Theme.SectionBackground,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 2
-    }))
-    
-    -- Section header background
-    self.HeaderBg = self:AddElement(DrawService.New("Square", {
-        Position = self.Position,
-        Size = {self.Size[1], self.HeaderHeight},
-        Filled = true,
-        Color = Theme.BackgroundDark,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 3
-    }))
-    
-    -- Header divider line
-    self.HeaderDivider = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1], self.Position[2] + self.HeaderHeight},
-        Size = {self.Size[1], 1},
-        Filled = true,
-        Color = Theme.Border,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 4
-    }))
-    
-    -- Title text
-    self.TitleText = self:AddElement(DrawService.New("Text", {
-        Text = self.Title,
-        Position = {self.Position[1] + 6, self.Position[2] + (self.HeaderHeight/2) - 7},
-        Size = 13,
-        Color = Theme.Text,
-        Outline = false,
-        Font = Theme.DefaultFont,
-        Visible = self.Visible,
-        zIndex = 5
-    }))
-    
-    -- Small accent detail in header
-    self.HeaderAccent = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1], self.Position[2]},
-        Size = {2, self.HeaderHeight},
-        Filled = true,
-        Color = Theme.Accent,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 6
-    }))
-end
-
-function Section:AddChild(child)
-    table.insert(self.Children, child)
-    child.Parent = self
-    return child
-end
-
-function Section:AddLabel(text, position, size, color)
-    local yOffset = self.ContentY
-    
-    local label = Label.new(text, {
-        self.Position[1] + self.Padding + (position and position[1] or 0), 
-        self.Position[2] + yOffset + (position and position[2] or 0)
-    }, size, color)
-    
-    return self:AddChild(label)
-end
-
-function Section:AddButton(text, position, size, callback)
-    local yOffset = self.ContentY
-    
-    local button = Button.new(text, {
-        self.Position[1] + self.Padding + (position and position[1] or 0), 
-        self.Position[2] + yOffset + (position and position[2] or 0)
-    }, size, callback)
-    
-    return self:AddChild(button)
-end
-
-function Section:AddCheckbox(label, position, defaultState, onToggle)
-    local yOffset = self.ContentY
-    
-    local checkbox = Checkbox.new(label, {
-        self.Position[1] + self.Padding + (position and position[1] or 0), 
-        self.Position[2] + yOffset + (position and position[2] or 0)
-    }, defaultState, onToggle)
-    
-    return self:AddChild(checkbox)
-end
-
-function Section:AddSlider(label, position, size, min, max, default, step, onChange)
-    local yOffset = self.ContentY
-    
-    local slider = Slider.new(label, {
-        self.Position[1] + self.Padding + (position and position[1] or 0), 
-        self.Position[2] + yOffset + (position and position[2] or 0)
-    }, size, min, max, default, step, onChange)
-    
-    return self:AddChild(slider)
-end
-
-function Section:AddDivider(position, length, isVertical, color)
-    local yOffset = self.ContentY
-    
-    local divider = Divider.new({
-        self.Position[1] + self.Padding + (position and position[1] or 0), 
-        self.Position[2] + yOffset + (position and position[2] or 0)
-    }, length, isVertical, color)
-    
-    return self:AddChild(divider)
-end
-
-function Section:SetPosition(position)
-    local deltaX = position[1] - self.Position[1]
-    local deltaY = position[2] - self.Position[2]
-    
-    self.Position = position
-    self:Render()
-    
-    -- Update child positions
-    for _, child in ipairs(self.Children) do
-        if child.Position then
-            child:SetPosition({
-                child.Position[1] + deltaX,
-                child.Position[2] + deltaY
-            })
-        end
-    end
-end
-
-function Section:SetVisible(state)
-    Object.SetVisible(self, state)
-    
-    -- Update children visibility
-    for _, child in ipairs(self.Children) do
-        child:SetVisible(state)
-    end
-end
-
-function Section:Destroy()
-    Object.Destroy(self)
-    
-    -- Destroy children
-    for _, child in ipairs(self.Children) do
-        child:Destroy()
-    end
-    self.Children = {}
-    self = nil
-end
-
--- Tab Component
-local Tab = {}
-Tab.__index = Tab
-setmetatable(Tab, {__index = Object})
-
-function Tab.new(name, parent)
-    local self = setmetatable(Object.new(), Tab)
-    
-    self.Name = name or "Tab"
-    self.Parent = parent
-    self.Children = {}
-    self.Active = false
-    self.Button = nil
-    self.ButtonPosition = {0, 0}
-    self.ButtonSize = {0, 0}
-    
-    return self
-end
-
-function Tab:AddChild(child)
-    table.insert(self.Children, child)
-    child.Parent = self
-    return child
-end
-
-function Tab:SetActive(active)
-    self.Active = active
-    
-    -- Update visual state of tab button
-    if self.Button then
-        self.Button.Color = active and Theme.TabActive or Theme.TabInactive
-        
-        -- Show accent indicator for active tab
-        if self.AccentIndicator then
-            self.AccentIndicator.Visible = active and self.Visible
-        end
-    end
-    
-    -- Show/hide all children
-    for _, child in ipairs(self.Children) do
-        child:SetVisible(active and self.Visible)
-    end
-end
-
-function Tab:SetVisible(state)
-    self.Visible = state
-    
-    -- Update button visibility
-    if self.Button then
-        self.Button.Visible = state
-    end
-    
-    if self.TabText then
-        self.TabText.Visible = state
-    end
-    
-    if self.AccentIndicator then
-        self.AccentIndicator.Visible = state and self.Active
-    end
-    
-    -- Only show children if tab is active
-    for _, child in ipairs(self.Children) do
-        child:SetVisible(state and self.Active)
-    end
-end
-
-function Tab:Destroy()
-    Object.Destroy(self)
-    
-    for _, child in ipairs(self.Children) do
-        child:Destroy()
-    end
-    self.Children = {}
-end
-
-function Tab:AddSection(title, position, size)
-    local section = Section.new(title, position, size, self)
-    return self:AddChild(section)
-end
-
--- Window Component (Container)
-local Window = {}
-Window.__index = Window
-setmetatable(Window, {__index = Object})
-
-function Window.new(title, position, size)
-    local self = setmetatable(Object.new(), Window)
-    
-    self.Title = title or "Window"
-    self.Position = position or {100, 100}
-    self.Size = size or {300, 200}
-    self.Dragging = false
-    self.DragOffset = {0, 0}
-    self.Children = {}
-    self.HeaderHeight = 22
-    self.Tabs = {}
-    self.ActiveTab = nil
-    self.TabButtonHeight = 25
-    self.ContentY = self.HeaderHeight + self.TabButtonHeight
-    self.Type = "Window"
-    
-    self:Render()
-    return self
-end
-
-function Window:Render()
-    -- Remove old elements if they exist
-    for _, element in ipairs(self.Elements) do
-        if element.Remove then
-            element:Remove()
-        end
-    end
-    self.Elements = {}
-    
-    -- Window shadow (simulated with semi-transparent background)
-    self.Shadow = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1] + 2, self.Position[2] + 2},
-        Size = {self.Size[1], self.Size[2]},
-        Filled = true,
-        Color = Theme.ShadowColor,
-        Transparency = 0.3,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 1
-    }))
-    
-    -- Window border
-    self.Border = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1] - 1, self.Position[2] - 1},
-        Size = {self.Size[1] + 2, self.Size[2] + 2},
-        Filled = false,
-        Color = Theme.Border,
-        Transparency = 1,
-        Thickness = 1,
-        Visible = self.Visible,
-        zIndex = 2
-    }))
-    
-    -- Background
-    self.Background = self:AddElement(DrawService.New("Square", {
-        Position = self.Position,
-        Size = self.Size,
-        Filled = true,
-        Color = Theme.Background,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 3
-    }))
-    
-    -- Header background (title bar)
-    self.Header = self:AddElement(DrawService.New("Square", {
-        Position = self.Position,
-        Size = {self.Size[1], self.HeaderHeight},
-        Filled = true,
-        Color = Theme.BackgroundDark,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 4
-    }))
-    
-    -- Header border bottom
-    self.HeaderBottomBorder = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1], self.Position[2] + self.HeaderHeight - 1},
-        Size = {self.Size[1], 1},
-        Filled = true,
-        Color = Theme.BorderDark,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 5
-    }))
-    
-    -- Header accent line
-    self.HeaderAccent = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1], self.Position[2] + self.HeaderHeight},
-        Size = {self.Size[1], 1},
-        Filled = true,
-        Color = Theme.Accent,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 6
-    }))
-    
-    -- Title text
-    self.TitleText = self:AddElement(DrawService.New("Text", {
-        Text = self.Title,
-        Position = {self.Position[1] + 8, self.Position[2] + (self.HeaderHeight/2) - 7},
-        Size = 13,
-        Color = Theme.Text,
-        Outline = false,
-        Font = Theme.DefaultFont,
-        Visible = self.Visible,
-        zIndex = 7
-    }))
-    
-    -- Tab buttons area
-    self.TabArea = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1], self.Position[2] + self.HeaderHeight + 1},
-        Size = {self.Size[1], self.TabButtonHeight - 1},
-        Filled = true,
-        Color = Theme.BackgroundLight,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 8
-    }))
-    
-    -- Tab area border bottom
-    self.TabAreaBottomBorder = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1], self.Position[2] + self.HeaderHeight + self.TabButtonHeight - 1},
-        Size = {self.Size[1], 1},
-        Filled = true,
-        Color = Theme.BorderDark,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 9
-    }))
-    
-    -- Content area background (slightly lighter than main background)
-    self.ContentBackground = self:AddElement(DrawService.New("Square", {
-        Position = {self.Position[1], self.Position[2] + self.HeaderHeight + self.TabButtonHeight},
-        Size = {self.Size[1], self.Size[2] - self.HeaderHeight - self.TabButtonHeight},
-        Filled = true,
-        Color = Theme.BackgroundLight,
-        Transparency = 1,
-        Thickness = 0,
-        Visible = self.Visible,
-        zIndex = 10
-    }))
-    
-    -- Render tab buttons
-    self:RenderTabs()
-end
-
-function Window:RenderTabs()
-    -- Remove old tab buttons
-    for _, tab in ipairs(self.Tabs) do
-        if tab.Button then
-            tab.Button:Remove()
-            tab.Button = nil
-        end
-        if tab.TabText then
-            tab.TabText:Remove()
-            tab.TabText = nil
-        end
-        if tab.AccentIndicator then
-            tab.AccentIndicator:Remove()
-            tab.AccentIndicator = nil
-        end
-        if tab.LeftSeparator then
-            tab.LeftSeparator:Remove()
-            tab.LeftSeparator = nil
-        end
-        if tab.Highlight then
-            tab.Highlight:Remove()
-            tab.Highlight = nil
-        end
-    end
-    
-    -- Calculate tab button width (divide available width by number of tabs)
-    local tabCount = #self.Tabs
-    if tabCount == 0 then return end
-    
-    local tabWidth = self.Size[1] / tabCount
-    
-    -- Create buttons for each tab
-    for i, tab in ipairs(self.Tabs) do
-        local tabX = self.Position[1] + (i-1) * tabWidth
-        
-        -- Store button position and size for interaction detection
-        tab.ButtonPosition = {tabX, self.Position[2] + self.HeaderHeight + 1}
-        tab.ButtonSize = {tabWidth, self.TabButtonHeight - 1}
-        
-        -- Tab button background
-        tab.Button = DrawService.New("Square", {
-            Position = tab.ButtonPosition,
-            Size = tab.ButtonSize,
-            Filled = true,
-            Color = tab.Active and Theme.TabActive or Theme.TabInactive,
-            Transparency = 1,
-            Thickness = 0,
-            Visible = self.Visible,
-            zIndex = 11
-        })
-        
-        -- Add separator line between tabs (except for first tab)
-        if i > 1 then
-            tab.LeftSeparator = DrawService.New("Line", {
-                From = {tabX, tab.ButtonPosition[2] + 2},
-                To = {tabX, tab.ButtonPosition[2] + tab.ButtonSize[2] - 2},
-                Thickness = 1,
-                Color = Theme.BorderDark,
-                Transparency = 0.7,
-                Visible = self.Visible,
-                zIndex = 12
-            })
-        end
-        
-        -- Add subtle highlight for active tab
-        if tab.Active then
-            tab.Highlight = DrawService.New("Square", {
-                Position = {tab.ButtonPosition[1], tab.ButtonPosition[2]},
-                Size = {tab.ButtonSize[1], 2},
-                Filled = true,
-                Color = Theme.Accent,
-                Transparency = 0.8,
-                Thickness = 0,
-                Visible = self.Visible,
-                zIndex = 13
-            })
-        end
-        
-        -- Tab text (centered)
-        local textX = tabX + (tabWidth / 2)
-        local textY = self.Position[2] + self.HeaderHeight + 1 + (self.TabButtonHeight / 2) - 7
-        
-        tab.TabText = DrawService.New("Text", {
-            Text = tab.Name,
-            Position = {textX, textY},
-            Size = 13,
-            Color = tab.Active and Theme.TextAccent or Theme.TextDim,
-            Outline = false,
-            Center = true,
-            Font = Theme.DefaultFont,
-            Visible = self.Visible,
-            zIndex = 14
-        })
-        
-        -- Accent indicator for active tab (thin line at bottom)
-        if tab.Active then
-            tab.AccentIndicator = DrawService.New("Square", {
-                Position = {tabX, self.Position[2] + self.HeaderHeight + self.TabButtonHeight - 1},
-                Size = {tabWidth, 1},
-                Filled = true,
-                Color = Theme.Accent,
-                Transparency = 1,
-                Thickness = 0,
-                Visible = self.Visible,
-                zIndex = 15
-            })
-        end
-    end
-end
-
-function Window:AddTab(name)
-    -- Create a new tab
-    local tab = Tab.new(name, self)
-    table.insert(self.Tabs, tab)
-    
-    -- If this is the first tab, make it active
-    if #self.Tabs == 1 then
-        self.ActiveTab = tab
-        tab.Active = true
-    end
-    
-    -- Re-render the tabs
-    self:RenderTabs()
-    
-    return tab
-end
-
-function Window:SelectTab(name)
-    local foundTab = nil
-    
-    -- Find the tab by name
-    for _, tab in ipairs(self.Tabs) do
-        if tab.Name == name then
-            foundTab = tab
-            break
-        end
-    end
-    
-    -- If tab wasn't found, do nothing
-    if not foundTab then return end
-    
-    -- Deactivate current active tab
-    if self.ActiveTab then
-        self.ActiveTab:SetActive(false)
-    end
-    
-    -- Activate the new tab
-    self.ActiveTab = foundTab
-    foundTab:SetActive(true)
-    
-    -- Re-render the tabs
-    self:RenderTabs()
-    
-    return foundTab
-end
-
-function Window:AddChild(child)
-    -- If we have tabs, add the child to the active tab
-    if #self.Tabs > 0 and self.ActiveTab then
-        return self.ActiveTab:AddChild(child)
-    end
-    
-    -- Otherwise, add to window directly (legacy behavior)
-    table.insert(self.Children, child)
-    child.Parent = self
-    return child
-end
-
-function Window:AddLabel(text, position, size, color)
-    local yOffset = self.ContentY
-    
-    local label = Label.new(text, {
-        self.Position[1] + (position and position[1] or 10), 
-        self.Position[2] + yOffset + (position and position[2] or 0)
-    }, size, color)
-    
-    return self:AddChild(label)
-end
-
-function Window:AddButton(text, position, size, callback)
-    local yOffset = self.ContentY
-    
-    local button = Button.new(text, {
-        self.Position[1] + (position and position[1] or 10), 
-        self.Position[2] + yOffset + (position and position[2] or 0)
-    }, size, callback)
-    
-    return self:AddChild(button)
-end
-
-function Window:AddCheckbox(label, position, defaultState, onToggle)
-    local yOffset = self.ContentY
-    
-    local checkbox = Checkbox.new(label, {
-        self.Position[1] + (position and position[1] or 10), 
-        self.Position[2] + yOffset + (position and position[2] or 0)
-    }, defaultState, onToggle)
-    
-    return self:AddChild(checkbox)
-end
-
-function Window:AddSlider(label, position, size, min, max, default, step, onChange)
-    local yOffset = self.ContentY
-    
-    local slider = Slider.new(label, {
-        self.Position[1] + (position and position[1] or 10), 
-        self.Position[2] + yOffset + (position and position[2] or 0)
-    }, size, min, max, default, step, onChange)
-    
-    return self:AddChild(slider)
-end
-
-function Window:AddSection(title, position, size)
-    local yOffset = self.ContentY
-    
-    local section = Section.new(title, {
-        self.Position[1] + (position and position[1] or 10), 
-        self.Position[2] + yOffset + (position and position[2] or 0)
-    }, size, self)
-    
-    return self:AddChild(section)
-end
-
-function Window:AddDivider(position, length, isVertical, color)
-    local yOffset = self.ContentY
-    
-    local divider = Divider.new({
-        self.Position[1] + (position and position[1] or 10), 
-        self.Position[2] + yOffset + (position and position[2] or 0)
-    }, length, isVertical, color)
-    
-    return self:AddChild(divider)
-end
-
-function Window:SetPosition(position)
-    local deltaX = position[1] - self.Position[1]
-    local deltaY = position[2] - self.Position[2]
-    
-    self.Position = position
-    
-    -- Update window elements
-    self.Background.Position = position
-    self.Header.Position = position
-    self.HeaderAccent.Position = {position[1], position[2] + self.HeaderHeight}
-    self.TitleText.Position = {position[1] + 8, position[2] + (self.HeaderHeight/2) - 7}
-    self.TabArea.Position = {position[1], position[2] + self.HeaderHeight + 1}
-    
-    -- Update tab buttons
-    self:RenderTabs()
-    
-    -- Update direct children positions
-    for _, child in ipairs(self.Children) do
-        if child.Position then
-            child:SetPosition({
-                child.Position[1] + deltaX,
-                child.Position[2] + deltaY
-            })
-        end
-    end
-    
-    -- Update tab children positions
-    for _, tab in ipairs(self.Tabs) do
-        for _, child in ipairs(tab.Children) do
-            if child.Position then
-                child:SetPosition({
-                    child.Position[1] + deltaX,
-                    child.Position[2] + deltaY
-                })
-            end
-        end
-    end
-end
-
-function Window:SetVisible(state)
-    Object.SetVisible(self, state)
-    
-    -- Update tab visibility
-    for _, tab in ipairs(self.Tabs) do
-        tab:SetVisible(state)
-    end
-    
-    -- Update direct children visibility
-    for _, child in ipairs(self.Children) do
-        child:SetVisible(state)
-    end
-end
-
-function Window:Destroy()
-    Object.Destroy(self)
-    
-    -- Destroy all tabs
-    for _, tab in ipairs(self.Tabs) do
-        tab:Destroy()
-    end
-    self.Tabs = {}
-    
-    -- Destroy direct children
-    for _, child in ipairs(self.Children) do
-        child:Destroy()
-    end
-    self.Children = {}
-    self = nil
-end
-
--- Initialize the UIManager
-UIManager:Initialize()
-
--- Library Main Interface
-local Anue = {
-    Theme = Theme,
-    DrawService = DrawService,
-    UIManager = UIManager,
-    Object = Object,
-    Label = Label,
-    Button = Button,
-    Checkbox = Checkbox,
-    Slider = Slider,
-    Tab = Tab,
-    Section = Section,
-    Divider = Divider,
-    Window = Window,
     Windows = {}
-}
-
-function Anue:CreateWindow(title, position, size)
-    local window = Window.new(title, position, size)
-    UIManager:RegisterWindow(window)
-    table.insert(self.Windows, window)
-    return window
-end
-
-function Anue:CreateLabel(text, position, size, color)
-    local label = Label.new(text, position, size, color)
-    UIManager:RegisterElement(label)
-    return label
-end
-
-function Anue:CreateButton(text, position, size, callback)
-    local button = Button.new(text, position, size, callback)
-    UIManager:RegisterElement(button)
-    return button
-end
-
-function Anue:CreateCheckbox(label, position, defaultState, onToggle)
-    local checkbox = Checkbox.new(label, position, defaultState, onToggle)
-    UIManager:RegisterElement(checkbox)
-    return checkbox
-end
-
-function Anue:CreateSlider(label, position, size, min, max, default, step, onChange)
-    local slider = Slider.new(label, position, size, min, max, default, step, onChange)
-    UIManager:RegisterElement(slider)
-    return slider
-end
-
-function Anue:CreateSection(title, position, size)
-    local section = Section.new(title, position, size)
-    UIManager:RegisterElement(section)
-    return section
-end
-
-function Anue:CreateDivider(position, length, isVertical, color)
-    local divider = Divider.new(position, length, isVertical, color)
-    UIManager:RegisterElement(divider)
-    return divider
-end
-
-function Anue:Destroy()
-    UIManager:Destroy()
     
-    for _, window in ipairs(self.Windows) do
-        window:Destroy()
-    end
+    -- Reset state
+    ZIndexCounter = 1
     
-    self.Windows = {}
+    -- Indicate library is no longer valid
+    Library = nil
+    
+    -- Also clear all drawings to be safe
     Drawing.clear()
 end
 
-return Anue
+return Library 
