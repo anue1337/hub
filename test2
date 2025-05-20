@@ -1,11 +1,17 @@
+--[[
+  Severe UI Library Implementation
+  Based on kingbob's UI library documentation
+]]
+
+-- Variables and setup
 local Colors = {
-    ["Accent"] = {255, 105, 180}, -- Hot Pink
-    ["DarkContrast"] = {30, 30, 30}, -- Dark Gray
-    ["LightContrast"] = {60, 60, 60}, -- Light Gray
-    ["Border"] = {90, 90, 90}, -- Medium Gray
-    ["Selected"] = {255, 255, 255}, -- White
-    ["Text"] = {220, 220, 220}, -- Off-White
-    ["DisabledText"] = {150, 150, 150} -- Gray
+    ["Accent"] = {203, 166, 247},
+    ["DarkContrast"] = {17, 17, 27},
+    ["LightContrast"] = {24, 24, 37},
+    ["Border"] = {49, 50, 68},
+    ["Selected"] = {255, 255, 255},
+    ["Text"] = {210, 210, 210},
+    ["DisabledText"] = {110, 110, 110}
 }
 
 local MouseService = findservice(Game, "MouseService")
@@ -15,6 +21,12 @@ local Mouse = {
     Clicked = false,
     Pressed = false
 }
+
+-- Helper function for right-click detection
+local function isrightclicked()
+    local MouseLocation = getmouselocation(MouseService)
+    return MouseLocation.rightclick
+end
 
 local Library = {}
 local ActiveWindow = nil
@@ -26,108 +38,7 @@ local IsToggled = false
 local HoveredButton = nil
 local Running = true
 
-function Library:Unload()
-    Running = false
-    if ActiveWindow then
-        IsDragging = false
-        IsToggled = false
-        HoveredButton = nil
-        if ActiveWindow.Tabs then
-            for _, Tab in ipairs(ActiveWindow.Tabs) do
-                if Tab.Button then Tab.Button:Remove() end
-                if Tab.ButtonBorder then Tab.ButtonBorder:Remove() end
-                if Tab.ButtonText then Tab.ButtonText:Remove() end
-                if Tab.SelectedHighlight then Tab.SelectedHighlight:Remove() end
-                if Tab.Content then
-                    if Tab.Content.LeftSections then
-                        for _, Section in ipairs(Tab.Content.LeftSections) do
-                            if Section.Background then Section.Background:Remove() end
-                            if Section.Border then Section.Border:Remove() end
-                            if Section.Title then Section.Title:Remove() end
-                            if Section.Interfaces then
-                                for _, Interface in ipairs(Section.Interfaces) do
-                                    if Interface.Type == "Button" then
-                                        if Interface.ButtonBackground then Interface.ButtonBackground:Remove() end
-                                        if Interface.ButtonBorder then Interface.ButtonBorder:Remove() end
-                                        if Interface.ButtonText then Interface.ButtonText:Remove() end
-                                    elseif Interface.Type == "Toggle" then
-                                        if Interface.OuterBox then Interface.OuterBox:Remove() end
-                                        if Interface.InnerBox then Interface.InnerBox:Remove() end
-                                        if Interface.Text then Interface.Text:Remove() end
-                                        if Interface.KeybindBackground then Interface.KeybindBackground:Remove() end
-                                        if Interface.KeybindBorder then Interface.KeybindBorder:Remove() end
-                                        if Interface.KeybindText then Interface.KeybindText:Remove() end
-                                        if Interface.ModeSelectorBackground then Interface.ModeSelectorBackground:Remove() end
-                                        if Interface.ModeSelectorBorder then Interface.ModeSelectorBorder:Remove() end
-                                        if Interface.HoldText then Interface.HoldText:Remove() end
-                                        if Interface.ToggleText then Interface.ToggleText:Remove() end
-                                        if Interface.ModeDivider then Interface.ModeDivider:Remove() end
-                                    elseif Interface.Type == "Slider" then
-                                        if Interface.Background then Interface.Background:Remove() end
-                                        if Interface.Border then Interface.Border:Remove() end
-                                        if Interface.Fill then Interface.Fill:Remove() end
-                                        if Interface.Text then Interface.Text:Remove() end
-                                        if Interface.ValueText then Interface.ValueText:Remove() end
-                                        if Section.SectionTopLine then Section.SectionTopLine:Remove() end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                    if Tab.Content.RightSections then
-                        for _, Section in ipairs(Tab.Content.RightSections) do
-                            if Section.Background then Section.Background:Remove() end
-                            if Section.Border then Section.Border:Remove() end
-                            if Section.Title then Section.Title:Remove() end
-                            if Section.Interfaces then
-                                for _, Interface in ipairs(Section.Interfaces) do
-                                    if Interface.Type == "Button" then
-                                        if Interface.ButtonBackground then Interface.ButtonBackground:Remove() end
-                                        if Interface.ButtonBorder then Interface.ButtonBorder:Remove() end
-                                        if Interface.ButtonText then Interface.ButtonText:Remove() end
-                                    elseif Interface.Type == "Toggle" then
-                                        if Interface.OuterBox then Interface.OuterBox:Remove() end
-                                        if Interface.InnerBox then Interface.InnerBox:Remove() end
-                                        if Interface.Text then Interface.Text:Remove() end
-                                        if Interface.KeybindBackground then Interface.KeybindBackground:Remove() end
-                                        if Interface.KeybindBorder then Interface.KeybindBorder:Remove() end
-                                        if Interface.KeybindText then Interface.KeybindText:Remove() end
-                                        if Interface.ModeSelectorBackground then Interface.ModeSelectorBackground:Remove() end
-                                        if Interface.ModeSelectorBorder then Interface.ModeSelectorBorder:Remove() end
-                                        if Interface.HoldText then Interface.HoldText:Remove() end
-                                        if Interface.ToggleText then Interface.ToggleText:Remove() end
-                                        if Interface.ModeDivider then Interface.ModeDivider:Remove() end
-                                    elseif Interface.Type == "Slider" then
-                                        if Interface.Background then Interface.Background:Remove() end
-                                        if Interface.Border then Interface.Border:Remove() end
-                                        if Interface.Fill then Interface.Fill:Remove() end
-                                        if Interface.Text then Interface.Text:Remove() end
-                                        if Interface.ValueText then Interface.ValueText:Remove() end
-                                        if Section.SectionTopLine then Section.SectionTopLine:Remove() end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-        if ActiveWindow.WindowBackground then ActiveWindow.WindowBackground:Remove() end
-        if ActiveWindow.Title then ActiveWindow.Title:Remove() end
-        if ActiveWindow.TabBackground then ActiveWindow.TabBackground:Remove() end
-        if ActiveWindow.TabBorder then ActiveWindow.TabBorder:Remove() end
-        if ActiveWindow.WindowBackground2 then ActiveWindow.WindowBackground2:Remove() end
-        if ActiveWindow.Window2Border then ActiveWindow.Window2Border:Remove() end
-        if ActiveWindow.WindowBorder then ActiveWindow.WindowBorder:Remove() end
-        ActiveWindow.Tabs = {}
-        ActiveWindow.TabButtons = {}
-        ActiveWindow.TabContents = {}
-        ActiveWindow = nil
-    end
-    Drawing.clear()
-    Library = nil
-end
-
+-- Helper Functions
 local function SetVisibility(Object, Visible)
     if Object and Object.Visible ~= nil then Object.Visible = Visible end
 end
@@ -157,6 +68,7 @@ local function SetInterfaceVisibility(UI, Visible)
     end
 end
 
+-- Toggle UI Visibility Function
 function ToggleUI()
     IsVisible = not IsVisible
     if ActiveWindow then
@@ -187,6 +99,70 @@ function ToggleUI()
     end
 end
 
+-- Unload the UI
+function Library:Unload()
+    Running = false
+    if ActiveWindow then
+        IsDragging = false
+        IsToggled = false
+        HoveredButton = nil
+        if ActiveWindow.Tabs then
+            for _, Tab in ipairs(ActiveWindow.Tabs) do
+                if Tab.Button then Tab.Button:Remove() end
+                if Tab.ButtonBorder then Tab.ButtonBorder:Remove() end
+                if Tab.ButtonText then Tab.ButtonText:Remove() end
+                if Tab.SelectedHighlight then Tab.SelectedHighlight:Remove() end
+                if Tab.Content then
+                    if Tab.Content.LeftSections then
+                        for _, Section in ipairs(Tab.Content.LeftSections) do
+                            if Section.Background then Section.Background:Remove() end
+                            if Section.Border then Section.Border:Remove() end
+                            if Section.Title then Section.Title:Remove() end
+                            if Section.Interfaces then
+                                for _, Interface in ipairs(Section.Interfaces) do
+                                    for _, Prop in pairs(Interface) do
+                                        if type(Prop) == "table" and Prop.Remove then 
+                                            Prop:Remove() 
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    if Tab.Content.RightSections then
+                        for _, Section in ipairs(Tab.Content.RightSections) do
+                            if Section.Background then Section.Background:Remove() end
+                            if Section.Border then Section.Border:Remove() end
+                            if Section.Title then Section.Title:Remove() end
+                            if Section.Interfaces then
+                                for _, Interface in ipairs(Section.Interfaces) do
+                                    for _, Prop in pairs(Interface) do
+                                        if type(Prop) == "table" and Prop.Remove then 
+                                            Prop:Remove() 
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        if ActiveWindow.WindowBackground then ActiveWindow.WindowBackground:Remove() end
+        if ActiveWindow.Title then ActiveWindow.Title:Remove() end
+        if ActiveWindow.TabBackground then ActiveWindow.TabBackground:Remove() end
+        if ActiveWindow.TabBorder then ActiveWindow.TabBorder:Remove() end
+        if ActiveWindow.WindowBackground2 then ActiveWindow.WindowBackground2:Remove() end
+        if ActiveWindow.Window2Border then ActiveWindow.Window2Border:Remove() end
+        if ActiveWindow.WindowBorder then ActiveWindow.WindowBorder:Remove() end
+        ActiveWindow.Tabs = {}
+        ActiveWindow = nil
+    end
+    Drawing.clear()
+    Library = nil
+end
+
+-- Create UI Window
 function Library:Create(Options)
     local Main = {}
     local TitleText = Options.Name or "Severe UI"
@@ -195,6 +171,7 @@ function Library:Create(Options)
         if Object and Object.Visible ~= nil then SetVisibility(Object, IsVisible) end
     end
 
+    -- Create main window elements
     Main.WindowBackground = Drawing.new("Square")
     Main.WindowBackground.Size = {650, 700}
     Main.WindowBackground.Position = {350, 100}
@@ -266,6 +243,7 @@ function Library:Create(Options)
     Main.TabContents = {}
     Main.ActiveTab = nil
 
+    -- UI helper functions
     function Main:IsHovered(Object)
         if not IsVisible or not Object or not Object.Visible then return false end
         local MouseX, MouseY = Mouse.X, Mouse.Y
@@ -492,6 +470,7 @@ function Library:Create(Options)
         end
     end
 
+    -- Tab function implementation
     function Main:Tab(Options)
         local TabName = Options.Name or "Tab " .. (#Main.Tabs + 1)
         local TabButton = Drawing.new("Square")
@@ -500,12 +479,14 @@ function Library:Create(Options)
         TabButton.Thickness = 1
         TabButton.Transparency = 1
         SetInitialVisibility(TabButton)
+
         local TabButtonBorder = Drawing.new("Square")
         TabButtonBorder.Color = Colors["Border"]
         TabButtonBorder.Filled = false
         TabButtonBorder.Thickness = 1
         TabButtonBorder.Transparency = 1
         SetInitialVisibility(TabButtonBorder)
+
         local TabButtonText = Drawing.new("Text")
         TabButtonText.Text = TabName
         TabButtonText.Size = 13
@@ -516,11 +497,13 @@ function Library:Create(Options)
         TabButtonText.Transparency = 1
         TabButtonText.Center = true
         SetInitialVisibility(TabButtonText)
+
         local SelectedHighlight = Drawing.new("Square")
         SelectedHighlight.Color = Colors["Selected"]
         SelectedHighlight.Transparency = 0.085
         SelectedHighlight.Filled = true
         SelectedHighlight.Visible = false
+
         local TabContent = {
             Name = TabName,
             LeftSections = {},
@@ -528,6 +511,7 @@ function Library:Create(Options)
             Visible = false
         }
 
+        -- Section implementation
         function TabContent:Section(Options)
             local SectionName = Options.Name or "Section"
             local Side = Options.Side or "Left"
@@ -537,12 +521,14 @@ function Library:Create(Options)
             SectionBackground.Thickness = 1
             SectionBackground.Transparency = 1
             SectionBackground.Visible = false
+            
             local SectionBorder = Drawing.new("Square")
             SectionBorder.Color = Colors["Border"]
             SectionBorder.Filled = false
             SectionBorder.Thickness = 1
             SectionBorder.Transparency = 1
             SectionBorder.Visible = false
+            
             local SectionTitle = Drawing.new("Text")
             SectionTitle.Text = SectionName
             SectionTitle.Size = 12
@@ -553,12 +539,14 @@ function Library:Create(Options)
             SectionTitle.Transparency = 1
             SectionTitle.Center = false
             SectionTitle.Visible = false
+            
             local SectionTopLine = Drawing.new("Square")
             SectionTopLine.Color = Colors["Accent"]
             SectionTopLine.Filled = true
             SectionTopLine.Thickness = 1
             SectionTopLine.Transparency = 1
             SectionTopLine.Visible = false
+            
             local Section = {
                 Type = "Section",
                 Name = SectionName,
@@ -666,6 +654,16 @@ function Library:Create(Options)
                     self.InnerBox.Color = NewState and Colors["Accent"] or Colors["LightContrast"]
                     self.OriginalInnerColor = self.InnerBox.Color
                     if self.Callback then spawn(function() self.Callback(NewState) end) end
+                end
+                
+                function Toggle:ToggleModeSelector(Visible)
+                    if self.ModeSelectorBackground then
+                        self.ModeSelectorBackground.Visible = Visible
+                        self.ModeSelectorBorder.Visible = Visible
+                        self.HoldText.Visible = Visible
+                        self.ToggleText.Visible = Visible
+                        self.ModeDivider.Visible = Visible
+                    end
                 end
                 
                 function Toggle:Keybind(Options)
@@ -797,14 +795,6 @@ function Library:Create(Options)
                             self.ModeDivider.Size = {SelectorWidth, 1}
                         end
                     end
-
-                    function Toggle:ToggleModeSelector(Visible)
-                        self.ModeSelectorBackground.Visible = Visible
-                        self.ModeSelectorBorder.Visible = Visible
-                        self.HoldText.Visible = Visible
-                        self.ToggleText.Visible = Visible
-                        self.ModeDivider.Visible = Visible
-                    end
                     
                     spawn(function()
                         while Running and Toggle.KeybindBackground do
@@ -929,9 +919,9 @@ function Library:Create(Options)
             end
 
             if Side == "Left" then
-                table.insert(self.LeftSections, Section)
+                table.insert(TabContent.LeftSections, Section)
             else
-                table.insert(self.RightSections, Section)
+                table.insert(TabContent.RightSections, Section)
             end
             if IsVisible and Main.ActiveTab == TabContent.Name then
                 Section.Visible = true
@@ -952,10 +942,13 @@ function Library:Create(Options)
             SelectedHighlight = SelectedHighlight,
             Content = TabContent
         }
+        
         table.insert(Main.Tabs, Tab)
         Main.TabButtons[TabName] = Tab
         Main.TabContents[TabName] = TabContent
+        
         Main:UpdateTabSizes()
+        
         if #Main.Tabs == 1 and IsVisible then
             Main:SelectTab(TabName)
         elseif Main.ActiveTab and IsVisible then
@@ -968,6 +961,7 @@ function Library:Create(Options)
             SetInterfaceVisibility(TabContent.LeftSections, false)
             SetInterfaceVisibility(TabContent.RightSections, false)
         end
+        
         return TabContent
     end
 
@@ -975,13 +969,15 @@ function Library:Create(Options)
         if not Main.TabButtons[TabName] then return end
         Main.ActiveTab = TabName
         if not IsVisible then return end
-        for OtherTabName, OtherTab in pairs(Main.TabButtons) do
-            local Selected = OtherTabName == TabName
-            SetVisibility(OtherTab.SelectedHighlight, Selected)
-            OtherTab.Content.Visible = Selected
-            SetInterfaceVisibility(OtherTab.Content.LeftSections, Selected)
-            SetInterfaceVisibility(OtherTab.Content.RightSections, Selected)
+        
+        for _, Tab in ipairs(Main.Tabs) do
+            local Selected = Tab.Name == TabName
+            SetVisibility(Tab.SelectedHighlight, Selected)
+            Tab.Content.Visible = Selected
+            SetInterfaceVisibility(Tab.Content.LeftSections, Selected)
+            SetInterfaceVisibility(Tab.Content.RightSections, Selected)
         end
+        
         Main:UpdateLayout()
     end
 
@@ -989,6 +985,7 @@ function Library:Create(Options)
     return Main
 end
 
+-- Main Loop for Input Handling
 spawn(function()
     while Running do
         local MouseLocation = getmouselocation(MouseService)
