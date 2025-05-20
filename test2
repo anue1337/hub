@@ -1,8 +1,3 @@
-local Library = {}
-local Utility = {}
-local Windows = {}
-
--- Colors (inspired by Splix and original lib)
 local Colors = {
     ["Accent"] = {120, 120, 240},
     ["DarkBackground"] = {20, 20, 30},
@@ -13,146 +8,194 @@ local Colors = {
     ["Selected"] = {255, 255, 255}
 }
 
--- Utility functions
-function Utility:GetMousePosition()
-    return {x = getmouseposition().x, y = getmouseposition().y}
-end
+-- Get the MouseService
+local MouseService = findservice(Game, "MouseService")
+local Mouse = {
+    X = 0,
+    Y = 0,
+    Clicked = false,
+    Pressed = false
+}
 
-function Utility:IsInBounds(position, size, mousePosition)
-    return mousePosition.x >= position.x and mousePosition.x <= position.x + size.x and
-           mousePosition.y >= position.y and mousePosition.y <= position.y + size.y
-end
+local Library = {}
+local Windows = {}
+local ActiveWindow = nil
+local IsVisible = true
+local IsDragging = false
+local DragOffset = {X = 0, Y = 0}
+local Running = true
 
--- Main UI Library
-function Library:Init(options)
-    options = options or {}
-    local name = options.Name or "Severe UI"
-    local size = options.Size or {x = 600, y = 500}
-    local position = options.Position or {x = 300, y = 100}
-    
-    local window = {
-        Name = name,
-        Size = size,
-        Position = position,
-        Tabs = {},
-        ActiveTab = nil,
-        Visible = true,
-        Dragging = false,
-        DragOffset = {x = 0, y = 0}
-    }
-    
-    -- Main window background
-    window.Background = Drawing.new("Square")
-    window.Background.Size = {size.x, size.y}
-    window.Background.Position = {position.x, position.y}
-    window.Background.Color = Colors.DarkBackground
-    window.Background.Filled = true
-    window.Background.Transparency = 1
-    window.Background.Visible = true
-    
-    -- Window border
-    window.Border = Drawing.new("Square")
-    window.Border.Size = {size.x, size.y}
-    window.Border.Position = {position.x, position.y}
-    window.Border.Color = Colors.Border
-    window.Border.Filled = false
-    window.Border.Thickness = 1
-    window.Border.Transparency = 1
-    window.Border.Visible = true
-    
-    -- Window title
-    window.Title = Drawing.new("Text")
-    window.Title.Text = name
-    window.Title.Size = 18
-    window.Title.Font = 2
-    window.Title.Color = Colors.Text
-    window.Title.Position = {position.x + 10, position.y + 8}
-    window.Title.Outline = true
-    window.Title.OutlineColor = {0, 0, 0}
-    window.Title.Transparency = 1
-    window.Title.Visible = true
-    
-    -- Tab container
-    window.TabContainer = Drawing.new("Square")
-    window.TabContainer.Size = {size.x - 20, 25}
-    window.TabContainer.Position = {position.x + 10, position.y + 35}
-    window.TabContainer.Color = Colors.LightBackground
-    window.TabContainer.Filled = true
-    window.TabContainer.Transparency = 1
-    window.TabContainer.Visible = true
-    
-    -- Tab container border
-    window.TabBorder = Drawing.new("Square")
-    window.TabBorder.Size = {size.x - 20, 25}
-    window.TabBorder.Position = {position.x + 10, position.y + 35}
-    window.TabBorder.Color = Colors.Border
-    window.TabBorder.Filled = false
-    window.TabBorder.Thickness = 1
-    window.TabBorder.Transparency = 1
-    window.TabBorder.Visible = true
-    
-    -- Content container
-    window.ContentContainer = Drawing.new("Square")
-    window.ContentContainer.Size = {size.x - 20, size.y - 70}
-    window.ContentContainer.Position = {position.x + 10, position.y + 70}
-    window.ContentContainer.Color = Colors.LightBackground
-    window.ContentContainer.Filled = true
-    window.ContentContainer.Transparency = 1
-    window.ContentContainer.Visible = true
-    
-    -- Content container border
-    window.ContentBorder = Drawing.new("Square")
-    window.ContentBorder.Size = {size.x - 20, size.y - 70}
-    window.ContentBorder.Position = {position.x + 10, position.y + 70}
-    window.ContentBorder.Color = Colors.Border
-    window.ContentBorder.Filled = false
-    window.ContentBorder.Thickness = 1
-    window.ContentBorder.Transparency = 1
-    window.ContentBorder.Visible = true
-    
-    -- Methods
-    function window:UpdatePosition(newPosition)
-        self.Position = newPosition
-        self.Background.Position = {newPosition.x, newPosition.y}
-        self.Border.Position = {newPosition.x, newPosition.y}
-        self.Title.Position = {newPosition.x + 10, newPosition.y + 8}
-        self.TabContainer.Position = {newPosition.x + 10, newPosition.y + 35}
-        self.TabBorder.Position = {newPosition.x + 10, newPosition.y + 35}
-        self.ContentContainer.Position = {newPosition.x + 10, newPosition.y + 70}
-        self.ContentBorder.Position = {newPosition.x + 10, newPosition.y + 70}
-        
-        -- Update tab positions
-        self:UpdateTabPositions()
-    end
-    
-    function window:UpdateTabPositions()
-        local tabCount = #self.Tabs
-        if tabCount == 0 then return end
-        
-        local tabWidth = self.TabContainer.Size[1] / tabCount
-        for i, tab in ipairs(self.Tabs) do
-            local tabX = self.TabContainer.Position[1] + (i - 1) * tabWidth
-            tab.Button.Position = {tabX, self.TabContainer.Position[2]}
-            tab.Button.Size = {tabWidth, self.TabContainer.Size[2]}
-            tab.ButtonBorder.Position = {tabX, self.TabContainer.Position[2]}
-            tab.ButtonBorder.Size = {tabWidth, self.TabContainer.Size[2]}
-            
-            -- Center the text
-            local textX = tabX + (tabWidth / 2) - (tab.ButtonText.TextBounds.x / 2)
-            local textY = self.TabContainer.Position[2] + (self.TabContainer.Size[2] / 2) - 8
-            tab.ButtonText.Position = {textX, textY}
-            
-            if tab.Highlight then
-                tab.Highlight.Position = {tabX, self.TabContainer.Position[2]}
-                tab.Highlight.Size = {tabWidth, self.TabContainer.Size[2]}
+function Library:Unload()
+    Running = false
+    for _, window in pairs(Windows) do
+        if window.Main then
+            -- Clean up main window elements
+            if window.Main.Background then window.Main.Background:Remove() end
+            if window.Main.Border then window.Main.Border:Remove() end
+            if window.Main.Title then window.Main.Title:Remove() end
+            if window.Main.TabContainer then window.Main.TabContainer:Remove() end
+            if window.Main.TabBorder then window.Main.TabBorder:Remove() end
+            if window.Main.ContentContainer then window.Main.ContentContainer:Remove() end
+            if window.Main.ContentBorder then window.Main.ContentBorder:Remove() end
+
+            -- Clean up tabs
+            if window.Tabs then
+                for _, tab in pairs(window.Tabs) do
+                    if tab.Button then tab.Button:Remove() end
+                    if tab.ButtonBorder then tab.ButtonBorder:Remove() end
+                    if tab.ButtonText then tab.ButtonText:Remove() end
+                    if tab.Highlight then tab.Highlight:Remove() end
+                    
+                    -- Will add cleanup for sections and elements later
+                end
             end
         end
     end
     
-    function window:AddTab(name)
+    Windows = {}
+    Drawing.clear()
+end
+
+local function SetVisibility(object, visible)
+    if object and object.Visible ~= nil then
+        object.Visible = visible
+    end
+end
+
+function Library:Create(options)
+    local Window = {}
+    local name = options.Name or "Severe UI"
+    local size = {x = 600, y = 500}
+    local position = {x = 300, y = 100}
+    
+    -- Main window components
+    Window.Main = {}
+    Window.Tabs = {}
+    Window.ActiveTab = nil
+    
+    -- Main window background
+    Window.Main.Background = Drawing.new("Square")
+    Window.Main.Background.Size = {size.x, size.y}
+    Window.Main.Background.Position = {position.x, position.y}
+    Window.Main.Background.Color = Colors.DarkBackground
+    Window.Main.Background.Filled = true
+    Window.Main.Background.Thickness = 1
+    Window.Main.Background.Transparency = 1
+    Window.Main.Background.Visible = true
+    
+    -- Window border
+    Window.Main.Border = Drawing.new("Square")
+    Window.Main.Border.Size = {size.x, size.y}
+    Window.Main.Border.Position = {position.x, position.y}
+    Window.Main.Border.Color = Colors.Border
+    Window.Main.Border.Filled = false
+    Window.Main.Border.Thickness = 1
+    Window.Main.Border.Transparency = 1
+    Window.Main.Border.Visible = true
+    
+    -- Window title
+    Window.Main.Title = Drawing.new("Text")
+    Window.Main.Title.Text = name
+    Window.Main.Title.Size = 18
+    Window.Main.Title.Font = 2
+    Window.Main.Title.Color = Colors.Text
+    Window.Main.Title.Position = {position.x + 10, position.y + 8}
+    Window.Main.Title.Outline = true
+    Window.Main.Title.OutlineColor = {0, 0, 0}
+    Window.Main.Title.Transparency = 1
+    Window.Main.Title.Visible = true
+    
+    -- Tab container
+    Window.Main.TabContainer = Drawing.new("Square")
+    Window.Main.TabContainer.Size = {size.x - 20, 25}
+    Window.Main.TabContainer.Position = {position.x + 10, position.y + 35}
+    Window.Main.TabContainer.Color = Colors.LightBackground
+    Window.Main.TabContainer.Filled = true
+    Window.Main.TabContainer.Transparency = 1
+    Window.Main.TabContainer.Visible = true
+    
+    -- Tab container border
+    Window.Main.TabBorder = Drawing.new("Square")
+    Window.Main.TabBorder.Size = {size.x - 20, 25}
+    Window.Main.TabBorder.Position = {position.x + 10, position.y + 35}
+    Window.Main.TabBorder.Color = Colors.Border
+    Window.Main.TabBorder.Filled = false
+    Window.Main.TabBorder.Thickness = 1
+    Window.Main.TabBorder.Transparency = 1
+    Window.Main.TabBorder.Visible = true
+    
+    -- Content container
+    Window.Main.ContentContainer = Drawing.new("Square")
+    Window.Main.ContentContainer.Size = {size.x - 20, size.y - 70}
+    Window.Main.ContentContainer.Position = {position.x + 10, position.y + 70}
+    Window.Main.ContentContainer.Color = Colors.LightBackground
+    Window.Main.ContentContainer.Filled = true
+    Window.Main.ContentContainer.Transparency = 1
+    Window.Main.ContentContainer.Visible = true
+    
+    -- Content container border
+    Window.Main.ContentBorder = Drawing.new("Square")
+    Window.Main.ContentBorder.Size = {size.x - 20, size.y - 70}
+    Window.Main.ContentBorder.Position = {position.x + 10, position.y + 70}
+    Window.Main.ContentBorder.Color = Colors.Border
+    Window.Main.ContentBorder.Filled = false
+    Window.Main.ContentBorder.Thickness = 1
+    Window.Main.ContentBorder.Transparency = 1
+    Window.Main.ContentBorder.Visible = true
+    
+    -- Tab management methods
+    function Window:UpdatePosition(newX, newY)
+        local newPos = {x = newX, y = newY}
+        
+        -- Update main window elements
+        self.Main.Background.Position = {newPos.x, newPos.y}
+        self.Main.Border.Position = {newPos.x, newPos.y}
+        self.Main.Title.Position = {newPos.x + 10, newPos.y + 8}
+        self.Main.TabContainer.Position = {newPos.x + 10, newPos.y + 35}
+        self.Main.TabBorder.Position = {newPos.x + 10, newPos.y + 35}
+        self.Main.ContentContainer.Position = {newPos.x + 10, newPos.y + 70}
+        self.Main.ContentBorder.Position = {newPos.x + 10, newPos.y + 70}
+        
+        -- Update tab positions
+        self:UpdateTabs()
+    end
+    
+    function Window:UpdateTabs()
+        local tabCount = #self.Tabs
+        if tabCount == 0 then return end
+        
+        local tabContainerWidth = self.Main.TabContainer.Size[1]
+        local tabWidth = tabContainerWidth / tabCount
+        local tabX = self.Main.TabContainer.Position[1]
+        local tabY = self.Main.TabContainer.Position[2]
+        
+        for i, tab in ipairs(self.Tabs) do
+            local startX = tabX + (i - 1) * tabWidth
+            
+            tab.Button.Position = {startX, tabY}
+            tab.Button.Size = {tabWidth, self.Main.TabContainer.Size[2]}
+            
+            tab.ButtonBorder.Position = {startX, tabY}
+            tab.ButtonBorder.Size = {tabWidth, self.Main.TabContainer.Size[2]}
+            
+            -- Center text
+            local textX = startX + (tabWidth / 2)
+            local textY = tabY + (self.Main.TabContainer.Size[2] / 2) - 8
+            tab.ButtonText.Position = {textX, textY}
+            tab.ButtonText.Center = true
+            
+            if tab.Highlight then
+                tab.Highlight.Position = {startX, tabY}
+                tab.Highlight.Size = {tabWidth, self.Main.TabContainer.Size[2]}
+            end
+        end
+    end
+    
+    function Window:Tab(options)
+        local tabName = options.Name or "Tab " .. (#self.Tabs + 1)
+        
         local tab = {
-            Name = name,
-            Visible = false,
+            Name = tabName,
             Sections = {
                 Left = {},
                 Right = {}
@@ -176,7 +219,7 @@ function Library:Init(options)
         
         -- Tab text
         tab.ButtonText = Drawing.new("Text")
-        tab.ButtonText.Text = name
+        tab.ButtonText.Text = tabName
         tab.ButtonText.Size = 14
         tab.ButtonText.Font = 2
         tab.ButtonText.Color = Colors.Text
@@ -184,7 +227,6 @@ function Library:Init(options)
         tab.ButtonText.OutlineColor = {0, 0, 0}
         tab.ButtonText.Transparency = 1
         tab.ButtonText.Visible = true
-        tab.ButtonText.Center = true
         
         -- Tab highlight (shown when tab is active)
         tab.Highlight = Drawing.new("Square")
@@ -193,30 +235,44 @@ function Library:Init(options)
         tab.Highlight.Transparency = 0.1
         tab.Highlight.Visible = false
         
-        -- Add tab to window
-        table.insert(self.Tabs, tab)
-        
-        -- Update tab positions
-        self:UpdateTabPositions()
-        
-        -- If this is the first tab, make it active
-        if #self.Tabs == 1 then
-            self:SelectTab(1)
-        end
-        
         -- Add section creation method to the tab
-        function tab:AddSection(options)
-            options = options or {}
-            local name = options.Name or "Section"
+        function tab:Section(options)
+            local sectionName = options.Name or "Section"
             local side = options.Side or "Left"
             
             local section = {
-                Name = name,
+                Name = sectionName,
                 Side = side,
                 Elements = {}
             }
             
-            -- We'll implement section rendering later
+            -- Section container
+            section.Background = Drawing.new("Square")
+            section.Background.Filled = true
+            section.Background.Color = Colors.DarkBackground
+            section.Background.Transparency = 1
+            section.Background.Visible = true
+            
+            -- Section border
+            section.Border = Drawing.new("Square")
+            section.Border.Filled = false
+            section.Border.Color = Colors.Border
+            section.Border.Thickness = 1
+            section.Border.Transparency = 1
+            section.Border.Visible = true
+            
+            -- Section title
+            section.Title = Drawing.new("Text")
+            section.Title.Text = sectionName
+            section.Title.Size = 14
+            section.Title.Font = 2
+            section.Title.Color = Colors.Text
+            section.Title.Outline = true
+            section.Title.OutlineColor = {0, 0, 0}
+            section.Title.Transparency = 1
+            section.Title.Visible = true
+            
+            -- We'll add element creation methods for the section later
             
             if side == "Left" then
                 table.insert(self.Sections.Left, section)
@@ -227,102 +283,99 @@ function Library:Init(options)
             return section
         end
         
+        -- Add tab to window
+        table.insert(self.Tabs, tab)
+        
+        -- Update tab positions
+        self:UpdateTabs()
+        
+        -- If this is the first tab, make it active
+        if #self.Tabs == 1 then
+            self:SelectTab(1)
+        end
+        
         return tab
     end
     
-    function window:SelectTab(index)
+    function Window:SelectTab(index)
         if self.ActiveTab then
             self.Tabs[self.ActiveTab].Highlight.Visible = false
-            -- Hide all elements from active tab (will implement later)
+            -- Hide elements from previous active tab (will implement later)
         end
         
         self.ActiveTab = index
         self.Tabs[index].Highlight.Visible = true
-        -- Show all elements from new active tab (will implement later)
+        -- Show elements from new active tab (will implement later)
     end
     
-    function window:IsHovered()
-        local mouse = Utility:GetMousePosition()
-        return Utility:IsInBounds(
-            {x = self.Position.x, y = self.Position.y},
-            {x = self.Size.x, y = self.Size.y},
-            mouse
-        )
+    function Window:IsHovered(obj)
+        if not obj then return false end
+        
+        local mousePos = {
+            x = Mouse.X,
+            y = Mouse.Y
+        }
+        
+        local pos = obj.Position
+        local size = obj.Size
+        
+        return mousePos.x >= pos[1] and 
+               mousePos.x <= pos[1] + size[1] and 
+               mousePos.y >= pos[2] and 
+               mousePos.y <= pos[2] + size[2]
     end
     
-    function window:IsTabAreaHovered()
-        local mouse = Utility:GetMousePosition()
-        return Utility:IsInBounds(
-            {x = self.TabContainer.Position[1], y = self.TabContainer.Position[2]},
-            {x = self.TabContainer.Size[1], y = self.TabContainer.Size[2]},
-            mouse
-        )
-    end
-    
-    function window:GetHoveredTab()
-        if not self:IsTabAreaHovered() then return nil end
-        
-        local mouse = Utility:GetMousePosition()
-        local tabWidth = self.TabContainer.Size[1] / #self.Tabs
-        
-        for i, tab in ipairs(self.Tabs) do
-            local tabX = self.TabContainer.Position[1] + (i - 1) * tabWidth
-            if mouse.x >= tabX and mouse.x < tabX + tabWidth then
-                return i
-            end
-        end
-        
-        return nil
+    function Window:IsTabHovered(index)
+        return self:IsHovered(self.Tabs[index].Button)
     end
     
     -- Add window to windows list
-    table.insert(Windows, window)
+    table.insert(Windows, Window)
+    ActiveWindow = Window
     
-    return window
+    return Window
 end
 
 -- Input handling loop
-local isRunning = true
 spawn(function()
-    while isRunning do
-        local mousePosition = Utility:GetMousePosition()
-        local mouseClicked = isleftclicked()
-        local mousePressed = isleftpressed()
+    while Running do
+        local mouseLocation = getmouselocation(MouseService)
+        Mouse.X = mouseLocation.x
+        Mouse.Y = mouseLocation.y
+        Mouse.Clicked = isleftclicked()
+        Mouse.Pressed = isleftpressed()
         
-        for _, window in ipairs(Windows) do
-            if window.Visible then
-                -- Dragging logic
-                if mouseClicked and not window.Dragging then
-                    if Utility:IsInBounds(
-                        {x = window.Position.x, y = window.Position.y},
-                        {x = window.Size.x, y = 35}, -- Title bar area
-                        mousePosition
-                    ) then
-                        window.Dragging = true
-                        window.DragOffset = {
-                            x = mousePosition.x - window.Position.x,
-                            y = mousePosition.y - window.Position.y
-                        }
-                    end
+        if ActiveWindow and IsVisible then
+            -- Dragging logic
+            if Mouse.Clicked and not IsDragging then
+                local titleBarY = ActiveWindow.Main.TabContainer.Position[2]
+                if Mouse.X >= ActiveWindow.Main.Background.Position[1] and 
+                   Mouse.X <= ActiveWindow.Main.Background.Position[1] + ActiveWindow.Main.Background.Size[1] and
+                   Mouse.Y >= ActiveWindow.Main.Background.Position[2] and
+                   Mouse.Y <= titleBarY then
+                    
+                    IsDragging = true
+                    DragOffset.X = Mouse.X - ActiveWindow.Main.Background.Position[1]
+                    DragOffset.Y = Mouse.Y - ActiveWindow.Main.Background.Position[2]
                 end
-                
-                if window.Dragging then
-                    if mousePressed then
-                        local newPosition = {
-                            x = mousePosition.x - window.DragOffset.x,
-                            y = mousePosition.y - window.DragOffset.y
-                        }
-                        window:UpdatePosition(newPosition)
-                    else
-                        window.Dragging = false
-                    end
+            end
+            
+            if IsDragging then
+                if Mouse.Pressed then
+                    local newX = Mouse.X - DragOffset.X
+                    local newY = Mouse.Y - DragOffset.Y
+                    ActiveWindow:UpdatePosition(newX, newY)
+                else
+                    IsDragging = false
                 end
-                
-                -- Tab selection
-                if mouseClicked and not window.Dragging then
-                    local hoveredTab = window:GetHoveredTab()
-                    if hoveredTab then
-                        window:SelectTab(hoveredTab)
+            end
+            
+            -- Tab selection
+            if Mouse.Clicked and not IsDragging then
+                for i, tab in ipairs(ActiveWindow.Tabs) do
+                    if ActiveWindow:IsHovered(tab.Button) then
+                        ActiveWindow:SelectTab(i)
+                        break
                     end
                 end
             end
@@ -331,31 +384,5 @@ spawn(function()
         wait()
     end
 end)
-
--- Clean up function
-function Library:Destroy()
-    isRunning = false
-    
-    for _, window in ipairs(Windows) do
-        window.Background:Remove()
-        window.Border:Remove()
-        window.Title:Remove()
-        window.TabContainer:Remove()
-        window.TabBorder:Remove()
-        window.ContentContainer:Remove()
-        window.ContentBorder:Remove()
-        
-        for _, tab in ipairs(window.Tabs) do
-            tab.Button:Remove()
-            tab.ButtonBorder:Remove()
-            tab.ButtonText:Remove()
-            tab.Highlight:Remove()
-            
-            -- Will add cleanup for sections and elements later
-        end
-    end
-    
-    Windows = {}
-end
 
 return Library
