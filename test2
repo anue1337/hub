@@ -363,6 +363,116 @@ function Object:Destroy()
     self.Elements = {}
 end
 
+-- Section Component (moved above Tab since Tab depends on Section)
+local Section = {}
+Section.__index = Section
+setmetatable(Section, {__index = Object})
+
+function Section.new(title, position, size, parent)
+    local self = setmetatable(Object.new(), Section)
+    
+    self.Title = title or "Section"
+    self.Position = position or {0, 0}
+    self.Size = size or {200, 150}
+    self.Parent = parent
+    self.Children = {}
+    self.Padding = Theme.ContentPadding
+    self.HeaderHeight = 20
+    self.ContentY = self.HeaderHeight + 5
+    self.Type = "Section"
+    
+    self:Render()
+    return self
+end
+
+function Section:Render()
+    -- Remove old elements if they exist
+    for _, element in ipairs(self.Elements) do
+        if element.Remove then
+            element:Remove()
+        end
+    end
+    self.Elements = {}
+    
+    -- Section border
+    self.Border = self:AddElement(DrawService.New("Square", {
+        Position = {self.Position[1] - 1, self.Position[2] - 1},
+        Size = {self.Size[1] + 2, self.Size[2] + 2},
+        Filled = false,
+        Color = Theme.Border,
+        Transparency = 1,
+        Thickness = 1,
+        Visible = self.Visible,
+        zIndex = 1
+    }))
+    
+    -- Section background
+    self.Background = self:AddElement(DrawService.New("Square", {
+        Position = self.Position,
+        Size = self.Size,
+        Filled = true,
+        Color = Theme.SectionBackground,
+        Transparency = 1,
+        Thickness = 0,
+        Visible = self.Visible,
+        zIndex = 2
+    }))
+    
+    -- Section header background
+    self.HeaderBg = self:AddElement(DrawService.New("Square", {
+        Position = self.Position,
+        Size = {self.Size[1], self.HeaderHeight},
+        Filled = true,
+        Color = Theme.BackgroundDark,
+        Transparency = 1,
+        Thickness = 0,
+        Visible = self.Visible,
+        zIndex = 3
+    }))
+    
+    -- Header divider line
+    self.HeaderDivider = self:AddElement(DrawService.New("Square", {
+        Position = {self.Position[1], self.Position[2] + self.HeaderHeight},
+        Size = {self.Size[1], 1},
+        Filled = true,
+        Color = Theme.Border,
+        Transparency = 1,
+        Thickness = 0,
+        Visible = self.Visible,
+        zIndex = 4
+    }))
+    
+    -- Title text
+    self.TitleText = self:AddElement(DrawService.New("Text", {
+        Text = self.Title,
+        Position = {self.Position[1] + 6, self.Position[2] + (self.HeaderHeight/2) - 7},
+        Size = 13,
+        Color = Theme.Text,
+        Outline = false,
+        Font = Theme.DefaultFont,
+        Visible = self.Visible,
+        zIndex = 5
+    }))
+    
+    -- Small accent detail in header
+    self.HeaderAccent = self:AddElement(DrawService.New("Square", {
+        Position = {self.Position[1], self.Position[2]},
+        Size = {2, self.HeaderHeight},
+        Filled = true,
+        Color = Theme.Accent,
+        Transparency = 1,
+        Thickness = 0,
+        Visible = self.Visible,
+        zIndex = 6
+    }))
+end
+
+function Section:AddChild(child)
+    table.insert(self.Children, child)
+    child.Parent = self
+    return child
+end
+
 -- Tab Component
 local Tab = {}
 Tab.__index = Tab
@@ -384,6 +494,7 @@ end
 
 function Tab:AddChild(child)
     table.insert(self.Children, child)
+    child.Parent = self
     return child
 end
 
@@ -435,6 +546,11 @@ function Tab:Destroy()
         child:Destroy()
     end
     self.Children = {}
+end
+
+function Tab:AddSection(title, position, size)
+    local section = Section.new(title, position, size, self)
+    return self:AddChild(section)
 end
 
 -- Label Component
@@ -1321,6 +1437,7 @@ function Window:AddChild(child)
     
     -- Otherwise, add to window directly (legacy behavior)
     table.insert(self.Children, child)
+    child.Parent = self
     return child
 end
 
@@ -1566,6 +1683,7 @@ end
 
 function Section:AddChild(child)
     table.insert(self.Children, child)
+    child.Parent = self
     return child
 end
 
