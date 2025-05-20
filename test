@@ -149,6 +149,7 @@ local function SetInterfaceVisibility(UI, Visible)
             SetVisibility(Element.Border, Visible)
             SetVisibility(Element.Title, Visible)
             SetVisibility(Element.SectionTopLine, Visible)
+            SetVisibility(Element.Icon, Visible)
             Element.Visible = Visible
             if Element.Interfaces then SetInterfaceVisibility(Element.Interfaces, Visible) end
         elseif Element.Type == "Button" or Element.Type == "Toggle" or Element.Type == "Slider" then
@@ -162,6 +163,7 @@ local function SetInterfaceVisibility(UI, Visible)
             if Element.Background and Element.Background.Visible ~= nil then SetVisibility(Element.Background, Visible) end
             if Element.Border and Element.Border.Visible ~= nil then SetVisibility(Element.Border, Visible) end
             if Element.Title and Element.Title.Visible ~= nil then SetVisibility(Element.Title, Visible) end
+            if Element.Icon and Element.Icon.Visible ~= nil then SetVisibility(Element.Icon, Visible) end
             if Element.SelectedHighlight and Element.SelectedHighlight.Visible ~= nil then SetVisibility(Element.SelectedHighlight, false) end
         end
     end
@@ -448,6 +450,7 @@ function Library:Create(Options)
             SetVisibility(Section.Border, true)
             SetVisibility(Section.Title, true)
             SetVisibility(Section.SectionTopLine, true)
+            SetVisibility(Section.Icon, true)
 
             Section.Background.Position = {ColumnX + Padding, StartY}
             Section.Background.Size = {InnerWidth, 0}
@@ -1082,15 +1085,52 @@ function Library:Create(Options)
 
     function Main:SelectTab(TabName)
         if not Main.TabButtons[TabName] then return end
+        
+        -- Hide all tab content first
+        for OtherTabName, OtherTab in pairs(Main.TabButtons) do
+            SetVisibility(OtherTab.SelectedHighlight, false)
+            OtherTab.Content.Visible = false
+            
+            -- Ensure all sections and their elements in both columns are hidden
+            if OtherTab.Content.LeftSections then
+                for _, Section in ipairs(OtherTab.Content.LeftSections) do
+                    Section.Visible = false
+                    SetVisibility(Section.Background, false)
+                    SetVisibility(Section.Border, false)
+                    SetVisibility(Section.Title, false)
+                    SetVisibility(Section.SectionTopLine, false)
+                    SetVisibility(Section.Icon, false)
+                    SetInterfaceVisibility(Section.Interfaces, false)
+                end
+            end
+            
+            if OtherTab.Content.RightSections then
+                for _, Section in ipairs(OtherTab.Content.RightSections) do
+                    Section.Visible = false
+                    SetVisibility(Section.Background, false)
+                    SetVisibility(Section.Border, false)
+                    SetVisibility(Section.Title, false)
+                    SetVisibility(Section.SectionTopLine, false)
+                    SetVisibility(Section.Icon, false)
+                    SetInterfaceVisibility(Section.Interfaces, false)
+                end
+            end
+        end
+        
+        -- Show selected tab content
         Main.ActiveTab = TabName
         if not IsVisible then return end
-        for OtherTabName, OtherTab in pairs(Main.TabButtons) do
-            local Selected = OtherTabName == TabName
-            SetVisibility(OtherTab.SelectedHighlight, Selected)
-            OtherTab.Content.Visible = Selected
-            SetInterfaceVisibility(OtherTab.Content.LeftSections, Selected)
-            SetInterfaceVisibility(OtherTab.Content.RightSections, Selected)
+        
+        local SelectedTab = Main.TabButtons[TabName]
+        if SelectedTab then
+            SetVisibility(SelectedTab.SelectedHighlight, true)
+            SelectedTab.Content.Visible = true
+            
+            -- Apply visibility to the selected tab's sections
+            SetInterfaceVisibility(SelectedTab.Content.LeftSections, true)
+            SetInterfaceVisibility(SelectedTab.Content.RightSections, true)
         end
+        
         Main:UpdateLayout()
     end
 
