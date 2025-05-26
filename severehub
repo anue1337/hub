@@ -90,7 +90,7 @@ local anue_scripts = {
         author = "anue"
     },
     {
-        name = "RAMPANT REBORN PVP",
+        name = "RAMPANT REBORN PVP SUPPORT",
         loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Rampant%20Reborn"))()',
         author = "anue"
     },
