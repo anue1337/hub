@@ -40,6 +40,11 @@ local anue_scripts = {
         author = "anue"
     },
     {
+        name = "FIVE NIGHTS HUNTED UI",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/FiveNightsHunted"))()',
+        author = "anue"
+    },
+    {
         name = "THE WILD WEST ESP",
         loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/wildwest"))()',
         author = "anue"
@@ -72,6 +77,16 @@ local anue_scripts = {
     {
         name = "LONE SURVIVAL SUPPORT",
         loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Lone%20Survival%20Support"))()',
+        author = "anue"
+    },
+    {
+        name = "GUNFIGHT ARENA SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Gunfight%20Arena"))()',
+        author = "anue"
+    },
+    {
+        name = "SKINWALKERS SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Skinswalkers"))()',
         author = "anue"
     },
     {
@@ -216,6 +231,36 @@ local community_scripts = {
         name = "INVISIBLE CHECK",
         loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/INVISIBLE%20CHECK"))()',
         author = "1byp4"
+    },
+    {
+        name = "NPC GAME SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/NPC.lua"))()',
+        author = "bernard the butcher"
+    },
+    {
+        name = "QUICK SAVE",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Quick%20Save"))()',
+        author = "king bob"
+    },
+    {
+        name = "THE WILD WEST GAME SUPPORT - PLAYERS AND ANIMALS",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/TheWildWest.lua"))()',
+        author = "bernard the butcher"
+    },
+    {
+        name = "THE WILD WEST GAME SUPPORT - ORES",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/TheWildWestOres.lua"))()',
+        author = "bernard the butcher"
+    },
+    {
+        name = "FREECAM",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Freecam"))()',
+        author = "x88"
+    },
+    {
+        name = "RIVALS GUN ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/lrd14/rivals-testing/refs/heads/main/main.lua"))()',
+        author = "bertu"
     },
     {
         name = "AOT FW",
