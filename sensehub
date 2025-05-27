@@ -1,240 +1,426 @@
--- GameSense Style UI Library
-local Library = {}
-local Windows = {}
-local ZIndexCounter = 0
+-- SenseHub V2 - UI Library
+-- Combines SenseHub visuals with enhanced functionality
 
--- Cores do GameSense
+-- Default colors (based on SenseHub)
 local Colors = {
-    WindowBg = {15, 15, 15, 220},       -- Fundo da janela
-    TitleBg = {22, 22, 22},             -- Barra de título
-    TitleBgActive = {138, 43, 226},     -- Barra de título ativa (roxo GameSense)
-    Border = {40, 40, 40},              -- Borda
-    Button = {138, 43, 226},            -- Botão
-    ButtonHovered = {158, 63, 246},     -- Botão hover
-    Text = {220, 220, 220},             -- Texto principal
-    TextSecondary = {160, 160, 160},    -- Texto secundário
-    TextDisabled = {90, 90, 90},        -- Texto desativado
-    FrameBg = {25, 25, 25},             -- Background de elementos
-    FrameBgHovered = {35, 35, 35},      -- Background hover
-    SliderGrab = {138, 43, 226},        -- Slider
-    CheckMark = {138, 43, 226},         -- Checkbox marcado
-    SectionBg = {25, 25, 25},           -- Background de seção
-    SectionHeader = {30, 30, 30}        -- Header de seção
+    ["WindowBg"] = {15, 15, 15},
+    ["SidebarBg"] = {22, 22, 22},
+    ["ContentBg"] = {18, 18, 18},
+    ["SectionBg"] = {25, 25, 25},
+    ["AccentColor"] = {138, 43, 226}, -- Purple accent
+    ["Text"] = {220, 220, 220},
+    ["TextSecondary"] = {160, 160, 160},
+    ["TextDisabled"] = {90, 90, 90},
+    ["Border"] = {40, 40, 40},
+    ["HoverColor"] = {32, 32, 32},
+    ["CheckboxEnabled"] = {138, 43, 226},
+    ["SectionHeader"] = {30, 30, 30}
 }
 
--- Estado do mouse
+-- Mouse state tracking
+local MouseService = findservice(Game, "MouseService")
 local Mouse = {
     X = 0,
     Y = 0,
     Clicked = false,
-    Pressed = false
+    Pressed = false,
+    WasClicked = false
 }
 
--- Variáveis de controle
+-- Library state
+local Library = {}
+local Windows = {}
 local IsDragging = false
 local DraggedWindow = nil
 local DragOffsetX = 0
 local DragOffsetY = 0
 local IsVisible = true
+local IsToggled = false
+local Running = true
+local ZIndexCounter = 0
 
--- Função para obter novo Z-Index
+-- Get new z-index for window layering
 local function GetNewZIndex()
     ZIndexCounter = ZIndexCounter + 1
     return ZIndexCounter
 end
 
--- Função para definir visibilidade de objetos
+-- Set visibility of a drawing object
 local function SetVisibility(Object, Visible)
     if Object and Object.Visible ~= nil then 
-        Object.Visible = Visible 
+        Object.Visible = Visible and IsVisible
     end
 end
 
--- Função para criar ícone da sidebar
-local function CreateSidebarIcon(X, Y, IconType, IsSelected, Color)
-    local Elements = {}
-    
-    if IconType == "misc" then
-        -- Ícone de engrenagem
-        local outer = Drawing.new("Circle")
-        outer.Position = {X, Y}
-        outer.Radius = 14
-        outer.Color = Color
-        outer.Filled = false
-        outer.Thickness = 2
-        outer.NumSides = 8
-        outer.Visible = true
-        table.insert(Elements, outer)
-        
-        local inner = Drawing.new("Circle")
-        inner.Position = {X, Y}
-        inner.Radius = 7
-        inner.Color = Color
-        inner.Filled = false
-        inner.Thickness = 2
-        inner.NumSides = 6
-        inner.Visible = true
-        table.insert(Elements, inner)
+-- Update mouse state
+local function UpdateMouseState()
+    local mouseLocation = getmouselocation(MouseService)
+    if mouseLocation then
+        Mouse.X = mouseLocation.x
+        Mouse.Y = mouseLocation.y
     end
-    
-    return Elements
+    Mouse.WasClicked = Mouse.Clicked
+    Mouse.Clicked = isleftclicked()
+    Mouse.Pressed = isleftpressed()
 end
 
--- Função principal para criar uma nova janela
-function Library:CreateWindow(Options)
-    local WindowName = Options.Name or "GameSense"
-    local WindowWidth = Options.Width or 900
-    local WindowHeight = Options.Height or 650
-    local DefaultPos = Options.Position or {150, 50}
+-- Check if mouse is over an area
+local function IsMouseOver(x, y, width, height)
+    return Mouse.X >= x and Mouse.X <= x + width and
+           Mouse.Y >= y and Mouse.Y <= y + height
+end
+
+-- Main library creation function
+function Library:Create(Options)
+    local MenuName = Options.Name or "SenseHub V2"
     
-    local Window = {
-        Name = WindowName,
-        Width = WindowWidth,
-        Height = WindowHeight,
-        X = DefaultPos[1],
-        Y = DefaultPos[2],
-        Elements = {},
-        Sections = {},
-        ElementY = 30,
-        Padding = 8,
-        Enabled = true,
-        ZIndex = GetNewZIndex()
-    }
-    
-    -- Background principal
-    Window.Background = Drawing.new("Square")
-    Window.Background.Size = {WindowWidth, WindowHeight}
-    Window.Background.Position = {Window.X, Window.Y}
-    Window.Background.Color = Colors.WindowBg
-    Window.Background.Filled = true
-    Window.Background.Transparency = 0.95
-    Window.Background.Visible = true
-    
-    -- Sidebar esquerda
-    Window.Sidebar = Drawing.new("Square")
-    Window.Sidebar.Size = {120, WindowHeight}
-    Window.Sidebar.Position = {Window.X, Window.Y}
-    Window.Sidebar.Color = Colors.TitleBg
-    Window.Sidebar.Filled = true
-    Window.Sidebar.Visible = true
-    
-    -- Criar seção
-    function Window:CreateSection(Options)
-        local SectionName = Options.Name or "Section"
-        local SectionX = Options.X or (self.X + 140)
-        local SectionY = Options.Y or (self.Y + 20)
-        local SectionWidth = Options.Width or 350
-        local SectionHeight = Options.Height or 380
+    -- Create window function
+    function Library:Window(Options)
+        local WindowName = Options.Name or "Window"
+        local WindowWidth = Options.Width or 900
+        local WindowHeight = Options.Height or 650
+        local DefaultPos = Options.Position or {150, 50}
         
-        local Section = {
-            Name = SectionName,
-            X = SectionX,
-            Y = SectionY,
-            Width = SectionWidth,
-            Height = SectionHeight,
+        local Window = {
+            Name = WindowName,
+            Width = WindowWidth,
+            Height = WindowHeight,
+            X = DefaultPos[1],
+            Y = DefaultPos[2],
             Elements = {},
-            ElementY = 35
+            ElementY = 30,
+            Padding = 8,
+            Enabled = false,
+            ZIndex = GetNewZIndex()
         }
         
-        -- Background da seção
-        Section.Background = Drawing.new("Square")
-        Section.Background.Size = {SectionWidth, SectionHeight}
-        Section.Background.Position = {SectionX, SectionY}
-        Section.Background.Color = Colors.SectionBg
-        Section.Background.Filled = true
-        Section.Background.Visible = true
+        -- Create window background
+        Window.Background = Drawing.new("Square")
+        Window.Background.Size = {WindowWidth, WindowHeight}
+        Window.Background.Position = {Window.X, Window.Y}
+        Window.Background.Color = Colors["WindowBg"]
+        Window.Background.Filled = true
+        Window.Background.Transparency = 1
+        Window.Background.Visible = false
+        Window.Background.zIndex = Window.ZIndex
         
-        -- Header da seção
-        Section.Header = Drawing.new("Square")
-        Section.Header.Size = {SectionWidth, 25}
-        Section.Header.Position = {SectionX, SectionY}
-        Section.Header.Color = Colors.SectionHeader
-        Section.Header.Filled = true
-        Section.Header.Visible = true
+        -- Create window border
+        Window.Border = Drawing.new("Square")
+        Window.Border.Size = {WindowWidth, WindowHeight}
+        Window.Border.Position = {Window.X, Window.Y}
+        Window.Border.Color = Colors["Border"]
+        Window.Border.Filled = false
+        Window.Border.Thickness = 1
+        Window.Border.Transparency = 1
+        Window.Border.Visible = false
+        Window.Border.zIndex = Window.ZIndex + 1
         
-        -- Título da seção
-        Section.Title = Drawing.new("Text")
-        Section.Title.Text = SectionName
-        Section.Title.Position = {SectionX + 10, SectionY + 5}
-        Section.Title.Color = Colors.Text
-        Section.Title.Size = 14
-        Section.Title.Font = 2
-        Section.Title.Visible = true
+        -- Create sidebar
+        Window.Sidebar = Drawing.new("Square")
+        Window.Sidebar.Size = {120, WindowHeight}
+        Window.Sidebar.Position = {Window.X, Window.Y}
+        Window.Sidebar.Color = Colors["SidebarBg"]
+        Window.Sidebar.Filled = true
+        Window.Sidebar.Transparency = 1
+        Window.Sidebar.Visible = false
+        Window.Sidebar.zIndex = Window.ZIndex + 2
         
-        -- Função para adicionar toggle
-        function Section:AddToggle(Options)
-            local ToggleText = Options.Text or "Toggle"
-            local Default = Options.Default or false
-            local Callback = Options.Callback or function() end
+        -- Create content area
+        Window.Content = Drawing.new("Square")
+        Window.Content.Size = {WindowWidth - 120, WindowHeight}
+        Window.Content.Position = {Window.X + 120, Window.Y}
+        Window.Content.Color = Colors["ContentBg"]
+        Window.Content.Filled = true
+        Window.Content.Transparency = 1
+        Window.Content.Visible = false
+        Window.Content.zIndex = Window.ZIndex + 2
+
+        -- Check if point is in window's draggable area
+        function Window:IsInDraggableArea(X, Y)
+            return X >= self.X and X <= self.X + self.Width and
+                   Y >= self.Y and Y <= self.Y + 30
+        end
+
+        -- Update window position
+        function Window:SetPosition(X, Y)
+            self.X = X
+            self.Y = Y
             
-            local Toggle = {
-                Type = "Toggle",
-                Text = ToggleText,
-                Value = Default,
-                Callback = Callback,
-                Height = 20
+            self.Background.Position = {X, Y}
+            self.Border.Position = {X, Y}
+            self.Sidebar.Position = {X, Y}
+            self.Content.Position = {X + 120, Y}
+            
+            self:UpdateElementPositions()
+        end
+
+        -- Bring window to front
+        function Window:BringToFront()
+            self.ZIndex = GetNewZIndex()
+            self.Background.zIndex = self.ZIndex
+            self.Border.zIndex = self.ZIndex + 1
+            self.Sidebar.zIndex = self.ZIndex + 2
+            self.Content.zIndex = self.ZIndex + 2
+        end
+
+        -- Update all element positions
+        function Window:UpdateElementPositions()
+            for _, Element in ipairs(self.Elements) do
+                if Element.UpdatePosition then
+                    Element:UpdatePosition()
+                end
+            end
+        end
+
+        -- Toggle window visibility
+        function Window:Toggle(Enabled)
+            self.Enabled = Enabled ~= nil and Enabled or not self.Enabled
+            
+            if self.Enabled then
+                self:BringToFront()
+            end
+            
+            SetVisibility(self.Background, self.Enabled)
+            SetVisibility(self.Border, self.Enabled)
+            SetVisibility(self.Sidebar, self.Enabled)
+            SetVisibility(self.Content, self.Enabled)
+            
+            for _, Element in ipairs(self.Elements) do
+                if Element.SetVisibility then
+                    Element:SetVisibility(self.Enabled)
+                end
+            end
+        end
+
+        -- Create section
+        function Window:Section(Options)
+            local SectionName = Options.Name or "Section"
+            local SectionX = Options.X or (self.X + 140)
+            local SectionY = Options.Y or (self.Y + 20)
+            local SectionWidth = Options.Width or 350
+            local SectionHeight = Options.Height or 200
+            
+            local Section = {
+                Type = "Section",
+                Name = SectionName,
+                X = SectionX,
+                Y = SectionY,
+                Width = SectionWidth,
+                Height = SectionHeight,
+                Elements = {},
+                ElementY = SectionY + 35
             }
             
-            -- Background do toggle
-            Toggle.Background = Drawing.new("Square")
-            Toggle.Background.Size = {18, 18}
-            Toggle.Background.Position = {self.X + 10, self.Y + self.ElementY}
-            Toggle.Background.Color = Colors.FrameBg
-            Toggle.Background.Filled = true
-            Toggle.Background.Visible = true
+            -- Section background
+            Section.Background = Drawing.new("Square")
+            Section.Background.Size = {SectionWidth, SectionHeight}
+            Section.Background.Position = {SectionX, SectionY}
+            Section.Background.Color = Colors["SectionBg"]
+            Section.Background.Filled = true
+            Section.Background.Transparency = 1
+            Section.Background.Visible = self.Enabled
+            Section.Background.zIndex = self.ZIndex + 3
             
-            -- Checkmark
-            Toggle.CheckMark = Drawing.new("Text")
-            Toggle.CheckMark.Text = "✓"
-            Toggle.CheckMark.Size = 13
-            Toggle.CheckMark.Font = 2
-            Toggle.CheckMark.Color = Colors.CheckMark
-            Toggle.CheckMark.Position = {self.X + 13, self.Y + self.ElementY + 2}
-            Toggle.CheckMark.Visible = Default
+            -- Section border
+            Section.Border = Drawing.new("Square")
+            Section.Border.Size = {SectionWidth, SectionHeight}
+            Section.Border.Position = {SectionX, SectionY}
+            Section.Border.Color = Colors["Border"]
+            Section.Border.Filled = false
+            Section.Border.Thickness = 1
+            Section.Border.Transparency = 1
+            Section.Border.Visible = self.Enabled
+            Section.Border.zIndex = self.ZIndex + 4
             
-            table.insert(self.Elements, Toggle)
-            self.ElementY = self.ElementY + Toggle.Height + 5
+            -- Section header
+            Section.Header = Drawing.new("Square")
+            Section.Header.Size = {SectionWidth, 25}
+            Section.Header.Position = {SectionX, SectionY}
+            Section.Header.Color = Colors["SectionHeader"]
+            Section.Header.Filled = true
+            Section.Header.Transparency = 1
+            Section.Header.Visible = self.Enabled
+            Section.Header.zIndex = self.ZIndex + 4
             
-            return Toggle
+            -- Section title
+            Section.Title = Drawing.new("Text")
+            Section.Title.Text = SectionName
+            Section.Title.Position = {SectionX + 10, SectionY + 5}
+            Section.Title.Color = Colors["Text"]
+            Section.Title.Size = 14
+            Section.Title.Font = 2
+            Section.Title.Transparency = 1
+            Section.Title.Visible = self.Enabled
+            Section.Title.zIndex = self.ZIndex + 5
+
+            -- Update section position
+            function Section:UpdatePosition()
+                self.Background.Position = {self.X, self.Y}
+                self.Border.Position = {self.X, self.Y}
+                self.Header.Position = {self.X, self.Y}
+                self.Title.Position = {self.X + 10, self.Y + 5}
+                
+                for _, Element in ipairs(self.Elements) do
+                    if Element.UpdatePosition then
+                        Element:UpdatePosition()
+                    end
+                end
+            end
+
+            -- Set section visibility
+            function Section:SetVisibility(Visible)
+                SetVisibility(self.Background, Visible)
+                SetVisibility(self.Border, Visible)
+                SetVisibility(self.Header, Visible)
+                SetVisibility(self.Title, Visible)
+                
+                for _, Element in ipairs(self.Elements) do
+                    if Element.SetVisibility then
+                        Element:SetVisibility(Visible)
+                    end
+                end
+            end
+
+            -- Create toggle
+            function Section:Toggle(Options)
+                local ToggleName = Options.Name or "Toggle"
+                local Default = Options.Default or false
+                local Callback = Options.Callback or function() end
+                
+                local Toggle = {
+                    Type = "Toggle",
+                    Name = ToggleName,
+                    Value = Default,
+                    Callback = Callback,
+                    Y = self.ElementY
+                }
+                
+                -- Toggle background
+                Toggle.Background = Drawing.new("Square")
+                Toggle.Background.Size = {16, 16}
+                Toggle.Background.Position = {self.X + 10, Toggle.Y}
+                Toggle.Background.Color = Colors["SectionBg"]
+                Toggle.Background.Filled = true
+                Toggle.Background.Transparency = 1
+                Toggle.Background.Visible = Window.Enabled
+                Toggle.Background.zIndex = Window.ZIndex + 5
+                
+                -- Toggle border
+                Toggle.Border = Drawing.new("Square")
+                Toggle.Border.Size = {16, 16}
+                Toggle.Border.Position = {self.X + 10, Toggle.Y}
+                Toggle.Border.Color = Colors["Border"]
+                Toggle.Border.Filled = false
+                Toggle.Border.Thickness = 1
+                Toggle.Border.Transparency = 1
+                Toggle.Border.Visible = Window.Enabled
+                Toggle.Border.zIndex = Window.ZIndex + 6
+                
+                -- Toggle text
+                Toggle.Text = Drawing.new("Text")
+                Toggle.Text.Text = ToggleName
+                Toggle.Text.Position = {self.X + 32, Toggle.Y + 1}
+                Toggle.Text.Color = Colors["Text"]
+                Toggle.Text.Size = 13
+                Toggle.Text.Font = 2
+                Toggle.Text.Transparency = 1
+                Toggle.Text.Visible = Window.Enabled
+                Toggle.Text.zIndex = Window.ZIndex + 6
+                
+                -- Toggle checkmark
+                Toggle.Checkmark = Drawing.new("Text")
+                Toggle.Checkmark.Text = "✓"
+                Toggle.Checkmark.Position = {self.X + 12, Toggle.Y}
+                Toggle.Checkmark.Color = Colors["CheckboxEnabled"]
+                Toggle.Checkmark.Size = 14
+                Toggle.Checkmark.Font = 2
+                Toggle.Checkmark.Transparency = 1
+                Toggle.Checkmark.Visible = Window.Enabled and Default
+                Toggle.Checkmark.zIndex = Window.ZIndex + 7
+
+                function Toggle:SetValue(Value)
+                    self.Value = Value
+                    self.Checkmark.Visible = Window.Enabled and Value
+                    
+                    if self.Callback then
+                        spawn(function() 
+                            self.Callback(Value)
+                        end)
+                    end
+                end
+
+                function Toggle:UpdatePosition()
+                    self.Background.Position = {Section.X + 10, self.Y}
+                    self.Border.Position = {Section.X + 10, self.Y}
+                    self.Text.Position = {Section.X + 32, self.Y + 1}
+                    self.Checkmark.Position = {Section.X + 12, self.Y}
+                end
+
+                function Toggle:SetVisibility(Visible)
+                    SetVisibility(self.Background, Visible)
+                    SetVisibility(self.Border, Visible)
+                    SetVisibility(self.Text, Visible)
+                    SetVisibility(self.Checkmark, Visible and self.Value)
+                end
+
+                table.insert(Section.Elements, Toggle)
+                self.ElementY = self.ElementY + 25
+                return Toggle
+            end
+
+            table.insert(self.Elements, Section)
+            return Section
         end
-        
-        table.insert(self.Sections, Section)
-        return Section
+
+        table.insert(Windows, Window)
+        return Window
     end
     
-    -- Adicionar a janela à lista de janelas
-    table.insert(Windows, Window)
-    
-    -- Iniciar loop de atualização
+    -- Main update loop
     spawn(function()
-        while true do
-            local MouseLocation = getmouselocation(findservice(game, "MouseService"))
-            Mouse.X = MouseLocation.x
-            Mouse.Y = MouseLocation.y
-            Mouse.Clicked = isleftclicked()
-            Mouse.Pressed = isleftpressed()
+        while Running do
+            UpdateMouseState()
             
-            for _, Win in ipairs(Windows) do
-                if Win.Enabled then
-                    -- Processar elementos das seções
-                    for _, Section in ipairs(Win.Sections) do
-                        for _, Element in ipairs(Section.Elements) do
-                            if Element.Type == "Toggle" then
-                                local ToggleX = Element.Background.Position.x
-                                local ToggleY = Element.Background.Position.y
-                                
-                                if Mouse.X >= ToggleX and Mouse.X <= ToggleX + 18 and
-                                   Mouse.Y >= ToggleY and Mouse.Y <= ToggleY + 18 then
-                                    Element.Background.Color = Colors.FrameBgHovered
-                                    if Mouse.Clicked then
-                                        Element.Value = not Element.Value
-                                        Element.CheckMark.Visible = Element.Value
-                                        if Element.Callback then
-                                            Element.Callback(Element.Value)
+            -- Handle window dragging
+            if Mouse.Pressed then
+                if not IsDragging then
+                    for _, Window in ipairs(Windows) do
+                        if Window.Enabled and Window:IsInDraggableArea(Mouse.X, Mouse.Y) then
+                            IsDragging = true
+                            DraggedWindow = Window
+                            DragOffsetX = Mouse.X - Window.X
+                            DragOffsetY = Mouse.Y - Window.Y
+                            Window:BringToFront()
+                            break
+                        end
+                    end
+                elseif DraggedWindow then
+                    DraggedWindow:SetPosition(Mouse.X - DragOffsetX, Mouse.Y - DragOffsetY)
+                end
+            else
+                IsDragging = false
+                DraggedWindow = nil
+            end
+            
+            -- Handle toggle interactions
+            for _, Window in ipairs(Windows) do
+                if Window.Enabled then
+                    for _, Element in ipairs(Window.Elements) do
+                        if Element.Type == "Section" then
+                            for _, SubElement in ipairs(Element.Elements) do
+                                if SubElement.Type == "Toggle" then
+                                    local ToggleX = SubElement.Background.Position.x
+                                    local ToggleY = SubElement.Background.Position.y
+                                    
+                                    if IsMouseOver(ToggleX, ToggleY, 16, 16) then
+                                        SubElement.Background.Color = Colors["HoverColor"]
+                                        
+                                        if Mouse.Clicked and not Mouse.WasClicked then
+                                            SubElement:SetValue(not SubElement.Value)
                                         end
+                                    else
+                                        SubElement.Background.Color = Colors["SectionBg"]
                                     end
-                                else
-                                    Element.Background.Color = Colors.FrameBg
                                 end
                             end
                         end
@@ -242,11 +428,38 @@ function Library:CreateWindow(Options)
                 end
             end
             
-            wait()
+            wait(0.01) -- Small delay to prevent excessive CPU usage
         end
     end)
     
-    return Window
+    return Library
+end
+
+-- Cleanup function
+function Library:Unload()
+    Running = false
+    for _, Window in ipairs(Windows) do
+        for _, Element in ipairs(Window.Elements) do
+            if Element.Type == "Section" then
+                for _, SubElement in ipairs(Element.Elements) do
+                    if SubElement.Background then SubElement.Background:Remove() end
+                    if SubElement.Border then SubElement.Border:Remove() end
+                    if SubElement.Text then SubElement.Text:Remove() end
+                    if SubElement.Checkmark then SubElement.Checkmark:Remove() end
+                end
+                if Element.Background then Element.Background:Remove() end
+                if Element.Border then Element.Border:Remove() end
+                if Element.Header then Element.Header:Remove() end
+                if Element.Title then Element.Title:Remove() end
+            end
+        end
+        if Window.Background then Window.Background:Remove() end
+        if Window.Border then Window.Border:Remove() end
+        if Window.Sidebar then Window.Sidebar:Remove() end
+        if Window.Content then Window.Content:Remove() end
+    end
+    Windows = {}
+    Drawing.clear()
 end
 
 return Library 
