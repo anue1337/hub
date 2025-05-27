@@ -3,7 +3,7 @@
 
 -- Default colors (based on SenseHub)
 local Colors = {
-    ["WindowBg"] = {15, 15, 15},
+    ["WindowBg"] = {15, 15, 15, 220}, -- Added transparency
     ["SidebarBg"] = {22, 22, 22},
     ["ContentBg"] = {18, 18, 18},
     ["SectionBg"] = {25, 25, 25},
@@ -80,8 +80,8 @@ function Library:Create(Options)
     -- Create window function
     function Library:Window(Options)
         local WindowName = Options.Name or "Window"
-        local WindowWidth = Options.Width or 900
-        local WindowHeight = Options.Height or 650
+        local WindowWidth = Options.Width or 900  -- Mantendo largura do SenseHub
+        local WindowHeight = Options.Height or 650 -- Mantendo altura do SenseHub
         local DefaultPos = Options.Position or {150, 50}
         
         local Window = {
@@ -140,9 +140,9 @@ function Library:Create(Options)
         Window.Content.Visible = false
         Window.Content.zIndex = Window.ZIndex + 2
 
-        -- Create sidebar icons
+        -- Create sidebar icons with proper spacing and size
         local sidebarItems = {
-            {icon = "misc", y = 60, label = "MISC"},
+            {icon = "misc", y = 60, label = "MISC", selected = true},
             {icon = "aim", y = 120, label = "AIM"},
             {icon = "visual", y = 180, label = "VISUALS"},
             {icon = "movement", y = 240, label = "MOVE"},
@@ -150,33 +150,43 @@ function Library:Create(Options)
         }
 
         for _, item in ipairs(sidebarItems) do
-            -- Icon background
-            local iconBg = Drawing.new("Square")
-            iconBg.Size = {110, 40}
-            iconBg.Position = {Window.X + 5, Window.Y + item.y - 20}
-            iconBg.Color = Colors["SidebarBg"]
-            iconBg.Filled = true
-            iconBg.Transparency = 1
-            iconBg.Visible = false
-            iconBg.zIndex = Window.ZIndex + 3
+            -- Highlight for selected item
+            if item.selected then
+                local highlight = Drawing.new("Square")
+                highlight.Size = {110, 40}
+                highlight.Position = {Window.X + 5, Window.Y + item.y - 20}
+                highlight.Color = Colors["HoverColor"]
+                highlight.Filled = true
+                highlight.Transparency = 1
+                highlight.Visible = false
+                highlight.zIndex = Window.ZIndex + 2
+                
+                -- Accent bar (mais grossa como no SenseHub)
+                local accentBar = Drawing.new("Square")
+                accentBar.Size = {4, 40}
+                accentBar.Position = {Window.X, Window.Y + item.y - 20}
+                accentBar.Color = Colors["AccentColor"]
+                accentBar.Filled = true
+                accentBar.Transparency = 1
+                accentBar.Visible = false
+                accentBar.zIndex = Window.ZIndex + 3
+                
+                Window.Tabs[item.icon].Highlight = highlight
+                Window.Tabs[item.icon].AccentBar = accentBar
+            end
 
-            -- Icon label
+            -- Icon label with adjusted font and position
             local label = Drawing.new("Text")
             label.Text = item.label
             label.Position = {Window.X + 10, Window.Y + item.y + 12}
-            label.Color = Colors["TextSecondary"]
-            label.Size = 10
-            label.Font = 2
+            label.Color = item.selected and Colors["Text"] or Colors["TextSecondary"]
+            label.Size = 10 -- Tamanho menor como no SenseHub
+            label.Font = 2 -- Fonte mais fina
             label.Transparency = 1
             label.Visible = false
             label.zIndex = Window.ZIndex + 4
 
-            -- Store tab elements
-            Window.Tabs[item.icon] = {
-                Background = iconBg,
-                Label = label,
-                Elements = {}
-            }
+            Window.Tabs[item.icon].Label = label
         end
 
         -- Check if point is in window's draggable area
@@ -241,8 +251,8 @@ function Library:Create(Options)
             local SectionName = Options.Name or "Section"
             local SectionX = Options.X or (self.X + 140)
             local SectionY = Options.Y or (self.Y + 20)
-            local SectionWidth = Options.Width or 350
-            local SectionHeight = Options.Height or 200
+            local SectionWidth = Options.Width or 350 -- Largura ajustada do SenseHub
+            local SectionHeight = Options.Height or 380 -- Altura ajustada do SenseHub
             
             local Section = {
                 Type = "Section",
@@ -278,7 +288,7 @@ function Library:Create(Options)
             
             -- Section header
             Section.Header = Drawing.new("Square")
-            Section.Header.Size = {SectionWidth, 25}
+            Section.Header.Size = {SectionWidth, 25} -- Altura do header ajustada
             Section.Header.Position = {SectionX, SectionY}
             Section.Header.Color = Colors["SectionHeader"]
             Section.Header.Filled = true
@@ -291,8 +301,8 @@ function Library:Create(Options)
             Section.Title.Text = SectionName
             Section.Title.Position = {SectionX + 10, SectionY + 5}
             Section.Title.Color = Colors["Text"]
-            Section.Title.Size = 14
-            Section.Title.Font = 2
+            Section.Title.Size = 14 -- Tamanho ajustado
+            Section.Title.Font = 2 -- Fonte mais fina
             Section.Title.Transparency = 1
             Section.Title.Visible = self.Enabled
             Section.Title.zIndex = self.ZIndex + 5
@@ -339,9 +349,9 @@ function Library:Create(Options)
                     Y = self.ElementY
                 }
                 
-                -- Toggle background
+                -- Toggle background ajustado
                 Toggle.Background = Drawing.new("Square")
-                Toggle.Background.Size = {16, 16}
+                Toggle.Background.Size = {18, 18} -- Tamanho ajustado
                 Toggle.Background.Position = {self.X + 10, Toggle.Y}
                 Toggle.Background.Color = Colors["SectionBg"]
                 Toggle.Background.Filled = true
@@ -349,24 +359,13 @@ function Library:Create(Options)
                 Toggle.Background.Visible = Window.Enabled
                 Toggle.Background.zIndex = Window.ZIndex + 5
                 
-                -- Toggle border
-                Toggle.Border = Drawing.new("Square")
-                Toggle.Border.Size = {16, 16}
-                Toggle.Border.Position = {self.X + 10, Toggle.Y}
-                Toggle.Border.Color = Colors["Border"]
-                Toggle.Border.Filled = false
-                Toggle.Border.Thickness = 1
-                Toggle.Border.Transparency = 1
-                Toggle.Border.Visible = Window.Enabled
-                Toggle.Border.zIndex = Window.ZIndex + 6
-                
-                -- Toggle text
+                -- Toggle text com fonte ajustada
                 Toggle.Text = Drawing.new("Text")
                 Toggle.Text.Text = ToggleName
-                Toggle.Text.Position = {self.X + 32, Toggle.Y + 1}
+                Toggle.Text.Position = {self.X + 35, Toggle.Y + 2} -- Posição ajustada
                 Toggle.Text.Color = Colors["Text"]
-                Toggle.Text.Size = 13
-                Toggle.Text.Font = 2
+                Toggle.Text.Size = 13 -- Tamanho ajustado
+                Toggle.Text.Font = 2 -- Fonte mais fina
                 Toggle.Text.Transparency = 1
                 Toggle.Text.Visible = Window.Enabled
                 Toggle.Text.zIndex = Window.ZIndex + 6
@@ -374,10 +373,10 @@ function Library:Create(Options)
                 -- Toggle checkmark
                 Toggle.Checkmark = Drawing.new("Text")
                 Toggle.Checkmark.Text = "✓"
-                Toggle.Checkmark.Position = {self.X + 12, Toggle.Y}
+                Toggle.Checkmark.Position = {self.X + 12, Toggle.Y + 1} -- Posição ajustada
                 Toggle.Checkmark.Color = Colors["CheckboxEnabled"]
-                Toggle.Checkmark.Size = 14
-                Toggle.Checkmark.Font = 2
+                Toggle.Checkmark.Size = 14 -- Tamanho ajustado
+                Toggle.Checkmark.Font = 2 -- Fonte mais fina
                 Toggle.Checkmark.Transparency = 1
                 Toggle.Checkmark.Visible = Window.Enabled and Default
                 Toggle.Checkmark.zIndex = Window.ZIndex + 7
@@ -396,8 +395,8 @@ function Library:Create(Options)
                 function Toggle:UpdatePosition()
                     self.Background.Position = {Section.X + 10, self.Y}
                     self.Border.Position = {Section.X + 10, self.Y}
-                    self.Text.Position = {Section.X + 32, self.Y + 1}
-                    self.Checkmark.Position = {Section.X + 12, self.Y}
+                    self.Text.Position = {Section.X + 35, self.Y + 2}
+                    self.Checkmark.Position = {Section.X + 12, self.Y + 1}
                 end
 
                 function Toggle:SetVisibility(Visible)
@@ -432,31 +431,31 @@ function Library:Create(Options)
                     Y = self.ElementY
                 }
                 
-                -- Slider text
+                -- Slider text com fonte ajustada
                 Slider.Text = Drawing.new("Text")
                 Slider.Text.Text = SliderName
                 Slider.Text.Position = {self.X + 10, self.Y + self.ElementY}
                 Slider.Text.Color = Colors["Text"]
-                Slider.Text.Size = 13
-                Slider.Text.Font = 2
+                Slider.Text.Size = 13 -- Tamanho ajustado
+                Slider.Text.Font = 2 -- Fonte mais fina
                 Slider.Text.Transparency = 1
                 Slider.Text.Visible = Window.Enabled
                 Slider.Text.zIndex = Window.ZIndex + 5
                 
-                -- Slider value text
+                -- Slider value text ajustado
                 Slider.ValueText = Drawing.new("Text")
                 Slider.ValueText.Text = tostring(Default)
                 Slider.ValueText.Position = {self.X + self.Width - 30, self.Y + self.ElementY}
                 Slider.ValueText.Color = Colors["Text"]
-                Slider.ValueText.Size = 13
-                Slider.ValueText.Font = 2
+                Slider.ValueText.Size = 13 -- Tamanho ajustado
+                Slider.ValueText.Font = 2 -- Fonte mais fina
                 Slider.ValueText.Transparency = 1
                 Slider.ValueText.Visible = Window.Enabled
                 Slider.ValueText.zIndex = Window.ZIndex + 5
                 
-                -- Slider background
+                -- Slider background mais fino
                 Slider.Background = Drawing.new("Square")
-                Slider.Background.Size = {self.Width - 20, 8}
+                Slider.Background.Size = {self.Width - 20, 6} -- Altura ajustada
                 Slider.Background.Position = {self.X + 10, self.Y + self.ElementY + 20}
                 Slider.Background.Color = Colors["SectionBg"]
                 Slider.Background.Filled = true
@@ -467,7 +466,7 @@ function Library:Create(Options)
                 -- Slider fill
                 Slider.Fill = Drawing.new("Square")
                 local fillWidth = ((Default - Min) / (Max - Min)) * (self.Width - 20)
-                Slider.Fill.Size = {fillWidth, 8}
+                Slider.Fill.Size = {fillWidth, 6}
                 Slider.Fill.Position = {self.X + 10, self.Y + self.ElementY + 20}
                 Slider.Fill.Color = Colors["SliderGrab"]
                 Slider.Fill.Filled = true
@@ -475,10 +474,10 @@ function Library:Create(Options)
                 Slider.Fill.Visible = Window.Enabled
                 Slider.Fill.zIndex = Window.ZIndex + 6
                 
-                -- Slider grab
+                -- Slider grab mais compacto
                 Slider.Grab = Drawing.new("Square")
-                Slider.Grab.Size = {6, 14}
-                Slider.Grab.Position = {self.X + 10 + fillWidth - 3, self.Y + self.ElementY + 17}
+                Slider.Grab.Size = {4, 12} -- Tamanho ajustado
+                Slider.Grab.Position = {self.X + 10 + fillWidth - 2, self.Y + self.ElementY + 17}
                 Slider.Grab.Color = Colors["SliderGrab"]
                 Slider.Grab.Filled = true
                 Slider.Grab.Transparency = 1
@@ -490,8 +489,8 @@ function Library:Create(Options)
                     self.ValueText.Text = tostring(self.Value)
                     
                     local fillWidth = ((self.Value - self.Min) / (self.Max - self.Min)) * (Section.Width - 20)
-                    self.Fill.Size = {fillWidth, 8}
-                    self.Grab.Position = {Section.X + 10 + fillWidth - 3, Section.Y + self.Y + 17}
+                    self.Fill.Size = {fillWidth, 6}
+                    self.Grab.Position = {Section.X + 10 + fillWidth - 2, Section.Y + self.Y + 17}
                     
                     if self.Callback then
                         spawn(function() self.Callback(self.Value) end)
@@ -504,7 +503,7 @@ function Library:Create(Options)
                     self.Background.Position = {Section.X + 10, Section.Y + self.Y + 20}
                     self.Fill.Position = {Section.X + 10, Section.Y + self.Y + 20}
                     local fillWidth = ((self.Value - self.Min) / (self.Max - self.Min)) * (Section.Width - 20)
-                    self.Grab.Position = {Section.X + 10 + fillWidth - 3, Section.Y + self.Y + 17}
+                    self.Grab.Position = {Section.X + 10 + fillWidth - 2, Section.Y + self.Y + 17}
                 end
 
                 function Slider:SetVisibility(Visible)
@@ -532,9 +531,9 @@ function Library:Create(Options)
                     Y = self.ElementY
                 }
                 
-                -- Button background
+                -- Button com visual mais clean
                 Button.Background = Drawing.new("Square")
-                Button.Background.Size = {self.Width - 20, 30}
+                Button.Background.Size = {self.Width - 20, 25} -- Altura ajustada
                 Button.Background.Position = {self.X + 10, self.Y + self.ElementY}
                 Button.Background.Color = Colors["ButtonBg"]
                 Button.Background.Filled = true
@@ -542,24 +541,13 @@ function Library:Create(Options)
                 Button.Background.Visible = Window.Enabled
                 Button.Background.zIndex = Window.ZIndex + 5
                 
-                -- Button border
-                Button.Border = Drawing.new("Square")
-                Button.Border.Size = {self.Width - 20, 30}
-                Button.Border.Position = {self.X + 10, self.Y + self.ElementY}
-                Button.Border.Color = Colors["Border"]
-                Button.Border.Filled = false
-                Button.Border.Thickness = 1
-                Button.Border.Transparency = 1
-                Button.Border.Visible = Window.Enabled
-                Button.Border.zIndex = Window.ZIndex + 6
-                
-                -- Button text
+                -- Button text com fonte ajustada
                 Button.Text = Drawing.new("Text")
                 Button.Text.Text = ButtonName
-                Button.Text.Position = {self.X + (self.Width / 2), self.Y + self.ElementY + 8}
+                Button.Text.Position = {self.X + (self.Width / 2), self.Y + self.ElementY + 5} -- Posição ajustada
                 Button.Text.Color = Colors["Text"]
-                Button.Text.Size = 13
-                Button.Text.Font = 2
+                Button.Text.Size = 13 -- Tamanho ajustado
+                Button.Text.Font = 2 -- Fonte mais fina
                 Button.Text.Center = true
                 Button.Text.Transparency = 1
                 Button.Text.Visible = Window.Enabled
@@ -568,7 +556,7 @@ function Library:Create(Options)
                 function Button:UpdatePosition()
                     self.Background.Position = {Section.X + 10, Section.Y + self.Y}
                     self.Border.Position = {Section.X + 10, Section.Y + self.Y}
-                    self.Text.Position = {Section.X + (Section.Width / 2), Section.Y + self.Y + 8}
+                    self.Text.Position = {Section.X + (Section.Width / 2), Section.Y + self.Y + 5}
                 end
 
                 function Button:SetVisibility(Visible)
