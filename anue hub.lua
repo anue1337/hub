@@ -1,1 +1,3746 @@
-local v0={Background={25,25,35},Border={394 -(244 + 60) ,566 -(41 + 435) ,162 + 48 },InnerBg={1160 -(936 + 189) ,1648 -(1565 + 48) ,1183 -(782 + 356) },InnerBg2={312 -(176 + 91) ,66 -21 ,1935 -(157 + 1718) },TitleBg={30,30,141 -101 },Highlight={1128 -(697 + 321) ,110,255},Text={539 -284 ,100 + 155 ,683 -428 },TextSecondary={821 -(602 + 9) ,210,1157 -(245 + 702) },Accent={29 + 61 ,90,210},ButtonNormal={38 + 7 ,45,65},ButtonHover={65,1270 -(902 + 303) ,204 -119 },ButtonPress={1725 -(1121 + 569) ,718 -(483 + 200) ,55},TabActive={70,191 -121 ,200},TabInactive={612 -(334 + 228) ,50,162 -92 }};local v1=findservice(Game,"MouseService");local v2={X=0 -0 ,Y=0 + 0 ,Clicked=false,Pressed=false};local v3={};local v4={};local v5={};local v6={};local v7=true;local v8=false;local v9=false;local v10={x=236 -(141 + 95) ,y=0};local v11=0.95 + 0 ;local v12=0.95 -0 ;local v13=36 -21 ;local v14=5;local v15=nil;local v16=nil;local v17=false;local v18=0;local v19=false;local v20=false;local v21=nil;local v22=94 + 306 ;local v23=821 -521 ;local v24=387 + 163 ;local v25=339 + 311 ;local v26={{name="MM2 ESP SCRIPT",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/severe-mm2/refs/heads/main/v2"))()',author="anue"},{name="CRIMINALITY UI ESP",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/crim.lua"))()',author="anue"},{name="FORSAKEN UI ESP",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/forsaken"))()',author="anue"},{name="BGSI AUTO FARM / RIFTS ESP",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/bgsi"))()',author="anue"},{name="BLOOD DEBT ESP SCRIPT",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/blood-debt/refs/heads/main/ESP"))()',author="anue"},{name="FLEE THE FACILITY",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/flee%20the%20facility"))()',author="anue"},{name="FIVE NIGHTS HUNTED UI",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/FiveNightsHunted"))()',author="anue"},{name="THE WILD WEST ESP",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/wildwest"))()',author="anue"},{name="BLOX FRUITS - FRUIT ESP",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/fruits%20esp"))()',author="anue"},{name="FRONTLINES ESP",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/frontlines"))()',author="anue"},{name="PROJECT REMIX SUPPORT",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/project%20remix"))()',author="anue"},{name="TRIDENT SURVIVAL SUPPORT",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/trident"))()',author="anue"},{name="FRONTLINES SUPPORT (WIP)",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Frontlines%20Support%20WIP"))()',author="anue"},{name="LONE SURVIVAL SUPPORT",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Lone%20Survival%20Support"))()',author="anue"},{name="GUNFIGHT ARENA SUPPORT",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Gunfight%20Arena"))()',author="anue"},{name="SKINWALKERS SUPPORT",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Skinswalkers"))()',author="anue"},{name="RAMPANT REBORN PVP SUPPORT",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Rampant%20Reborn"))()',author="anue"},{name="BOOGA BOOGA ESP",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/booga%20booga"))()',author="anue"}};local v27={{name="DEEPWOKEN ESP",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/deepwoken"))()',author="umwfp"},{name="ARSENAL",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/arsenal"))()',author="roterygoose23"},{name="INF JUMP",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/inf%20jump"))()',author="king bob"},{name="UNIVERSAL MOD CHECKER",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/UNIVERSAL%20MOD%20CHECKER"))()',author="getchildren"},{name="LOCK'S NPC AIMBOT",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/NotLockTheHobo/LocksNpcAimbot/refs/heads/main/games/severe/sv_lna_baseplate.lua"))()',author="lock"},{name="DEAD RAILS ITEM ESP",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Dead%20Rails"))()',author="q379"},{name="BRM5",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/BRM5.lua"))()',author="bernard the butcher"},{name="DEADLINE",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Deadline"))()',author="bernard the butcher"},{name="LONE SURVIVAL",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/LONE%20SURVIVAL"))()',author="shimotvink"},{name="FISCH",loadstring='loadstring(game:HttpGet("https://i-am.injured.lol/p/raw/686nyqgmlq"))()',author="Alex - vantareal"},{name="MTC4 INFINITE MAG AMMO",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/MTC4"))()',author="bernard the butcher"},{name="COUNTER BLOX GUN MODS",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/CounterBlox"))()',author="peke"},{name="AFTERMATH ZOMBIES AIMBOT/ESP",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Aftermath%20Zombies"))()',author="9zs"},{name="DEADLINE SUPPORT",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/Deadline.lua"))()',author="bernard the butcher"},{name="BRM5 SUPPORT",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/BRM5.lua"))()',author="bernard the butcher"},{name="AOT: FREEDOM WAR UI",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/1byp4/Severe/refs/heads/main/AOT%20Freedom%20War.lua"))()',author="1byp4"},{name="DEAD RAILS PARTIAL SUPPORT (ZOMBIES)",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/sen-jp/Severe-Luas/refs/heads/main/Deadrails.lua"))()',author="sen"},{name="JUMPHEIGHT BOOST FOR FF2",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/sen-jp/Severe-Luas/refs/heads/main/FootballFusion2.lua"))()',author="sen"},{name="SCORCHED EARTH SUPPORT",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/ScorchedEarth"))()',author="bernard the butcher"},{name="ARMSOFSOLITAIRE",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/ArmsOfSolitaire"))()',author="bernard the butcher"},{name="POSSESOR SUPPORT",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Possesor"))()',author="Opokeu"},{name="AFTERMATH SUPPORT",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/minions638/severe-lua/refs/heads/main/aftermath.lua"))()',author="umwfp"},{name="RIOTFALL [BETA] SUPPORT",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/sen-jp/Severe-Luas/refs/heads/main/RIOTFALL.lua"))()',author="sen"},{name="RUSH POINT SUPPORT",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/sen-jp/Severe-Luas/refs/heads/main/RushPoint.lua"))()',author="sen"},{name="FRONTLINES SUPPORT",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/sen-jp/Severe-Luas/refs/heads/main/Frontlines.lua"))()',author="sen"},{name="POSSESOR SUPPORT",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Possesor"))()',author="Opokeu"},{name="INVISIBLE CHECK",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/INVISIBLE%20CHECK"))()',author="1byp4"},{name="NPC GAME SUPPORT",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/NPC.lua"))()',author="bernard the butcher"},{name="QUICK SAVE",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Quick%20Save"))()',author="king bob"},{name="THE WILD WEST GAME SUPPORT - PLAYERS AND ANIMALS",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/TheWildWest.lua"))()',author="bernard the butcher"},{name="THE WILD WEST GAME SUPPORT - ORES",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/TheWildWestOres.lua"))()',author="bernard the butcher"},{name="FREECAM",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Freecam"))()',author="x88"},{name="RIVALS GUN ESP",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/lrd14/rivals-testing/refs/heads/main/main.lua"))()',author="bertu"},{name="AOT FW",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/AOT%20FW"))()',author="Pork"}};local v28=1 + 0 ;local v29=1 + 0 ;local v30=1 + 0 ;local v31=542 -(43 + 490) ;local v32=getscreendimensions();local v33=true;local v34=false;local v35=nil;local v36=nil;local v37=nil;local v38=nil;local v39={};v3.Init=function(v85) local v86=733 -(711 + 22) ;local v87;while true do if (v86==(0 -0)) then v87={{name="More Scripts Coming Soon!",loadstring='loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/a"))()',author="o.O"}};v85:CreateFloatingLogo();v85:CreateMainWindow();v85:CreateContentArea();v86=860 -(240 + 619) ;end if (v86==(1 + 2)) then v85:RegisterInputHandlers();v85:HandleButtonInteractions();v85:UpdateLayout();return v85;end if (v86==(2 -0)) then v85:CreateTitleHoverIndicator();if v85.ExpandButton then v85._expandButtonText=v85.ExpandButton.Text;end if v85.CloseButton then v85._closeButtonText=v85.CloseButton.Text;end v85:AddCommunityScripts(v87);v86=1 + 2 ;end if (v86==(1745 -(1344 + 400))) then v85:CreateElementPropertiesTracker();v85:CreateControlButtons();v85:CreateTabsSystem();v85:CreateHelpTexts();v86=407 -(255 + 150) ;end end end;v3.CreateFloatingLogo=function(v88) v37=Drawing.new("Circle");v37.Filled=true;v37.NumSides=24 + 6 ;v37.Radius=14 + 11 ;v37.Position={v32.x/(6 -4) ,506 -(183 + 223) };v37.Color={30,30,27 + 13 };v37.Transparency=0.85;v37.Visible=false;table.insert(v4,v37);v38=Drawing.new("Circle");v38.Filled=false;v38.NumSides=30;v38.Radius=9 + 16 ;v38.Thickness=339 -(10 + 327) ;v38.Position={v32.x/2 ,100};v38.Color=v0.Border;v38.Transparency=338.9 -(118 + 220) ;v38.Visible=false;table.insert(v4,v38);v36=Drawing.new("Image");v36.Url="https://cdn.nest.rip/uploads/17230644-70b2-4de4-aa2b-17e23bc47a8c.png";v36.Size={35,484 -(108 + 341) };v36.Position={(v32.x/2) -(71.5 -54) ,(1593 -(711 + 782)) -(32.5 -15) };v36.Transparency=470 -(270 + 199) ;v36.Visible=false;table.insert(v4,v36);local v110=false;spawn(function() local v598=v88;while v33 do local v709=0;while true do if (v709==(0 + 0)) then if ( not v7 and v36 and v36.Visible) then local v1271=getmouseposition();local v1272=math.sqrt(((v1271.x-v37.Position.x)^(1821 -(580 + 1239))) + ((v1271.y-v37.Position.y)^(5 -3)) )<=v37.Radius ;if (v1272 and  not v110) then v110=true;spawn(function() local v1391=v37.Radius;local v1392=26 + 1 ;local v1393=0.2 + 0 ;local v1394=time();while ((time() -v1394)<v1393) and v33 and v110  do local v1422=0 + 0 ;local v1423;local v1424;local v1425;local v1426;while true do if ((7 -4)==v1422) then v1426=22 + 13 + ((1172 -(645 + 522)) * v1424) ;v36.Size={v1426,v1426};v1422=1794 -(1010 + 780) ;end if (v1422==(4 + 0)) then v36.Position={(v32.x/2) -(v1426/(5 -3)) ,(253 -153) -(v1426/(2 -0)) };wait(0.01);break;end if (v1422==2) then v38.Radius=v1425;v37.Color={(535 -(351 + 154)) + (20 * v1424) ,30 + ((286 -(28 + 238)) * v1424) ,(1599 -(1381 + 178)) + (30 * v1424) };v1422=3;end if (v1422==(0 + 0)) then v1423=(time() -v1394)/v1393 ;v1424=v1423 * (2 -v1423) ;v1422=1;end if (v1422==1) then v1425=v1391 + ((v1392-v1391) * v1424) ;v37.Radius=v1425;v1422=2;end end end end);elseif ( not v1272 and v110) then v110=false;spawn(function() local v1445=0 + 0 ;local v1446;local v1447;local v1448;local v1449;while true do if (v1445==2) then while ((time() -v1449)<v1448) and v33 and  not v110  do local v1551=(time() -v1449)/v1448 ;local v1552=v1551 * ((1 + 1) -v1551) ;local v1553=v1446 + ((v1447-v1446) * v1552) ;v37.Radius=v1553;v38.Radius=v1553;v37.Color={math.max(30,(v37.Color and v37.Color[1 + 0 ] and (v37.Color[1] -(20 * v1552))) or (500 -(381 + 89)) ),math.max(21 + 9 ,(v37.Color and v37.Color[2 -0 ] and (v37.Color[1158 -(1074 + 82) ] -((43 -23) * v1552))) or (1814 -(214 + 1570)) ),math.max(17 + 23 ,(v37.Color and v37.Color[2 + 1 ] and (v37.Color[3] -(30 * v1552))) or (39 + 1) )};local v1557=math.max(137 -102 ,v36.Size.x-(5 * v1552) );v36.Size={v1557,v1557};v36.Position={(v32.x/(5 -3)) -(v1557/(3 -1)) ,(47 + 53) -(v1557/(1 + 1)) };wait(0.01 + 0 );end if  not v110 then v37.Radius=84 -59 ;v38.Radius=2019 -(109 + 1885) ;v37.Color={57 -27 ,856 -(802 + 24) ,50 -10 };v36.Size={27 + 8 ,8 + 27 };v36.Position={(v32.x/(6 -4)) -17.5 ,(41 + 59) -(15.5 + 2) };end break;end if (0==v1445) then v1446=v37.Radius;v1447=19 + 6 ;v1445=1 + 0 ;end if (v1445==(1434 -(797 + 636))) then v1448=0.2 -0 ;v1449=time();v1445=1621 -(1427 + 192) ;end end end);end if (v1272 and isleftclicked()) then v598:ToggleUI();end end wait(0.01 + 0 );break;end end end end);end;v3.CreateMainWindow=function(v111) local v112=0 -0 ;while true do if (v112==(3 + 0)) then v111.TitleBar.Transparency=v11;table.insert(v4,v111.TitleBar);v111.TitleBarAccent=Drawing.new("Square");v111.TitleBarAccent.Filled=true;v111.TitleBarAccent.Visible=true;v111.TitleBarAccent.Size={v111.TitleBar.Size.x,1278 -(316 + 960) };v112=3 + 1 ;end if (v112==4) then v111.TitleBarAccent.Position={v111.TitleBar.Position.x,v111.TitleBar.Position.y + v111.TitleBar.Size.y };v111.TitleBarAccent.Color=v0.Accent;v111.TitleBarAccent.Transparency=v11 * (0.8 -0) ;table.insert(v4,v111.TitleBarAccent);v111.TitleText=Drawing.new("Text");v111.TitleText.Text="";v112=556 -(83 + 468) ;end if (v112==(1811 -(1202 + 604))) then v111.TitleText.Visible=true;v111.TitleText.Color=v0.Highlight;v111.TitleText.Size=83 -65 ;v111.TitleText.Font=7 -2 ;v111.TitleText.Transparency=v12;v111.TitleText.Position={v111.TitleBar.Position.x + (v111.TitleBar.Size.x/(327 -(45 + 280))) ,v111.TitleBar.Position.y + 10 + 0 };v112=6 + 0 ;end if (v112==(4 + 5)) then v111.TitleLogo.Transparency=1 + 0 ;table.insert(v4,v111.TitleLogo);v111.VersionText=Drawing.new("Text");v111.VersionText.Text="v2.0";v111.VersionText.Visible=true;v111.VersionText.Color=v0.TextSecondary;v112=2 + 8 ;end if (v112==(12 -5)) then v111.TitleGlow.Color={v0.Highlight[1] * 0.7 ,v0.Highlight[1 + 1 ] * 0.7 ,v0.Highlight[8 -5 ] * (1034.7 -(125 + 909)) };v111.TitleGlow.Size=18;v111.TitleGlow.Font=1953 -(1096 + 852) ;v111.TitleGlow.Transparency=v12 * (0.6 + 0) ;v111.TitleGlow.Position={v111.TitleBar.Position.x + (v111.TitleBar.Size.x/(2 + 0)) + 1 ,v111.TitleBar.Position.y + (247 -(46 + 190)) };v111.TitleGlow.Center=true;v112=8;end if (v112==(101 -(51 + 44))) then v111.TitleText.Center=true;v111.TitleText.Outline=true;table.insert(v5,v111.TitleText);v111.TitleGlow=Drawing.new("Text");v111.TitleGlow.Text="";v111.TitleGlow.Visible=true;v112=2 + 5 ;end if ((1317 -(1114 + 203))==v112) then v111.MainFrame=Drawing.new("Square");v111.MainFrame.Filled=true;v111.MainFrame.Visible=true;v111.MainFrame.Size={v22,v23};v111.MainFrame.Position={5 + 15 ,(v32.y/(2 + 0)) -(v23/(665 -(174 + 489))) };v111.MainFrame.Color=v0.Background;v112=2 -1 ;end if (v112==(1913 -(830 + 1075))) then table.insert(v5,v111.TitleGlow);v111.TitleLogo=Drawing.new("Image");v111.TitleLogo.Url="https://cdn.nest.rip/uploads/17230644-70b2-4de4-aa2b-17e23bc47a8c.png";v111.TitleLogo.Visible=true;v111.TitleLogo.Size={1289 -(231 + 1038) ,1182 -(171 + 991) };v111.TitleLogo.Position={v111.ContentBg.Position.x + (41 -31) ,v111.ContentBg.Position.y + (14 -8) };v112=8 + 1 ;end if (v112==10) then v111.VersionText.Size=12;v111.VersionText.Font=17 -12 ;v111.VersionText.Transparency=v12 * (0.7 -0) ;v111.VersionText.Position={0 -0 ,0};table.insert(v5,v111.VersionText);break;end if ((160 -(91 + 67))==v112) then v111.TitleBar=Drawing.new("Square");v111.TitleBar.Filled=true;v111.TitleBar.Visible=true;v111.TitleBar.Size={v111.ContentBg.Size.x-(29 -19) ,7 + 19 };v111.TitleBar.Position={v111.ContentBg.Position.x + 5 ,v111.ContentBg.Position.y + 5 };v111.TitleBar.Color=v0.TitleBg;v112=1 + 2 ;end if (v112==(2 -1)) then v111.MainFrame.Transparency=v11;table.insert(v4,v111.MainFrame);v111.BorderFrame=v111:CreateFrame(v111.MainFrame,2 + 0 ,v0.Border);v111.InnerFrame=v111:CreateFrame(v111.BorderFrame,774 -(326 + 445) ,v0.Background);v111.ContentBg=v111:CreateFrame(v111.InnerFrame,13 -10 ,v0.InnerBg);v111:CreateCorners();v112=4 -2 ;end end end;v3.CreateFrame=function(v113,v114,v115,v116) local v117=Drawing.new("Square");v117.Filled=true;v117.Visible=true;v117.Size={v114.Size.x-v115 ,v114.Size.y-v115 };v117.Position={v114.Position.x + (v115/(34 -(19 + 13))) ,v114.Position.y + (v115/(2 -0)) };v117.Color=v116;v117.Transparency=v11;table.insert(v4,v117);return v117;end;v3.CreateCorners=function(v124) local v125=0 -0 ;while true do if (v125==4) then v124.BottomLeft.Position={v124.MainFrame.Position.x-5 ,(v124.MainFrame.Position.y + v124.MainFrame.Size.y) -(8 -3) };v124.BottomLeft.Color=v0.Border;v124.BottomLeft.Transparency=v11 * (0.7 -0) ;table.insert(v4,v124.BottomLeft);v124.BottomRight=Drawing.new("Square");v125=5;end if (v125==3) then table.insert(v4,v124.TopRight);v124.BottomLeft=Drawing.new("Square");v124.BottomLeft.Filled=true;v124.BottomLeft.Visible=true;v124.BottomLeft.Size={20 -10 ,10};v125=7 -3 ;end if (v125==(0 -0)) then v124.TopLeft=Drawing.new("Square");v124.TopLeft.Filled=true;v124.TopLeft.Visible=true;v124.TopLeft.Size={10,6 + 4 };v124.TopLeft.Position={v124.MainFrame.Position.x-5 ,v124.MainFrame.Position.y-5 };v125=1 + 0 ;end if (v125==(1 + 1)) then v124.TopRight.Visible=true;v124.TopRight.Size={1106 -(709 + 387) ,29 -19 };v124.TopRight.Position={(v124.MainFrame.Position.x + v124.MainFrame.Size.x) -5 ,v124.MainFrame.Position.y-(4 + 1) };v124.TopRight.Color=v0.Border;v124.TopRight.Transparency=v11 * (0.7 + 0) ;v125=3 -0 ;end if (v125==6) then v124.BottomRight.Transparency=v11 * (0.7 + 0) ;table.insert(v4,v124.BottomRight);break;end if (v125==5) then v124.BottomRight.Filled=true;v124.BottomRight.Visible=true;v124.BottomRight.Size={10,19 -9 };v124.BottomRight.Position={(v124.MainFrame.Position.x + v124.MainFrame.Size.x) -(1885 -(446 + 1434)) ,(v124.MainFrame.Position.y + v124.MainFrame.Size.y) -(14 -9) };v124.BottomRight.Color=v0.Border;v125=1853 -(559 + 1288) ;end if (v125==1) then v124.TopLeft.Color=v0.Border;v124.TopLeft.Transparency=v11 * (1931.7 -(609 + 1322)) ;table.insert(v4,v124.TopLeft);v124.TopRight=Drawing.new("Square");v124.TopRight.Filled=true;v125=456 -(13 + 441) ;end end end;v3.CreateTabsSystem=function(v126) v126.TabAnueButton=v126:CreateButton({position={v126.ContentBg.Position.x + (39 -24) ,v126.TitleBar.Position.y + v126.TitleBar.Size.y + 1 + 4 },size={43 + 77 ,25},text="Anue Scripts (F1)",textSize=13,color=((v29==(2 -1)) and v0.TabActive) or v0.TabInactive ,hoverColor=v0.ButtonHover,pressColor=v0.ButtonPress,borderColor=((v29==1) and v0.Highlight) or v0.Border ,borderHoverColor=v0.Highlight,visible=false,callback=function() pcall(function() if (v29~=(1 + 0)) then v126:SelectTab(1 -0 );end end);end});v126.TabCommunityButton=v126:CreateButton({position={v126.ContentBg.Position.x + 145 ,v126.TitleBar.Position.y + v126.TitleBar.Size.y + 4 + 1 },size={150,25},text="Community Scripts (F2)",textSize=11 + 2 ,color=((v29==(2 + 0)) and v0.TabActive) or v0.TabInactive ,hoverColor=v0.ButtonHover,pressColor=v0.ButtonPress,borderColor=((v29==(435 -(153 + 280))) and v0.Highlight) or v0.Border ,borderHoverColor=v0.Highlight,visible=false,callback=function() pcall(function() if (v29~=2) then v126:SelectTab(5 -3 );end end);end});v126.TabIndicator=Drawing.new("Square");v126.TabIndicator.Filled=true;v126.TabIndicator.Visible=false;v126.TabIndicator.Size={120,1 + 1 };v126.TabIndicator.Color=v0.Highlight;v126.TabIndicator.Transparency=1 + 0 ;v126.TabIndicator.Position={v126.TabAnueButton.Background.Position.x,v126.TabAnueButton.Background.Position.y + v126.TabAnueButton.Background.Size.y };table.insert(v4,v126.TabIndicator);v126.PageIndicator=Drawing.new("Text");v126.PageIndicator.Text="Page 1/1";v126.PageIndicator.Visible=false;v126.PageIndicator.Center=false;v126.PageIndicator.Color=v0.TextSecondary;v126.PageIndicator.Size=10 + 3 ;v126.PageIndicator.Font=v14;v126.PageIndicator.Transparency=v12;if v126.ContentFrame then v126.PageIndicator.Position={(v126.ContentFrame.Position.x + v126.ContentFrame.Size.x) -(91 -31) ,(v126.ContentFrame.Position.y + v126.ContentFrame.Size.y) -(687 -(89 + 578)) };else v126.PageIndicator.Position={(v126.ContentBg.Position.x + v126.ContentBg.Size.x) -(124 -64) ,(v126.ContentBg.Position.y + v126.ContentBg.Size.y) -(1069 -(572 + 477)) };end table.insert(v5,v126.PageIndicator);v126.PrevPageButton=v126:CreateButton({position={v126.ContentFrame.Position.x + 7 + 3 ,(v126.ContentFrame.Position.y + v126.ContentFrame.Size.y) -(5 + 30) },size={166 -(84 + 2) ,19 + 6 },text="< Prev",textSize=13,color={2 + 38 ,40,1393 -(605 + 728) },hoverColor={133 -73 ,221 -161 ,100},pressColor={83 -53 ,519 -(457 + 32) ,1452 -(832 + 570) },borderColor={16 + 44 ,29 + 31 ,215 -135 },borderHoverColor={1900 -(884 + 916) ,58 + 42 ,853 -(232 + 421) },visible=false,callback=function() pcall(function() if (v30>(1890 -(1569 + 320))) then v30=v30-1 ;v28=1;v126:UpdateVisibility();v126:UpdateScriptPositions();end end);end});v126.NextPageButton=v126:CreateButton({position={(v126.ContentFrame.Position.x + v126.ContentFrame.Size.x) -(23 + 67) ,(v126.ContentFrame.Position.y + v126.ContentFrame.Size.y) -(117 -82) },size={209 -129 ,1478 -(666 + 787) },text="Next >",textSize=13,color={38 + 2 ,63 -23 ,60},hoverColor={183 -123 ,959 -(503 + 396) ,193 -93 },pressColor={16 + 14 ,30,7 + 43 },borderColor={60,136 -76 ,39 + 41 },borderHoverColor={100,13 + 87 ,200},visible=false,callback=function() pcall(function() local v712=1244 -(485 + 759) ;local v713;local v714;while true do if (v712==1) then if (v30<v714) then v30=v30 + 1 ;v28=1;v126:UpdateVisibility();v126:UpdateScriptPositions();end break;end if (v712==0) then v713=((v29==(2 -1)) and v26) or v27 ;v714=math.ceil( #v713/v31 );v712=1190 -(442 + 747) ;end end end);end});end;v3.CreateContentArea=function(v148) v148.ContentFrame=Drawing.new("Square");v148.ContentFrame.Filled=true;v148.ContentFrame.Visible=true;v148.ContentFrame.Size={v148.ContentBg.Size.x-10 ,v148.ContentBg.Size.y-41 };v148.ContentFrame.Position={v148.ContentBg.Position.x + 5 ,v148.TitleBar.Position.y + v148.TitleBar.Size.y + 5 };v148.ContentFrame.Color={21 + 4 ,814 -(766 + 23) ,25};v148.ContentFrame.Transparency=v11;table.insert(v4,v148.ContentFrame);v148.ContentFrameBorder=Drawing.new("Square");v148.ContentFrameBorder.Filled=false;v148.ContentFrameBorder.Visible=true;v148.ContentFrameBorder.Size={v148.ContentFrame.Size.x,v148.ContentFrame.Size.y};v148.ContentFrameBorder.Position={v148.ContentFrame.Position.x,v148.ContentFrame.Position.y};v148.ContentFrameBorder.Color=v0.Border;v148.ContentFrameBorder.Thickness=1;v148.ContentFrameBorder.Transparency=v11 * (0.5 + 0) ;table.insert(v4,v148.ContentFrameBorder);v148.WelcomeDecorTop=Drawing.new("Square");v148.WelcomeDecorTop.Filled=true;v148.WelcomeDecorTop.Visible=true;v148.WelcomeDecorTop.Size={95 + 25 ,916 -(910 + 3) };v148.WelcomeDecorTop.Color=v0.Accent;v148.WelcomeDecorTop.Transparency=v11 * (0.9 -0) ;v148.WelcomeDecorTop.Position={(v148.ContentFrame.Position.x + (v148.ContentFrame.Size.x/(1 + 1))) -60 ,(v148.ContentFrame.Position.y + (v148.ContentFrame.Size.y/2)) -50 };table.insert(v4,v148.WelcomeDecorTop);v148.WelcomeDecorBottom=Drawing.new("Square");v148.WelcomeDecorBottom.Filled=true;v148.WelcomeDecorBottom.Visible=true;v148.WelcomeDecorBottom.Size={43 + 77 ,857 -(174 + 680) };v148.WelcomeDecorBottom.Color=v0.Accent;v148.WelcomeDecorBottom.Transparency=v11 * (0.9 -0) ;v148.WelcomeDecorBottom.Position={(v148.ContentFrame.Position.x + (v148.ContentFrame.Size.x/(2 + 0))) -(799 -(396 + 343)) ,v148.ContentFrame.Position.y + (v148.ContentFrame.Size.y/(1479 -(29 + 1448))) + 30 };table.insert(v4,v148.WelcomeDecorBottom);v148.WelcomeLogo=Drawing.new("Image");v148.WelcomeLogo.Url="https://cdn.nest.rip/uploads/17230644-70b2-4de4-aa2b-17e23bc47a8c.png";v148.WelcomeLogo.Visible=true;v148.WelcomeLogo.Size={70,70};v148.WelcomeLogo.Position={(v148.ContentFrame.Position.x + (v148.ContentFrame.Size.x/(7 -5))) -(163 -128) ,(v148.ContentFrame.Position.y + (v148.ContentFrame.Size.y/(1529 -(389 + 1138)))) -50 };v148.WelcomeLogo.Transparency=575 -(102 + 472) ;table.insert(v4,v148.WelcomeLogo);v148.WelcomeText=Drawing.new("Text");v148.WelcomeText.Text="WELCOME TO ANUE SEVERE HUB";v148.WelcomeText.Visible=true;v148.WelcomeText.Center=true;v148.WelcomeText.Color=v0.Highlight;v148.WelcomeText.Size=v13 + 1 + 0 ;v148.WelcomeText.Font=v14;v148.WelcomeText.Transparency=v12;v148.WelcomeText.Position={v148.ContentFrame.Position.x + (v148.ContentFrame.Size.x/(2 + 0)) ,v148.ContentFrame.Position.y + (v148.ContentFrame.Size.y/2) + (1555 -(320 + 1225)) };v148.WelcomeText.Outline=true;table.insert(v5,v148.WelcomeText);v148.WelcomeVersionText=Drawing.new("Text");v148.WelcomeVersionText.Text="Version 2.0";v148.WelcomeVersionText.Visible=true;v148.WelcomeVersionText.Center=true;v148.WelcomeVersionText.Color={v0.TextSecondary[1 + 0 ] * (1464.8 -(157 + 1307)) ,v0.TextSecondary[2] * (0.8 -0) ,v0.TextSecondary[3] * 0.8 };v148.WelcomeVersionText.Size=v13-(3 -1) ;v148.WelcomeVersionText.Font=v14;v148.WelcomeVersionText.Transparency=v12 * (0.7 + 0) ;v148.WelcomeVersionText.Position={v148.ContentFrame.Position.x + (v148.ContentFrame.Size.x/(4 -2)) ,(v148.ContentFrame.Position.y + v148.ContentFrame.Size.y) -(3 + 37) };table.insert(v5,v148.WelcomeVersionText);v148.EnterButton=v148:CreateButton({position={(v148.ContentFrame.Position.x + (v148.ContentFrame.Size.x/(1 + 1))) -(77 -27) ,(v148.ContentFrame.Position.y + v148.ContentFrame.Size.y) -(22 + 58) },size={462 -(112 + 250) ,10 + 15 },text="ENTER",textSize=34 -20 ,color={21 + 19 ,30 + 10 ,60},hoverColor={45 + 15 ,133 -73 ,100},pressColor={89 -59 ,30,1956 -(1665 + 241) },borderColor={777 -(373 + 344) ,16 + 44 ,135 -55 },borderHoverColor={100,213 -113 ,1 + 199 },visible=false,callback=function() pcall(function() if  not v8 then v148:ToggleExpanded();end end);end});v148.LogoFrame=Drawing.new("Square");v148.LogoFrame.Filled=true;v148.LogoFrame.Visible=false;v148.LogoFrame.Size={v148.ContentBg.Size.x-(1279 -(233 + 1026)) ,30};v148.LogoFrame.Position={v148.ContentBg.Position.x + 10 + 0 ,v148.ContentBg.Position.y + 40 };v148.LogoFrame.Color=v0.InnerBg2;v148.LogoFrame.Transparency=v11 * 0.9 ;table.insert(v4,v148.LogoFrame);v148.LogoBorder=Drawing.new("Square");v148.LogoBorder.Filled=false;v148.LogoBorder.Visible=false;v148.LogoBorder.Size={v148.LogoFrame.Size.x,v148.LogoFrame.Size.y};v148.LogoBorder.Position={v148.LogoFrame.Position.x,v148.LogoFrame.Position.y};v148.LogoBorder.Color=v0.Border;v148.LogoBorder.Thickness=1.5 + 0 ;v148.LogoBorder.Transparency=v11 * (0.9 -0) ;table.insert(v4,v148.LogoBorder);v148.LogoImage=Drawing.new("Image");v148.LogoImage.Url="https://cdn.nest.rip/uploads/17230644-70b2-4de4-aa2b-17e23bc47a8c.png";v148.LogoImage.Visible=false;v148.LogoImage.Size={52 -22 ,12 + 18 };v148.LogoImage.Position={(v148.LogoFrame.Position.x + (v148.LogoFrame.Size.x/(2 + 0))) -15 ,v148.LogoFrame.Position.y};v148.LogoImage.Transparency=1284 -(1035 + 248) ;table.insert(v4,v148.LogoImage);v148.LogoText=Drawing.new("Text");v148.LogoText.Text="ANUE SEVERE HUB";v148.LogoText.Visible=false;v148.LogoText.Center=true;v148.LogoText.Color=v0.Highlight;v148.LogoText.Size=v13 + (24 -(20 + 1)) ;v148.LogoText.Font=v14;v148.LogoText.Transparency=v12;v148.LogoText.Position={v148.LogoFrame.Position.x + (v148.LogoFrame.Size.x/(321 -(134 + 185))) ,(v148.LogoFrame.Position.y + (v148.LogoFrame.Size.y/(687 -(314 + 371)))) -(27 -19) };table.insert(v5,v148.LogoText);v148.SelectionHighlight=Drawing.new("Square");v148.SelectionHighlight.Filled=true;v148.SelectionHighlight.Visible=false;v148.SelectionHighlight.Size={v148.ContentFrame.Size.x-(988 -(478 + 490)) ,45};v148.SelectionHighlight.Color=v0.Highlight;v148.SelectionHighlight.Transparency=0.15;table.insert(v4,v148.SelectionHighlight);v148.ScriptOptions={};v148.AuthorLabels={};v148:CreateScriptOptions();end;v3.CreateScriptOptions=function(v246) local v247=v246.LogoFrame.Position.y + v246.LogoFrame.Size.y + (1187 -(786 + 386)) ;local v248=178 -123 ;for v599,v600 in ipairs(v26) do local v601=Drawing.new("Text");v601.Text=v600.name;v601.Visible=false;v601.Color=v0.Text;v601.Size=v13;v601.Font=v14;v601.Transparency=v12;v601.Position={v246.ContentFrame.Position.x + (1404 -(1055 + 324)) ,v247 + (((v599-(1 + 0))%v31) * v248) };table.insert(v246.ScriptOptions,v601);table.insert(v5,v601);local v611=Drawing.new("Text");v611.Text="by "   .. v600.author ;v611.Visible=false;v611.Color={714 -534 ,512 -332 ,255};v611.Size=v13-(1 + 1) ;v611.Font=v14;v611.Transparency=v12;v611.Position={v246.ContentFrame.Position.x + (103 -73) ,v247 + (((v599-(2 -1))%v31) * v248) + 20 };table.insert(v246.AuthorLabels,v611);table.insert(v5,v611);local v619=v246:CreateButton({position={(v246.ContentFrame.Position.x + v246.ContentFrame.Size.x) -120 ,v247 + (((v599-(2 -1))%v31) * v248) + 5 },size={355 -270 ,40 -15 },text="Execute",textSize=36 -24 ,color={82 + 8 ,90,165 + 45 },hoverColor={110,110,255},pressColor={70,1 + 69 ,180},borderColor={162 -62 ,19 + 81 ,169 + 61 },borderHoverColor={130,432 -302 ,255},visible=false,callback=function() if (v599<= #v26) then v246:ExecuteScript(v26[v599]);end end});v26[v599].ExecuteButton=v619;end local v249= #v26;for v621,v622 in ipairs(v27) do local v623=Drawing.new("Text");v623.Text=v622.name;v623.Visible=false;v623.Color=v0.Text;v623.Size=v13;v623.Font=v14;v623.Transparency=v12;v623.Position={v246.ContentFrame.Position.x + (2018 -(1238 + 755)) ,v247 + (((v621-(1535 -(709 + 825)))%v31) * v248) };table.insert(v246.ScriptOptions,v623);table.insert(v5,v623);local v633=Drawing.new("Text");v633.Text="by "   .. v622.author ;v633.Visible=false;v633.Color={180,180,1119 -(196 + 668) };v633.Size=v13-(7 -5) ;v633.Font=v14;v633.Transparency=v12;v633.Position={v246.ContentFrame.Position.x + (62 -32) ,v247 + (((v621-(834 -(171 + 662)))%v31) * v248) + (113 -(4 + 89)) };table.insert(v246.AuthorLabels,v633);table.insert(v5,v633);local v641=v246:CreateButton({position={(v246.ContentFrame.Position.x + v246.ContentFrame.Size.x) -(44 + 76) ,v247 + (((v621-1)%v31) * v248) + (21 -16) },size={85,1478 -(28 + 1425) },text="Execute",textSize=12,color={87 + 3 ,128 -38 ,507 -(45 + 252) },hoverColor={38 + 72 ,267 -157 ,688 -(114 + 319) },pressColor={100 -30 ,89 -19 ,180},borderColor={64 + 36 ,209 -109 ,1436 -(741 + 465) },borderHoverColor={130,130,135 + 120 },visible=false,callback=function() v246:ExecuteScript(v27[v621]);end});v27[v621].ExecuteButton=v641;end end;v3.CreateHelpTexts=function(v250) v250.GuideTexts={};v250.OpenCloseGuide=Drawing.new("Text");v250.OpenCloseGuide.Text="Press [HOME] to open hub";v250.OpenCloseGuide.Visible=true;v250.OpenCloseGuide.Center=true;v250.OpenCloseGuide.Color={130,108 + 22 ,255};v250.OpenCloseGuide.Size=11 + 5 ;v250.OpenCloseGuide.Font=5;v250.OpenCloseGuide.Transparency=1 + 0 ;v250.OpenCloseGuide.Position={v32.x/(1 + 1) ,9 + 11 };v250.OpenCloseGuide.Outline=true;v250.OpenCloseGuideShadow=Drawing.new("Text");v250.OpenCloseGuideShadow.Text="Press [HOME] to open hub";v250.OpenCloseGuideShadow.Visible=true;v250.OpenCloseGuideShadow.Center=true;v250.OpenCloseGuideShadow.Color={76 -56 ,20,91 -61 };v250.OpenCloseGuideShadow.Size=16;v250.OpenCloseGuideShadow.Font=24 -19 ;v250.OpenCloseGuideShadow.Transparency=1781 -(389 + 1391) ;v250.OpenCloseGuideShadow.Position={(v32.x/2) + 1 ,3 + 17 + 1 };table.insert(v250.GuideTexts,v250.OpenCloseGuideShadow);table.insert(v5,v250.OpenCloseGuideShadow);table.insert(v250.GuideTexts,v250.OpenCloseGuide);table.insert(v5,v250.OpenCloseGuide);v250.ExpandGuide=Drawing.new("Text");v250.ExpandGuide.Text="Press [ENTER] to expand menu";v250.ExpandGuide.Visible=false;v250.ExpandGuide.Center=true;v250.ExpandGuide.Color={295 -165 ,130,251 + 4 };v250.ExpandGuide.Size=327 -(309 + 2) ;v250.ExpandGuide.Font=15 -10 ;v250.ExpandGuide.Transparency=1213 -(1090 + 122) ;v250.ExpandGuide.Position={v32.x/(6 -4) ,31 + 14 };v250.ExpandGuide.Outline=true;v250.ExpandGuideShadow=Drawing.new("Text");v250.ExpandGuideShadow.Text="Press [ENTER] to expand menu";v250.ExpandGuideShadow.Visible=false;v250.ExpandGuideShadow.Center=true;v250.ExpandGuideShadow.Color={4 + 16 ,91 -71 ,804 -(431 + 343) };v250.ExpandGuideShadow.Size=16;v250.ExpandGuideShadow.Font=10 -5 ;v250.ExpandGuideShadow.Transparency=1;v250.ExpandGuideShadow.Position={(v32.x/2) + 1 + 0 ,45 + 1 };table.insert(v250.GuideTexts,v250.ExpandGuideShadow);table.insert(v5,v250.ExpandGuideShadow);table.insert(v250.GuideTexts,v250.ExpandGuide);table.insert(v5,v250.ExpandGuide);v250.NavigationGuide=Drawing.new("Text");v250.NavigationGuide.Text="Use [UP/DOWN] to navigate, [LEFT/RIGHT] to change page, [Y] to select script";v250.NavigationGuide.Visible=false;v250.NavigationGuide.Center=true;v250.NavigationGuide.Color={145 -(6 + 9) ,130,131 + 124 };v250.NavigationGuide.Size=185 -(28 + 141) ;v250.NavigationGuide.Font=2 + 3 ;v250.NavigationGuide.Transparency=1 -0 ;v250.NavigationGuide.Position={v32.x/(1319 -(486 + 831)) ,45};v250.NavigationGuide.Outline=true;v250.NavigationGuideShadow=Drawing.new("Text");v250.NavigationGuideShadow.Text="Use [UP/DOWN] to navigate, [LEFT/RIGHT] to change page, [Y] to select script";v250.NavigationGuideShadow.Visible=false;v250.NavigationGuideShadow.Center=true;v250.NavigationGuideShadow.Color={4 + 16 ,1283 -(668 + 595) ,30};v250.NavigationGuideShadow.Size=4 + 12 ;v250.NavigationGuideShadow.Font=13 -8 ;v250.NavigationGuideShadow.Transparency=291 -(23 + 267) ;v250.NavigationGuideShadow.Position={(v32.x/(389 -(371 + 16))) + (1751 -(1326 + 424)) ,(164 -119) + (119 -(88 + 30)) };table.insert(v250.GuideTexts,v250.NavigationGuideShadow);table.insert(v5,v250.NavigationGuideShadow);table.insert(v250.GuideTexts,v250.NavigationGuide);table.insert(v5,v250.NavigationGuide);end;v3.UpdateCornerPositions=function(v309) local v310=771 -(720 + 51) ;local v311;local v312;local v313;local v314;while true do if (v310==(6 -3)) then v309.BottomLeft.Position={v311-5 ,(v312 + v314) -(3 + 2) };v309.BottomRight.Position={(v311 + v313) -5 ,(v312 + v314) -5 };break;end if (v310==2) then v309.TopLeft.Position={v311-5 ,v312-(7 -2) };v309.TopRight.Position={(v311 + v313) -(2 + 3) ,v312-(7 -2) };v310=788 -(222 + 563) ;end if ((1 -0)==v310) then v313=v309.MainFrame.Size.x;v314=v309.MainFrame.Size.y;v310=2;end if (v310==(0 + 0)) then v311=v309.MainFrame.Position.x;v312=v309.MainFrame.Position.y;v310=1;end end end;v3.UpdateLayout=function(v315) v315.BorderFrame.Position={v315.MainFrame.Position.x + ((1800.5 -(690 + 1108))/(1 + 1)) ,v315.MainFrame.Position.y + ((850.5 -(40 + 808))/(1 + 1)) };v315.InnerFrame.Position={v315.BorderFrame.Position.x + ((11 -8)/(2 + 0)) ,v315.BorderFrame.Position.y + ((2 + 1)/(573 -(47 + 524))) };v315.ContentBg.Position={v315.InnerFrame.Position.x + (3/(5 -3)) ,v315.InnerFrame.Position.y + ((6 -3)/2) };v315.TitleBar.Position={v315.ContentBg.Position.x + (1731 -(1165 + 561)) ,v315.ContentBg.Position.y + 5 };v315.TitleText.Position={v315.TitleBar.Position.x + (v315.TitleBar.Size.x/2) ,v315.TitleBar.Position.y + 4 + 6 };if v315.TitleGlow then v315.TitleGlow.Position={v315.TitleBar.Position.x + (v315.TitleBar.Size.x/(481 -(341 + 138))) + 1 ,v315.TitleBar.Position.y + 3 + 8 };end if v315.TitleLogo then v315.TitleLogo.Position={v315.ContentBg.Position.x + 10 ,v315.ContentBg.Position.y + (19 -13) };end v315.ContentFrame.Position={v315.ContentBg.Position.x + 5 ,v315.TitleBar.Position.y + v315.TitleBar.Size.y + (1225 -(855 + 365)) };v315.WelcomeText.Position={v315.ContentFrame.Position.x + (v315.ContentFrame.Size.x/(1 + 1)) ,v315.ContentFrame.Position.y + (v315.ContentFrame.Size.y/(2 + 0)) + 10 + 0 };if v315.WelcomeVersionText then v315.WelcomeVersionText.Position={v315.ContentFrame.Position.x + (v315.ContentFrame.Size.x/(4 -2)) ,(v315.ContentFrame.Position.y + v315.ContentFrame.Size.y) -40 };end if v315.WelcomeDecorTop then v315.WelcomeDecorTop.Position={(v315.ContentFrame.Position.x + (v315.ContentFrame.Size.x/2)) -(16 + 44) ,(v315.ContentFrame.Position.y + (v315.ContentFrame.Size.y/2)) -(119 -(10 + 59)) };end if v315.WelcomeDecorBottom then v315.WelcomeDecorBottom.Position={(v315.ContentFrame.Position.x + (v315.ContentFrame.Size.x/(1 + 1))) -(295 -235) ,v315.ContentFrame.Position.y + (v315.ContentFrame.Size.y/(1165 -(671 + 492))) + 30 };end if v315.WelcomeLogo then v315.WelcomeLogo.Position={(v315.ContentFrame.Position.x + (v315.ContentFrame.Size.x/2)) -35 ,(v315.ContentFrame.Position.y + (v315.ContentFrame.Size.y/2)) -50 };end if (v8 and v315.TabAnueButton and v315.TabAnueButton.Background) then pcall(function() local v937=1215 -(369 + 846) ;while true do if (v937==1) then v315:UpdateButtonTextPosition(v315.TabAnueButton);v315:UpdateButtonTextPosition(v315.TabCommunityButton);break;end if (v937==0) then v315.TabAnueButton.Background.Position={v315.ContentBg.Position.x + 4 + 11 ,v315.TitleBar.Position.y + v315.TitleBar.Size.y + 5 };v315.TabCommunityButton.Background.Position={v315.ContentBg.Position.x + 124 + 21 ,v315.TitleBar.Position.y + v315.TitleBar.Size.y + 4 + 1 };v937=1 -0 ;end end end);v315.LogoFrame.Position={v315.ContentBg.Position.x + 6 + 4 ,v315.TabAnueButton.Background.Position.y + v315.TabAnueButton.Background.Size.y + (185 -(135 + 40)) };if v315.LogoImage then v315.LogoImage.Position={(v315.LogoFrame.Position.x + (v315.LogoFrame.Size.x/(2 + 0))) -15 ,v315.LogoFrame.Position.y};end v315.LogoText.Position={v315.LogoFrame.Position.x + (v315.LogoFrame.Size.x/2) ,(v315.LogoFrame.Position.y + (v315.LogoFrame.Size.y/(5 -3))) -(2 + 6) };end if (v315.ContentFrame and v315.PageIndicator) then local v723=1413 -(1233 + 180) ;while true do if (v723==1) then if (v315.NextPageButton and v315.NextPageButton.Background) then local v1273=969 -(522 + 447) ;while true do if (v1273==0) then v315.NextPageButton.Background.Position={(v315.ContentFrame.Position.x + v315.ContentFrame.Size.x) -90 ,(v315.ContentFrame.Position.y + v315.ContentFrame.Size.y) -35 };v315:UpdateButtonTextPosition(v315.NextPageButton);break;end end end break;end if (v723==(0 -0)) then v315.PageIndicator.Position={v315.ContentFrame.Position.x + (v315.ContentFrame.Size.x/2) ,(v315.ContentFrame.Position.y + v315.ContentFrame.Size.y) -20 };if (v315.PrevPageButton and v315.PrevPageButton.Background) then local v1274=0;while true do if (v1274==(0 -0)) then v315.PrevPageButton.Background.Position={v315.ContentFrame.Position.x + 1 + 9 ,(v315.ContentFrame.Position.y + v315.ContentFrame.Size.y) -35 };v315:UpdateButtonTextPosition(v315.PrevPageButton);break;end end end v723=504 -(74 + 429) ;end end end v315:UpdateControlButtonsPosition();v315:UpdateCornerPositions();v315:UpdateScriptPositions();if v315.TitleBarAccent then local v724=0 -0 ;while true do if (v724==0) then v315.TitleBarAccent.Position={v315.TitleBar.Position.x,v315.TitleBar.Position.y + v315.TitleBar.Size.y };v315.TitleBarAccent.Size={v315.TitleBar.Size.x,2};break;end end end if v315.ContentFrameBorder then v315.ContentFrameBorder.Position={v315.ContentFrame.Position.x,v315.ContentFrame.Position.y};v315.ContentFrameBorder.Size={v315.ContentFrame.Size.x,v315.ContentFrame.Size.y};end if v8 then if (v315.TabIndicator and v315.TabAnueButton and v315.TabAnueButton.Background and v315.TabCommunityButton and v315.TabCommunityButton.Background) then pcall(function() v315.TabIndicator.Position={((v29==(779 -(454 + 324))) and v315.TabAnueButton.Background.Position.x) or v315.TabCommunityButton.Background.Position.x ,v315.TabAnueButton.Background.Position.y + v315.TabAnueButton.Background.Size.y };v315.TabIndicator.Visible=true;end);end if v315.LogoBorder then v315.LogoBorder.Position={v315.LogoFrame.Position.x,v315.LogoFrame.Position.y};v315.LogoBorder.Size={v315.LogoFrame.Size.x,v315.LogoFrame.Size.y};end end if (v315.EnterButton and v315.EnterButton.Background) then v315.EnterButton.Background.Position={(v315.ContentFrame.Position.x + (v315.ContentFrame.Size.x/2)) -(19 + 31) ,(v315.ContentFrame.Position.y + v315.ContentFrame.Size.y) -(341 -261) };v315:UpdateButtonTextPosition(v315.EnterButton);end end;v3.SelectTab=function(v323,v324) v29=v324;v28=1184 -(1058 + 125) ;v30=1 + 0 ;if (v323.TabAnueButton and v323.TabAnueButton.Background and v323.TabCommunityButton and v323.TabCommunityButton.Background) then local v728=975 -(815 + 160) ;while true do if (v728==(0 -0)) then pcall(function() local v1220=0 -0 ;while true do if (v1220==(0 + 0)) then v323.TabAnueButton.Background.Color=((v29==1) and v0.TabActive) or v0.TabInactive ;v323.TabAnueButton.Border.Color=((v29==(2 -1)) and v0.Highlight) or v0.Border ;break;end end end);pcall(function() v323.TabCommunityButton.Background.Color=((v29==(1900 -(41 + 1857))) and v0.TabActive) or v0.TabInactive ;v323.TabCommunityButton.Border.Color=((v29==(1895 -(1222 + 671))) and v0.Highlight) or v0.Border ;end);v728=2 -1 ;end if (v728==(1 -0)) then if v323.TabIndicator then local v1275=1182 -(229 + 953) ;local v1276;local v1277;local v1278;local v1279;while true do if (v1275==(1774 -(1111 + 663))) then v1276=((v29==1) and v323.TabAnueButton.Background.Position.x) or v323.TabCommunityButton.Background.Position.x ;v1277=v323.TabIndicator.Position.x;v1275=1;end if (1==v1275) then v1278=time();v1279=1579.2 -(874 + 705) ;v1275=1 + 1 ;end if (v1275==2) then spawn(function() local v1427=0 + 0 ;local v1428;while true do if (v1427==0) then v1428=0 -0 ;while (v1428<v1279) and v33  do local v1524=0 + 0 ;local v1525;local v1526;local v1527;local v1528;local v1529;local v1530;while true do if (v1524==1) then v1526=v1525 * (2 -v1525) ;v1527=v1277 + ((v1276-v1277) * v1526) ;v1524=681 -(642 + 37) ;end if (0==v1524) then v1428=time() -v1278 ;v1525=math.min(v1428/v1279 ,1 + 0 );v1524=1 + 0 ;end if (v1524==(7 -4)) then v1529=v323.TabIndicator.Size.x;v1530=v1529 + ((v1528-v1529) * v1526) ;v1524=4;end if (v1524==(458 -(233 + 221))) then v323.TabIndicator.Size={v1530,v323.TabIndicator.Size.y};wait(1541.016 -(718 + 823) );break;end if (v1524==2) then v323.TabIndicator.Position={v1527,v323.TabIndicator.Position.y};v1528=((v29==(2 -1)) and (1345 -(636 + 589))) or (356 -206) ;v1524=5 -2 ;end end end v1427=1 + 0 ;end if (v1427==(1 + 0)) then v323.TabIndicator.Position={v1276,v323.TabIndicator.Position.y};v323.TabIndicator.Size={((v29==(2 -1)) and 120) or 150 ,v323.TabIndicator.Size.y};break;end end end);break;end end end break;end end end v323:UpdateVisibility();v323:UpdateScriptPositions();end;v3.UpdateScriptPositions=function(v325,v326) if  not v8 then return;end local v327=v325.LogoFrame.Position.y + v325.LogoFrame.Size.y + 15 + 0 ;local v328=15 + 40 ;local v329=((v29==1) and v26) or v27 ;local v330=((v30-1) * v31) + 1 ;local v331=math.min((v330 + v31) -1 , #v329);local v332=((v29==1) and 0) or  #v26 ;for v643=v330,v331 do local v644=0 -0 ;local v645;local v646;while true do if (v644==(1833 -(1552 + 280))) then if v325.ScriptOptions[v645] then local v1223=834 -(64 + 770) ;local v1224;while true do if (v1223==1) then v1224=v329[v643];if (v1224 and v1224.ExecuteButton) then local v1429=0 + 0 ;while true do if ((4 -2)==v1429) then v325:UpdateButtonTextPosition(v1224.ExecuteButton);v1224.ExecuteButton.Background.Visible=true;v1224.ExecuteButton.Text.Visible=true;v1224.ExecuteButton.Border.Visible=true;break;end if (v1429==(1 + 0)) then v1224.ExecuteButton.PressColor={1313 -(157 + 1086) ,306 -236 ,180};v1224.ExecuteButton.BorderColor={136 -36 ,199 -99 ,169 + 61 };v1224.ExecuteButton.BorderHoverColor={182 -52 ,130,1114 -(464 + 395) };if v1224.ExecuteButton.Border then v1224.ExecuteButton.Border.Color={256 -156 ,100,1067 -(467 + 370) };end v1429=3 -1 ;end if (v1429==(0 + 0)) then v1224.ExecuteButton.Background.Position={(v325.ContentFrame.Position.x + v325.ContentFrame.Size.x) -(19 + 101) ,v327 + ((v646-(521 -(150 + 370))) * v328) };v1224.ExecuteButton.Background.Color={221 -131 ,90,600 -(14 + 376) };v1224.ExecuteButton.DefaultColor={59 + 31 ,86 + 4 ,158 + 52 };v1224.ExecuteButton.HoverColor={110,188 -(23 + 55) ,171 + 84 };v1429=1 + 0 ;end end end break;end if (v1223==(0 -0)) then v325.ScriptOptions[v645].Position={v325.ContentFrame.Position.x + 25 ,v327 + ((v646-(902 -(652 + 249))) * v328) };if v325.AuthorLabels[v645] then v325.AuthorLabels[v645].Position={v325.ContentFrame.Position.x + (1898 -(708 + 1160)) ,v327 + ((v646-(2 -1)) * v328) + 20 };end v1223=1 -0 ;end end end break;end if (v644==0) then v645=v332 + v643 ;v646=(v643-v330) + (28 -(10 + 17)) ;v644=1 + 0 ;end end end if (v326 or v34) then return;end local v327=v325.LogoFrame.Position.y + v325.LogoFrame.Size.y + (1747 -(1400 + 332)) ;local v333=(v327 + ((v28-1) * v328)) -8 ;v325.SelectionHighlight.Size={v325.ContentFrame.Size.x-20 ,20 + 25 };v325.SelectionHighlight.Position={v325.ContentFrame.Position.x + 10 ,v333};end;v3.UpdateVisibility=function(v336) v336.WelcomeText.Visible= not v8 and v336.MainFrame.Visible ;if v336.WelcomeVersionText then v336.WelcomeVersionText.Visible= not v8 and v336.MainFrame.Visible ;end if v336.WelcomeDecorTop then v336.WelcomeDecorTop.Visible= not v8 and v336.MainFrame.Visible ;end if v336.WelcomeDecorBottom then v336.WelcomeDecorBottom.Visible= not v8 and v336.MainFrame.Visible ;end if v336.WelcomeLogo then v336.WelcomeLogo.Visible= not v8 and v336.MainFrame.Visible ;end v336.TitleText.Visible=v336.MainFrame.Visible;if v336.TitleGlow then v336.TitleGlow.Visible=v336.MainFrame.Visible;end if v336.TitleLogo then v336.TitleLogo.Visible=v336.MainFrame.Visible;end if v336.VersionText then v336.VersionText.Visible=v336.MainFrame.Visible;end if (v336.TabAnueButton and v336.TabCommunityButton) then v336.TabAnueButton.Background.Visible=v8 and v336.MainFrame.Visible ;v336.TabAnueButton.Text.Visible=v8 and v336.MainFrame.Visible ;v336.TabAnueButton.Border.Visible=v8 and v336.MainFrame.Visible ;v336.TabCommunityButton.Background.Visible=v8 and v336.MainFrame.Visible ;v336.TabCommunityButton.Text.Visible=v8 and v336.MainFrame.Visible ;v336.TabCommunityButton.Border.Visible=v8 and v336.MainFrame.Visible ;end v336.LogoFrame.Visible=v8 and v336.MainFrame.Visible ;v336.LogoBorder.Visible=v8 and v336.MainFrame.Visible ;if v336.LogoImage then v336.LogoImage.Visible=false;end v336.LogoText.Visible=v8 and v336.MainFrame.Visible ;v336.PageIndicator.Visible=v8 and v336.MainFrame.Visible ;v336.SelectionHighlight.Visible=v8 and v336.MainFrame.Visible ;v336.TabIndicator.Visible=v8 and v336.MainFrame.Visible ;local v346=((v29==1) and v26) or v27 ;local v347=math.ceil( #v346/v31 );v336.PageIndicator.Text="Page "   .. v30   .. "/"   .. v347 ;v336.PageIndicator.Center=true;local v350=((v30-(941 -(850 + 90))) * v31) + (1 -0) ;local v351=math.min((v350 + v31) -(1391 -(360 + 1030)) , #v346);local v352=((v29==1) and (0 + 0)) or  #v26 ;for v647=1, #v336.ScriptOptions do v336.ScriptOptions[v647].Visible=false;v336.AuthorLabels[v647].Visible=false;end for v650,v651 in ipairs(v26) do if v651.ExecuteButton then v651.ExecuteButton.Background.Visible=false;v651.ExecuteButton.Text.Visible=false;v651.ExecuteButton.Border.Visible=false;end end for v652,v653 in ipairs(v27) do if v653.ExecuteButton then v653.ExecuteButton.Background.Visible=false;v653.ExecuteButton.Text.Visible=false;v653.ExecuteButton.Border.Visible=false;end end if (v8 and v336.MainFrame.Visible) then for v944=v350,v351 do local v945=0;local v946;local v947;local v948;while true do if (v945==(5 -3)) then if (v947 and v947.ExecuteButton) then local v1315=0 -0 ;while true do if (1==v1315) then v947.ExecuteButton.Border.Visible=true;break;end if (v1315==(1661 -(909 + 752))) then v947.ExecuteButton.Background.Visible=true;v947.ExecuteButton.Text.Visible=true;v1315=1224 -(109 + 1114) ;end end end v948=(v944-v350) + 1 ;v945=5 -2 ;end if (v945==(0 + 0)) then v946=v352 + v944 ;v336.ScriptOptions[v946].Visible=true;v945=1;end if (v945==3) then if (v948==v28) then v336.ScriptOptions[v946].Color=v0.Highlight;else v336.ScriptOptions[v946].Color=v0.Text;end break;end if (1==v945) then v336.AuthorLabels[v946].Visible=true;v947=v346[v944];v945=2;end end end end v336.OpenCloseGuide.Text=(v336.MainFrame.Visible and "Press [HOME] to close hub") or "Press [HOME] to open hub" ;if v336.OpenCloseGuideShadow then v336.OpenCloseGuideShadow.Text=v336.OpenCloseGuide.Text;end v336.ExpandGuide.Visible=v336.MainFrame.Visible and  not v8 ;if v336.ExpandGuideShadow then v336.ExpandGuideShadow.Visible=v336.ExpandGuide.Visible;end v336.NavigationGuide.Visible=v336.MainFrame.Visible and v8 ;if v336.NavigationGuideShadow then v336.NavigationGuideShadow.Visible=v336.NavigationGuide.Visible;end if v336.EnterButton then v336.EnterButton.Background.Visible= not v8 and v336.MainFrame.Visible ;v336.EnterButton.Text.Visible= not v8 and v336.MainFrame.Visible ;v336.EnterButton.Border.Visible= not v8 and v336.MainFrame.Visible ;end if (v336.PrevPageButton and v336.NextPageButton) then local v755=((v29==1) and v26) or v27 ;local v756=math.ceil( #v755/v31 );local v757=v8 and v336.MainFrame.Visible and (v756>(243 -(6 + 236))) ;v336.PrevPageButton.Background.Visible=v757;v336.PrevPageButton.Text.Visible=v757;v336.PrevPageButton.Border.Visible=v757;v336.NextPageButton.Background.Visible=v757;v336.NextPageButton.Text.Visible=v757;v336.NextPageButton.Border.Visible=v757;if v757 then local v1087=0;while true do if (v1087==(0 + 0)) then if (v30==(1 + 0)) then v336.PrevPageButton.Background.Color={30,52 -22 ,8 + 37 };v336.PrevPageButton.Text.Color={150,150,80 + 70 };else v336.PrevPageButton.Background.Color={111 -71 ,18 + 22 ,54 + 6 };v336.PrevPageButton.Text.Color=v0.Text;v336.PrevPageButton.DefaultColor={40,123 -83 ,60};end if (v30==v756) then local v1360=0 -0 ;while true do if (v1360==0) then v336.NextPageButton.Background.Color={15 + 15 ,30,87 -42 };v336.NextPageButton.Text.Color={107 + 43 ,872 -(478 + 244) ,150};break;end end else v336.NextPageButton.Background.Color={146 -106 ,8 + 32 ,41 + 19 };v336.NextPageButton.Text.Color=v0.Text;v336.NextPageButton.DefaultColor={1485 -(695 + 750) ,40,241 -181 };end break;end end end end end;v3.ResetToNonExpandedState=function(v356) v8=false;v28=1;v30=352 -(285 + 66) ;v356.MainFrame.Size={v22,v23};v356.BorderFrame.Size={v22-(4.5 -2) ,v23-(1312.5 -(682 + 628)) };v356.InnerFrame.Size={v356.BorderFrame.Size.x-(302 -(176 + 123)) ,v356.BorderFrame.Size.y-(2 + 1) };v356.ContentBg.Size={v356.InnerFrame.Size.x-3 ,v356.InnerFrame.Size.y-(272 -(239 + 30)) };v356.TitleBar.Size={v356.ContentBg.Size.x-(3 + 7) ,35 -15 };v356.ContentFrame.Size={v356.ContentBg.Size.x-10 ,v356.ContentBg.Size.y-(350 -(306 + 9)) };if v356.LogoFrame then v356.LogoFrame.Size={v356.ContentBg.Size.x-(4 + 16) ,15 + 15 };end if (v356.ContentFrame and v356.PageIndicator) then v356.PageIndicator.Position={(v356.ContentFrame.Position.x + v356.ContentFrame.Size.x) -(1435 -(1140 + 235)) ,(v356.ContentFrame.Position.y + v356.ContentFrame.Size.y) -20 };end for v654,v655 in pairs(v4) do if ((v655==v356.MainFrame) or (v655==v356.BorderFrame) or (v655==v356.InnerFrame) or (v655==v356.ContentBg) or (v655==v356.TitleBar) or (v655==v356.ContentFrame)) then v655.Visible=v356.MainFrame.Visible;elseif ((v655==v356.LogoFrame) or (v655==v356.SelectionHighlight)) then v655.Visible=false;end end for v656,v657 in pairs(v5) do if ((v657==v356.TitleText) or (v657==v356.WelcomeText) or (v657==v356.WelcomeVersionText)) then v657.Visible=v356.MainFrame.Visible;elseif ((v657==v356.LogoText) or (v657==v356.PageIndicator)) then v657.Visible=false;end end for v658=1 + 0 , #v356.ScriptOptions do v356.ScriptOptions[v658].Visible=false;v356.AuthorLabels[v658].Visible=false;end for v661,v662 in ipairs(v26) do if v662.ExecuteButton then local v953=0;while true do if (v953==0) then v662.ExecuteButton.Background.Visible=false;v662.ExecuteButton.Text.Visible=false;v953=1 + 0 ;end if (v953==(53 -(33 + 19))) then v662.ExecuteButton.Border.Visible=false;break;end end end end for v663,v664 in ipairs(v27) do if v664.ExecuteButton then local v954=0;while true do if (v954==0) then v664.ExecuteButton.Background.Visible=false;v664.ExecuteButton.Text.Visible=false;v954=1 + 0 ;end if ((2 -1)==v954) then v664.ExecuteButton.Border.Visible=false;break;end end end end if v356.LogoBorder then v356.LogoBorder.Visible=false;end if v356.TabIndicator then v356.TabIndicator.Visible=false;end v356:UpdateLayout();v356:UpdateVisibility();if v356.PrevPageButton then local v768=0 + 0 ;while true do if ((0 -0)==v768) then v356.PrevPageButton.Background.Visible=false;v356.PrevPageButton.Text.Visible=false;v768=1;end if (v768==(1 + 0)) then v356.PrevPageButton.Border.Visible=false;break;end end end if v356.NextPageButton then v356.NextPageButton.Background.Visible=false;v356.NextPageButton.Text.Visible=false;v356.NextPageButton.Border.Visible=false;end end;v3.ToggleUI=function(v363) local v364=v7;v7= not v7;if v36 then v36.Visible= not v7;end if v37 then v37.Visible= not v7;end if v38 then v38.Visible= not v7;end if v7 then local v775={v22,v23};if v8 then v775={v24,v25};end v363.MainFrame.Size={v775[1489 -(1309 + 179) ] * (0.9 -0) ,v775[1 + 1 ] * (0.9 -0) };v363.MainFrame.Visible=true;v363.MainFrame.Transparency=0 + 0 ;spawn(function() local v955=0.4 -0 ;local v956=time();local v957=0 -0 ;while (v957<v955) and v33  do local v1088=609 -(295 + 314) ;local v1089;local v1090;local v1091;while true do if (v1088==1) then v1090=nil;if (v1089<(0.7 -0)) then v1090=(1962.9 -(1300 + 662)) + ((1.05 -0.9) * (v1089/0.7)) ;else local v1365=(v1089-(0.7 -0))/(1755.3 -(1178 + 577)) ;v1090=(1.05 + 0) -(((2.05 -1) -1) * v1365) ;end v1088=1407 -(851 + 554) ;end if ((0 + 0)==v1088) then v957=time() -v956 ;v1089=math.min(v957/v955 ,1);v1088=1;end if (v1088==(5 -3)) then v1091=math.min(v1089 * (3 -1) ,303 -(115 + 187) );v363.MainFrame.Size={v775[1] * v1090 ,v775[2 + 0 ] * v1090 };v1088=3;end if (v1088==(11 -8)) then v363.MainFrame.Transparency=v11 * v1091 ;v363:UpdateLayout();v1088=4;end if (v1088==(1165 -(160 + 1001))) then wait(0.016);break;end end end v363.MainFrame.Size=v775;v363.MainFrame.Transparency=v11;v363:UpdateLayout();end);for v960,v961 in pairs(v4) do if ((v961~=v36) and (v961~=v37) and (v961~=v38)) then local v1186=0;while true do if (v1186==(0 + 0)) then v961.Visible=true;if (v961.Transparency~=nil) then local v1398=0 + 0 ;local v1399;while true do if ((0 -0)==v1398) then v1399=v961.Transparency;v961.Transparency=358 -(237 + 121) ;v1398=898 -(525 + 372) ;end if (v1398==(1 -0)) then v363:AnimateTransparency(v961,0 -0 ,v1399,0.3);break;end end end break;end end end end for v962,v963 in pairs(v5) do if  not table.find(v363.GuideTexts,v963) then v963.Visible=true;if (v963.Transparency~=nil) then local v1282=0;local v1283;while true do if (v1282==(143 -(96 + 46))) then v363:AnimateTransparency(v963,777 -(643 + 134) ,v1283,0.3);break;end if (v1282==0) then v1283=v963.Transparency;v963.Transparency=0 + 0 ;v1282=2 -1 ;end end end end end if v363.TitleText then v363.TitleText.Visible=true;end if v363.TitleLogo then v363.TitleLogo.Visible=true;v363.TitleLogo.Size={24 + 1 ,51 -26 };v363.TitleLogo.Transparency=0;spawn(function() local v1188=719.4 -(316 + 403) ;local v1189=time();local v1190=0;while (v1190<v1188) and v33  do v1190=time() -v1189 ;local v1234=math.min(v1190/v1188 ,1 + 0 );local v1235=v1234 * (2 -v1234) ;local v1236=(68 -43) -(((10 + 15) -(50 -30)) * v1235) ;v363.TitleLogo.Size={v1236,v1236};v363.TitleLogo.Transparency=v1234;wait(0.016);end v363.TitleLogo.Size={7 + 13 ,20};v363.TitleLogo.Transparency=1;end);end if v363.CloseButton then v363.CloseButton.Background.Visible=true;v363.CloseButton.Text.Visible=true;v363.CloseButton.Border.Visible=true;end if v363.ExpandButton then v363.ExpandButton.Background.Visible=true;v363.ExpandButton.Text.Visible=true;v363.ExpandButton.Border.Visible=true;end v363:UpdateVisibility();if  not v8 then if v363.WelcomeDecorTop then local v1239=0;local v1240;while true do if (v1239==0) then v1240=v363.WelcomeDecorTop.Size.x;v363.WelcomeDecorTop.Size={0,5 -2 };v1239=1 + 0 ;end if (v1239==(1 -0)) then spawn(function() local v1401=0 + 0 ;local v1402;local v1403;while true do if (v1401==(0 -0)) then v1402=17.6 -(12 + 5) ;v1403=time();v1401=3 -2 ;end if (v1401==(1 -0)) then while ((time() -v1403)<v1402) and v33  do local v1499=0 -0 ;local v1500;local v1501;while true do if (v1499==(0 -0)) then v1500=(time() -v1403)/v1402 ;v1501=v1500 * ((1 + 1) -v1500) ;v1499=1;end if (v1499==(1974 -(1656 + 317))) then v363.WelcomeDecorTop.Size={v1240 * v1501 ,3 + 0 };wait(0.016 -0 );break;end end end v363.WelcomeDecorTop.Size={v1240,14 -11 };break;end end end);break;end end end if v363.WelcomeDecorBottom then local v1241=1271 -(266 + 1005) ;local v1242;while true do if (1==v1241) then spawn(function() local v1404=0.6 + 0 ;local v1405=time();while ((time() -v1405)<v1404) and v33  do local v1434=(time() -v1405)/v1404 ;local v1435=v1434 * (2 -v1434) ;v363.WelcomeDecorBottom.Size={v1242 * v1435 ,1699 -(561 + 1135) };wait(0.016 -0 );end v363.WelcomeDecorBottom.Size={v1242,3};end);break;end if ((0 -0)==v1241) then v1242=v363.WelcomeDecorBottom.Size.x;v363.WelcomeDecorBottom.Size={388 -(212 + 176) ,8 -5 };v1241=1;end end end if v363.WelcomeLogo then v363.WelcomeLogo.Transparency=0;spawn(function() local v1284=0.8 -0 ;local v1285=time();while ((time() -v1285)<v1284) and v33  do local v1321=(time() -v1285)/v1284 ;local v1322=v1321;v363.WelcomeLogo.Transparency=v1322;wait(0.016);end v363.WelcomeLogo.Transparency=1 -0 ;end);end if (v363.EnterButton and v363.EnterButton.Background) then local v1244=0;local v1245;while true do if (v1244==1) then v363:UpdateButtonTextPosition(v363.EnterButton);spawn(function() local v1407=0;local v1408;local v1409;while true do if (v1407==2) then v363:UpdateButtonTextPosition(v363.EnterButton);break;end if (v1407==(1957 -(1869 + 87))) then while ((time() -v1409)<v1408) and v33  do local v1502=(time() -v1409)/v1408 ;local v1503=v1502 * (2 -v1502) ;local v1504=v1245 + (20 * ((3 -2) -v1503)) ;v363.EnterButton.Background.Position={v363.EnterButton.Background.Position.x,v1504};v363:UpdateButtonTextPosition(v363.EnterButton);wait(0.016 -0 );end v363.EnterButton.Background.Position={v363.EnterButton.Background.Position.x,v1245};v1407=5 -3 ;end if (v1407==(0 + 0)) then v1408=0.5 -0 ;v1409=time();v1407=1 + 0 ;end end end);break;end if (v1244==(0 + 0)) then v1245=v363.EnterButton.Background.Position.y;v363.EnterButton.Background.Position={v363.EnterButton.Background.Position.x,v1245 + 20 };v1244=1 + 0 ;end end end end else if (v36 and v37) then local v1102=0;local v1103;local v1104;local v1105;local v1106;while true do if (v1102==(896 -(557 + 338))) then v37.Visible=true;v36.Visible=true;v1102=2;end if (v1102==(1 + 1)) then if v38 then v38.Position={v32.x/(6 -4) ,215 -115 };v38.Visible=true;end v1103=801 -(499 + 302) ;v1102=3;end if (v1102==(869 -(39 + 827))) then v1104=68 -43 ;v1105=time();v1102=8 -4 ;end if (4==v1102) then v1106=0.4 -0 ;spawn(function() local v1324=0 -0 ;while true do if (v1324==(0 + 0)) then while ((time() -v1105)<v1106) and v33 and  not v7  do local v1452=0 -0 ;local v1453;local v1454;local v1455;local v1456;while true do if (v1452==(1 + 0)) then v37.Radius=v1455;if v38 then v38.Radius=v1455;v38.Transparency=v1454 * (0.9 -0) ;end if (v37.Radius~=nil) then v37.Transparency=v1454 * (104.85 -(103 + 1)) ;end v1452=556 -(475 + 79) ;end if (v1452==(6 -3)) then v36.Transparency=v1454;wait(0.016);break;end if (v1452==(6 -4)) then v1456=v1455 * (1.4 + 0) ;v36.Size={v1456,v1456};v36.Position={(v32.x/2) -(v1456/2) ,(44 + 56) -(v1456/(1 + 1)) };v1452=3;end if (v1452==(319 -(27 + 292))) then v1453=(time() -v1105)/v1106 ;v1454=v1453 * ((5 -3) -v1453) ;v1455=v1103 + ((v1104-v1103) * v1454) ;v1452=1 -0 ;end end end if  not v7 then v37.Radius=v1104;v37.Transparency=0.85 -0 ;if v38 then local v1535=0;while true do if (v1535==(0 -0)) then v38.Radius=v1104;v38.Transparency=0.9 -0 ;break;end end end v36.Size={35,79 -44 };v36.Position={(v32.x/(1 + 1)) -(33.5 -16) ,100 -17.5 };v36.Transparency=1;end break;end end end);break;end if (v1102==(0 -0)) then v37.Position={v32.x/2 ,8 + 92 };v36.Position={(v32.x/2) -(1768.5 -(1414 + 337)) ,100 -17.5 };v1102=1;end end end local v779=0.4 -0 ;local v780=time();local v781={};local v782={v363.MainFrame.Size.x,v363.MainFrame.Size.y};for v964,v965 in pairs(v6) do pcall(function() local v1107=0 -0 ;while true do if ((1 + 0)==v1107) then v965.Border.Visible=false;break;end if (v1107==(0 + 0)) then v965.Background.Visible=false;v965.Text.Visible=false;v1107=973 -(357 + 615) ;end end end);end for v966,v967 in ipairs(v26) do if v967.ExecuteButton then pcall(function() local v1246=0;while true do if (v1246==(0 + 0)) then v967.ExecuteButton.Background.Visible=false;v967.ExecuteButton.Text.Visible=false;v1246=2 -1 ;end if (v1246==(1 + 0)) then v967.ExecuteButton.Border.Visible=false;break;end end end);end end for v968,v969 in ipairs(v27) do if v969.ExecuteButton then pcall(function() local v1247=0;while true do if (v1247==(2 -1)) then v969.ExecuteButton.Border.Visible=false;break;end if (v1247==0) then v969.ExecuteButton.Background.Visible=false;v969.ExecuteButton.Text.Visible=false;v1247=1;end end end);end end for v970,v971 in pairs(v4) do if ((v971.Transparency~=nil) and (v971~=v36) and (v971~=v37) and (v971~=v38)) then v781[v971]=v971.Transparency;end end for v972,v973 in pairs(v5) do if ( not table.find(v363.GuideTexts,v973) and (v973.Transparency~=nil)) then v781[v973]=v973.Transparency;end end spawn(function() local v974=0 + 0 ;while (v974<v779) and v33  do local v1108=0 + 0 ;local v1109;local v1110;local v1111;while true do if (3==v1108) then v363:UpdateLayout();wait(0.016);break;end if (v1108==(1 + 0)) then v1110=(1302 -(384 + 917)) -v1109 ;v1111=(698 -(128 + 569)) -(v1109 * (1543.1 -(1407 + 136))) ;v1108=2;end if (v1108==(1889 -(687 + 1200))) then for v1325,v1326 in pairs(v781) do if (v1325.Transparency~=nil) then v1325.Transparency=v1326 * v1110 ;end end v363.MainFrame.Size={v782[3 -2 ] * v1111 ,v782[97 -(9 + 86) ] * v1111 };v1108=3;end if (v1108==(421 -(275 + 146))) then v974=time() -v780 ;v1109=math.min(v974/v779 ,1 + 0 );v1108=1;end end end for v1112,v1113 in pairs(v4) do if ((v1113~=v36) and (v1113~=v37) and (v1113~=v38)) then v1113.Visible=false;end end for v1114,v1115 in pairs(v5) do if  not table.find(v363.GuideTexts,v1115) then v1115.Visible=false;end end for v1116,v1117 in pairs(v781) do if (v1116.Transparency~=nil) then v1116.Transparency=v1117;end end v363:ResetToNonExpandedState();end);end v363.OpenCloseGuide.Text=(v7 and "Press [HOME] to close hub") or "Press [HOME] to open hub" ;if v363.OpenCloseGuideShadow then v363.OpenCloseGuideShadow.Text=v363.OpenCloseGuide.Text;end v363.ExpandGuide.Visible=v363.MainFrame.Visible and  not v8 ;if v363.ExpandGuideShadow then v363.ExpandGuideShadow.Visible=v363.ExpandGuide.Visible;end v363.NavigationGuide.Visible=v363.MainFrame.Visible and v8 ;if v363.NavigationGuideShadow then v363.NavigationGuideShadow.Visible=v363.NavigationGuide.Visible;end end;v3.ToggleExpanded=function(v368) v8= not v8;if v368._expandButtonText then pcall(function() v368._expandButtonText.Text=(v8 and "-") or "+" ;end);elseif (v368.ExpandButton and v368.ExpandButton.Text) then pcall(function() v368.ExpandButton.Text.Text=(v8 and "-") or "+" ;end);end v368:AnimateResize(v8);end;v3.ExecuteScript=function(v369,v370) local v371=64 -(29 + 35) ;while true do if (v371==(0 -0)) then if v19 then local v1198=0;while true do if (v1198==(0 -0)) then v369:ShowCooldownNotification();return;end end end v369:ShowConfirmationDialog(v370);break;end end end;v3.ShowConfirmationDialog=function(v372,v373) local v374=0 -0 ;local v375;local v376;local v377;local v378;local v379;local v380;while true do if (v374==(6 + 2)) then v379.Center=true;v379.Color=v0.Text;v379.Size=v13;v379.Font=v14;v379.Transparency=v12;v379.Position={v32.x/(410 -(312 + 96)) ,(v32.y/(287 -(147 + 138))) -40 };v374=908 -(813 + 86) ;end if (v374==(0 + 0)) then if v20 then return;end v20=true;v21=v373;for v1118,v1119 in ipairs(v39) do pcall(function() if v1119 then local v1295=0 -0 ;while true do if (v1295==0) then v1119.Visible=false;v1119:Remove();break;end end end end);end v39={};v375=Drawing.new("Square");v374=1;end if (v374==(497 -(18 + 474))) then v377.Transparency=0.95 + 0 ;table.insert(v39,v377);v372.ConfirmBorder=v377;v378=Drawing.new("Text");v378.Text="Confirm Execution";v378.Visible=true;v374=6;end if (v374==(35 -24)) then v372.ConfirmAuthor=v380;v372.ConfirmYesButton=v372:CreateButton({position={(v32.x/2) -(413 -(121 + 182)) ,(v32.y/(1 + 1)) + (1270 -(988 + 252)) },size={32 + 68 ,2005 -(49 + 1921) },text="Yes",textSize=16,font=v14,color={960 -(223 + 667) ,120,120 -50 },hoverColor={1215 -(146 + 979) ,46 + 114 ,90},pressColor={50,43 + 57 ,50},borderColor={1458 -(1233 + 125) ,170,19 + 81 },borderHoverColor={101 + 19 ,135 + 65 ,120},visible=true,callback=function() local v1120=0 + 0 ;while true do if (v1120==(0 -0)) then v372:CloseConfirmationDialog();v372:ActuallyExecuteScript(v373);break;end end end});if v372.ConfirmYesButton then local v1199=0;while true do if (v1199==0) then if v372.ConfirmYesButton.Background then table.insert(v39,v372.ConfirmYesButton.Background);end if v372.ConfirmYesButton.Text then table.insert(v39,v372.ConfirmYesButton.Text);end v1199=1 + 0 ;end if (v1199==(1 + 0)) then if v372.ConfirmYesButton.Border then table.insert(v39,v372.ConfirmYesButton.Border);end break;end end end v372.ConfirmNoButton=v372:CreateButton({position={(v32.x/(2 + 0)) + (15 -5) ,(v32.y/2) + (194 -(149 + 15)) },size={100,35},text="No",textSize=133 -(39 + 78) ,font=v14,color={263 -143 ,37 + 33 ,15 + 55 },hoverColor={42 + 118 ,89 + 1 ,3 + 87 },pressColor={94 + 6 ,154 -104 ,178 -128 },borderColor={90 + 80 ,67 + 33 ,483 -383 },borderHoverColor={1910 -(1596 + 114) ,313 -193 ,120},visible=true,callback=function() v372:CloseConfirmationDialog();end});if v372.ConfirmNoButton then if v372.ConfirmNoButton.Background then table.insert(v39,v372.ConfirmNoButton.Background);end if v372.ConfirmNoButton.Text then table.insert(v39,v372.ConfirmNoButton.Text);end if v372.ConfirmNoButton.Border then table.insert(v39,v372.ConfirmNoButton.Border);end end break;end if ((1448 -(1059 + 379))==v374) then v380.Color={223 -43 ,31 + 149 ,255};v380.Size=v13-(394 -(145 + 247)) ;v380.Font=v14;v380.Transparency=v12;v380.Position={v32.x/2 ,(v32.y/(5 -3)) -(2 + 8) };table.insert(v39,v380);v374=10 + 1 ;end if (v374==6) then v378.Center=true;v378.Color=v0.Highlight;v378.Size=v13 + (2 -0) ;v378.Font=v14;v378.Transparency=v12;v378.Position={v32.x/2 ,(v32.y/(5 -3)) -(713 -(294 + 334)) };v374=260 -(236 + 17) ;end if ((4 + 3)==v374) then v378.Outline=true;table.insert(v39,v378);v372.ConfirmTitle=v378;v379=Drawing.new("Text");v379.Text='Are you sure you want to execute\n\"'   .. v373.name   .. '\"?' ;v379.Visible=true;v374=7 + 1 ;end if (v374==(33 -24)) then table.insert(v39,v379);v372.ConfirmMessage=v379;v380=Drawing.new("Text");v380.Text="by: "   .. v373.author ;v380.Visible=true;v380.Center=true;v374=10;end if ((14 -11)==v374) then v376.Position={(v32.x/(2 + 0)) -200 ,(v32.y/2) -(83 + 17) };v376.Color=v0.Background;v376.Transparency=794.95 -(413 + 381) ;table.insert(v39,v376);v372.ConfirmWindow=v376;v377=Drawing.new("Square");v374=1 + 3 ;end if (v374==(3 -1)) then table.insert(v39,v375);v372.ConfirmOverlay=v375;v376=Drawing.new("Square");v376.Filled=true;v376.Visible=true;v376.Size={2370 -(582 + 1388) ,144 + 56 };v374=367 -(326 + 38) ;end if (4==v374) then v377.Filled=false;v377.Visible=true;v377.Size={400,285 -85 };v377.Position={(v32.x/(622 -(47 + 573))) -(71 + 129) ,(v32.y/(2 -0)) -100 };v377.Color=v0.Border;v372:SafeSetThickness(v377,1666 -(1269 + 395) );v374=497 -(76 + 416) ;end if (1==v374) then v375.Filled=true;v375.Visible=true;v375.Size={v32.x,v32.y};v375.Position={1007 -(564 + 443) ,0};v375.Color={29 -19 ,1921 -(1261 + 650) ,7 + 8 };v375.Transparency=0.7;v374=2 -0 ;end end end;v3.CloseConfirmationDialog=function(v381) local v382=1817 -(772 + 1045) ;local v383;while true do if (v382==2) then for v1121,v1122 in ipairs(v383) do if v1122 then pcall(function() v1122:Remove();end);end end v381.ConfirmOverlay=nil;v381.ConfirmWindow=nil;v382=3;end if (v382==(1 + 2)) then v381.ConfirmBorder=nil;v381.ConfirmTitle=nil;v381.ConfirmMessage=nil;v382=4;end if (v382==(148 -(102 + 42))) then v381.ConfirmAuthor=nil;if v381.ConfirmYesButton then local v1200=0;while true do if ((1845 -(1524 + 320))==v1200) then v381.ConfirmYesButton.Border=nil;v381.ConfirmYesButton=nil;break;end if (0==v1200) then v381.ConfirmYesButton.Background=nil;v381.ConfirmYesButton.Text=nil;v1200=1;end end end if v381.ConfirmNoButton then local v1201=0;while true do if (v1201==(1270 -(1049 + 221))) then v381.ConfirmNoButton.Background=nil;v381.ConfirmNoButton.Text=nil;v1201=1;end if (v1201==(157 -(18 + 138))) then v381.ConfirmNoButton.Border=nil;v381.ConfirmNoButton=nil;break;end end end v382=5;end if (v382==(12 -7)) then v39={};break;end if (v382==(1103 -(67 + 1035))) then for v1123,v1124 in ipairs(v39) do if v1124 then table.insert(v383,v1124);end end for v1125,v1126 in ipairs(v383) do if v1126 then pcall(function() v1126.Visible=false;end);end end wait(0.05);v382=350 -(136 + 212) ;end if (v382==0) then v20=false;v21=nil;v383={};v382=1;end end end;v3.ActuallyExecuteScript=function(v384,v385) SET_SCHEDULER_TIMEOUT(false);local v386=v385.loadstring;local v387={};local v388=Drawing.new("Square");v388.Filled=true;v388.Visible=true;v388.Size={v32.x,v32.y};v388.Position={0 + 0 ,1082 -(1050 + 32) };v388.Color={6 + 4 ,10,659 -(269 + 375) };v388.Transparency=725.7 -(267 + 458) ;table.insert(v387,v388);local v395=Drawing.new("Square");v395.Filled=true;v395.Visible=true;v395.Size={400,346 -166 };v395.Position={(v32.x/(1499 -(1410 + 87))) -(2097 -(1504 + 393)) ,(v32.y/(5 -3)) -(886 -(461 + 335)) };v395.Color=v0.Background;v395.Transparency=0.95 + 0 ;table.insert(v387,v395);local v403=Drawing.new("Text");v403.Text="5";v403.Visible=true;v403.Center=true;v403.Color=v0.Accent;v403.Size=v13 + 8 ;v403.Font=v14;v403.Position={v32.x/(1669 -(728 + 939)) ,v395.Position.y + (121 -61) };v403.Outline=true;table.insert(v387,v403);local v413=Drawing.new("Square");v413.Filled=true;v413.Visible=true;v413.Size={1368 -(138 + 930) ,8 + 2 };v413.Position={(v32.x/(8 -6)) -(1916 -(459 + 1307)) ,v403.Position.y + (69 -29) };v413.Color=v0.InnerBg2;v413.Transparency=0.9 + 0 ;table.insert(v387,v413);local v421=Drawing.new("Square");v421.Filled=true;v421.Visible=true;v421.Size={0 -0 ,2 + 8 };v421.Position={(v32.x/(8 -6)) -150 ,v403.Position.y + 35 + 5 };v421.Color=v0.Accent;v421.Transparency=0.9;table.insert(v387,v421);for v665=1424 -(374 + 1045) ,1, -1 do local v666=0 + 0 ;while true do if (v666==0) then v403.Text=tostring(v665);v421.Size={300 * ((5 -v665)/(643 -(448 + 190))) ,4 + 6 };v666=1 + 0 ;end if (v666==(1 + 0)) then wait(3 -2 );break;end end end v403.Text="Cleaning...";v421.Size={1794 -(1307 + 187) ,10};v421.Color={117 -67 ,613 -413 ,48 + 2 };v33=false;v7=false;v8=false;v9=false;v34=false;v17=false;v4={};v5={};v6={};v387={};v384.MainFrame=nil;v384.ContentFrame=nil;v384.LogoFrame=nil;setmetatable(v384,nil);Drawing.clear();wait(0.1 + 0 );SET_SCHEDULER_TIMEOUT(true);loadstring(v386)();spawn(function() wait(5);v19=false;end);end;v3.ShowCooldownNotification=function(v431) local v432={};local v433=Drawing.new("Square");v433.Filled=true;v433.Visible=true;v433.Size={v32.x,v32.y};v433.Position={36 -(13 + 23) ,0 -0 };v433.Color={10,35 -25 ,10 + 5 };v433.Transparency=0.5;table.insert(v432,v433);local v440=Drawing.new("Square");v440.Filled=true;v440.Visible=true;v440.Size={341 + 59 ,442 -322 };v440.Position={(v32.x/2) -200 ,(v32.y/(4 -2)) -(151 -91) };v440.Color=v0.Background;v440.Transparency=0.95 -0 ;table.insert(v432,v440);local v448=Drawing.new("Square");v448.Filled=false;v448.Visible=true;v448.Size=v440.Size;v448.Position=v440.Position;v448.Color=v0.Border;v431:SafeSetThickness(v448,2 + 0 );v448.Transparency=0.95 + 0 ;table.insert(v432,v448);local v456=Drawing.new("Text");v456.Text="Cooldown Notice";v456.Visible=true;v456.Center=true;v456.Color=v0.Highlight;v456.Size=v13 + (7 -5) ;v456.Font=v14;v456.Transparency=v12;v456.Position={v32.x/(2 + 0) ,v440.Position.y + 20 };v456.Outline=true;table.insert(v432,v456);local v467=Drawing.new("Text");v467.Text="Please wait 5 seconds to execute another script";v467.Visible=true;v467.Center=true;v467.Color=v0.TextSecondary;v467.Size=v13;v467.Font=v14;v467.Position={v32.x/2 ,v440.Position.y + (169 -109) };v467.Outline=true;table.insert(v432,v467);local v477=Drawing.new("Circle");v477.Filled=false;v477.Visible=true;v477.Position={(v32.x/(3 -1)) -130 ,v440.Position.y + (562 -(444 + 58)) };v477.Radius=10;v477.NumSides=9 + 11 ;v477.Color={98 + 102 ,1832 -(64 + 1668) ,2073 -(1227 + 746) };v431:SafeSetThickness(v477,5 -3 );v477.Transparency=0.9 -0 ;table.insert(v432,v477);local v485=true;spawn(function() local v667=time();local v668=496 -(415 + 79) ;for v789=1,1 + 9  do if ( not v485 or  not v33) then break;end local v790=v789/10 ;for v1037,v1038 in ipairs(v432) do pcall(function() v1038.Transparency=v1038.Transparency * v790 ;end);end wait(491.01 -(142 + 349) );end for v791=1 + 0 ,v668 * 10  do if ( not v485 or  not v33) then break;end wait(0.1 -0 );end for v792=10,1 + 0 , -(1 + 0) do if ( not v485 or  not v33) then break;end local v793=v792/10 ;for v1039,v1040 in ipairs(v432) do pcall(function() v1040.Transparency=v1040.Transparency * v793 ;end);end wait(0.01 -0 );end for v794,v795 in ipairs(v432) do pcall(function() v795.Visible=false;v795:Remove();end);end table.clear(v432);v485=false;end);if  not v33 then local v796=0;while true do if (v796==(1865 -(1710 + 154))) then table.clear(v432);break;end if (v796==(318 -(200 + 118))) then v485=false;for v1251,v1252 in ipairs(v432) do pcall(function() local v1297=0 + 0 ;while true do if ((0 -0)==v1297) then v1252.Visible=false;v1252:Remove();break;end end end);end v796=1 -0 ;end end end end;v3.RegisterInputHandlers=function(v486) spawn(function() while v33 do if v486.MainFrame.Visible then local v1131=getmouselocation(v1);local v1132=(v1131.x>=v486.TitleBar.Position.x) and (v1131.x<=(v486.TitleBar.Position.x + v486.TitleBar.Size.x)) and (v1131.y>=v486.TitleBar.Position.y) and (v1131.y<=(v486.TitleBar.Position.y + v486.TitleBar.Size.y)) ;if (v1132 and isleftpressed() and  not v9) then local v1253=0 + 0 ;while true do if (v1253==(0 + 0)) then v9=true;v10.x=v1131.x-v486.MainFrame.Position.x ;v1253=1;end if (v1253==1) then v10.y=v1131.y-v486.MainFrame.Position.y ;break;end end end if v9 then if isleftpressed() then local v1335=0 + 0 ;while true do if (v1335==0) then v486.MainFrame.Position={v1131.x-v10.x ,v1131.y-v10.y };v486:UpdateLayout();break;end end else v9=false;end end else v9=false;end wait(1250.01 -(363 + 887) );end end);spawn(function() local v669=false;local v670=false;local v671=false;local v672=false;local v673=false;local v674=false;while v33 do local v797=getpressedkeys();local v798=false;local v799=false;local v800=false;local v801=false;local v802=false;local v803=false;local v804=false;local v805=false;local v806=false;for v1042,v1043 in ipairs(v797) do local v1044=0;local v1045;while true do if (v1044==(2 -0)) then if (v1045=="f2") then v801=true;end if (v1045=="uparrow") then v802=true;end v1044=14 -11 ;end if (v1044==(0 + 0)) then v1045=v1043:lower();if (v1045=="home") then v798=true;end v1044=1;end if (v1044==(6 -3)) then if (v1045=="downarrow") then v803=true;end if (v1045=="leftarrow") then v804=true;end v1044=4;end if (v1044==1) then if (v1045=="enter") then v799=true;end if (v1045=="f1") then v800=true;end v1044=2;end if (v1044==(3 + 1)) then if (v1045=="rightarrow") then v805=true;end if (v1045=="y") then v806=true;end break;end end end if (v798 and  not v669) then v486:ToggleUI();end v669=v798;if (v799 and  not v670 and v486.MainFrame.Visible) then v486:ToggleExpanded();end v670=v799;if (v800 and  not v671 and (v29~=(1665 -(674 + 990))) and v8) then v486:SelectTab(1);end v671=v800;if (v801 and  not v672 and (v29~=(1 + 1)) and v8) then v486:SelectTab(1 + 1 );end v672=v801;if (v486.MainFrame.Visible and v8 and  not v673) then local v1133=((v29==1) and v26) or v27 ;local v1134=((v30-(1 -0)) * v31) + (1056 -(507 + 548)) ;local v1135=math.min((v1134 + v31) -(838 -(289 + 548)) , #v1133);local v1136=(v1135-v1134) + (1819 -(821 + 997)) ;if v802 then v28=math.max(256 -(195 + 60) ,v28-1 );v486:UpdateVisibility();v486:UpdateScriptPositions();end if v803 then local v1254=0 + 0 ;while true do if (v1254==(1501 -(251 + 1250))) then v28=math.min(v1136,v28 + (2 -1) );v486:UpdateVisibility();v1254=1 + 0 ;end if (v1254==(1033 -(809 + 223))) then v486:UpdateScriptPositions();break;end end end local v1137=math.ceil( #v1133/v31 );if (v804 and (v30>1)) then v30=v30-1 ;v28=1 -0 ;v486:UpdateVisibility();v486:UpdateScriptPositions();end if (v805 and (v30<v1137)) then local v1255=0;while true do if (v1255==(0 -0)) then v30=v30 + 1 ;v28=3 -2 ;v1255=1 + 0 ;end if (v1255==(1 + 0)) then v486:UpdateVisibility();v486:UpdateScriptPositions();break;end end end end v673=v802 or v803 or v804 or v805 ;if (v806 and  not v674 and v486.MainFrame.Visible and v8) then v486:ExecuteSelectedScript();end v674=v806;wait(0.05);end end);spawn(function() while v33 do v486:UpdateVisibility();v486:CheckScriptOptionsHover();wait(617.05 -(14 + 603) );end end);end;v3.Destroy=function(v487) v33=false;v7=false;v8=false;Drawing.clear();v4={};v5={};v6={};v487.MainFrame=nil;v487.ContentFrame=nil;v487.LogoFrame=nil;setmetatable(v487,nil);end;table.find=function(v491,v492) if (type(v491)~="table") then return false;end for v675,v676 in pairs(v491) do if (v676==v492) then return true;end end return false;end;v3.AddCommunityScripts=function(v493,v494) if  not table.clear then table.clear=function(v1046) for v1138 in pairs(v1046) do v1046[v1138]=nil;end end;end for v677,v678 in ipairs(v494) do local v679=129 -(118 + 11) ;local v680;local v681;local v682;local v683;local v684;local v685;while true do if (v679==7) then v684.Position={v493.ContentFrame.Position.x + 21 + 4 ,v681 + (((v680-(950 -(551 + 398)))%v31) * v682) + 20 };table.insert(v493.AuthorLabels,v684);table.insert(v5,v684);v679=6 + 2 ;end if (v679==(0 + 0)) then table.insert(v27,v678);v680= #v27;v681=v493.ContentFrame.Position.y + 33 + 7 ;v679=3 -2 ;end if (v679==(9 -5)) then table.insert(v493.ScriptOptions,v683);table.insert(v5,v683);v684=Drawing.new("Text");v679=2 + 3 ;end if (v679==(31 -23)) then v685=v493:CreateButton({position={(v493.ContentFrame.Position.x + v493.ContentFrame.Size.x) -95 ,v681 + (((v680-(3 -2))%v31) * v682) + (495 -(99 + 391)) },size={85,61 -36 },text="Execute",textSize=12,color={131 -81 ,497 -(203 + 214) ,50},hoverColor={168 -98 ,502 -372 ,197 -127 },pressColor={56 -16 ,222 -122 ,1665 -(950 + 675) },borderColor={1249 -(216 + 963) ,669 -(432 + 127) ,1143 -(1065 + 8) },borderHoverColor={90,1791 -(635 + 966) ,132 -(5 + 37) },visible=false,callback=function() v493:ExecuteScript(v27[v680]);end});v678.ExecuteButton=v685;break;end if (v679==(7 -4)) then v683.Font=v14;v683.Transparency=v12;v683.Position={v493.ContentFrame.Position.x + (31 -11) ,v681 + (((v680-(1 -0))%v31) * v682) };v679=4;end if ((7 -5)==v679) then v683.Visible=false;v683.Color=v0.Text;v683.Size=v13;v679=5 -2 ;end if (v679==6) then v684.Size=v13-2 ;v684.Font=v14;v684.Transparency=v12;v679=7;end if (v679==(11 -6)) then v684.Text="by "   .. v678.author ;v684.Visible=false;v684.Color={709 -(318 + 211) ,1767 -(963 + 624) ,109 + 146 };v679=6;end if (v679==(847 -(518 + 328))) then v682=50;v683=Drawing.new("Text");v683.Text=v678.name;v679=4 -2 ;end end end v493:UpdateVisibility();v493:UpdateScriptPositions();end;v3.CreateTitleHoverIndicator=function(v495) local v496=0 -0 ;while true do if (v496==3) then spawn(function() while v33 do if v495.MainFrame.Visible then local v1298=317 -(301 + 16) ;local v1299;local v1300;while true do if (v1298==0) then v1299=getmouseposition();v1300=(v1299.x>=v495.TitleBar.Position.x) and (v1299.x<=(v495.TitleBar.Position.x + v495.TitleBar.Size.x)) and (v1299.y>=v495.TitleBar.Position.y) and (v1299.y<=(v495.TitleBar.Position.y + v495.TitleBar.Size.y)) ;v1298=1;end if (v1298==1) then if (v1300 and  not v9) then local v1457=0;while true do if ((2 -1)==v1457) then v495.TitleHoverIndicator.Position=v495.TitleBar.Position;v495.TitleBar.Color={v0.TitleBg[2 -1 ] + (26 -16) ,v0.TitleBg[2 + 0 ] + (21 -11) ,v0.TitleBg[3] + 1 + 9 };break;end if (v1457==(0 -0)) then v495.TitleHoverIndicator.Visible=true;v495.TitleHoverIndicator.Size=v495.TitleBar.Size;v1457=1 + 0 ;end end else local v1458=1019 -(829 + 190) ;while true do if (v1458==(0 -0)) then v495.TitleHoverIndicator.Visible=false;v495.TitleBar.Color=v0.TitleBg;break;end end end break;end end else v495.TitleHoverIndicator.Visible=false;end wait(0.01 -0 );end end);break;end if (v496==2) then v495.TitleHoverIndicator.Transparency=0.3 -0 ;table.insert(v4,v495.TitleHoverIndicator);v496=7 -4 ;end if (v496==1) then v495.TitleHoverIndicator.Visible=false;v495.TitleHoverIndicator.Color=v0.Highlight;v496=1 + 1 ;end if (v496==(0 + 0)) then v495.TitleHoverIndicator=Drawing.new("Square");v495.TitleHoverIndicator.Filled=true;v496=1;end end end;v3.AnimateUI=function(v497,v498,v499,v500,v501,v502,v503) local v504=0 -0 ;local v505;local v506;while true do if (v504==(0 + 0)) then v505=time();v506={};v504=614 -(520 + 93) ;end if (v504==(277 -(259 + 17))) then if ((type(v500)=="table") and (type(v501)=="table")) then for v1256,v1257 in pairs(v500) do v506[v1256]=v501[v1256] -v1257 ;end else v506=v501-v500 ;end spawn(function() local v1157=0 + 0 ;local v1158;local v1159;while true do if (v1157==(1 + 1)) then if v503 then v503();end break;end if (v1157==(3 -2)) then while (v1158<v502) and v33  do v1158=time() -v505 ;v1159=math.min(v1158/v502 ,592 -(396 + 195) );local v1336=v1159 * (2 -v1159) ;if ((type(v500)=="table") and (type(v501)=="table")) then local v1413=0 -0 ;local v1414;while true do if (v1413==(1761 -(440 + 1321))) then v1414={};for v1506,v1507 in pairs(v500) do v1414[v1506]=v1507 + (v506[v1506] * v1336) ;end v1413=1;end if (1==v1413) then v498[v499]=v1414;break;end end else v498[v499]=v500 + (v506 * v1336) ;end wait(1829.016 -(1059 + 770) );end v498[v499]=v501;v1157=9 -7 ;end if ((545 -(424 + 121))==v1157) then v1158=0;v1159=0;v1157=1 + 0 ;end end end);break;end end end;v3.CreateElementPropertiesTracker=function(v507) v507.ElementProperties={};v507.GetElementProperty=function(v686,v687,v688,v689) local v690=0;while true do if (v690==(1347 -(641 + 706))) then if  not v687 then return v689;end if  not v686.ElementProperties[v687] then return v689;end v690=1 + 0 ;end if ((441 -(249 + 191))==v690) then if (v686.ElementProperties[v687][v688]==nil) then return v689;end return v686.ElementProperties[v687][v688];end end end;v507.SetElementProperty=function(v691,v692,v693,v694) local v695=0 -0 ;while true do if (v695==1) then v691.ElementProperties[v692][v693]=v694;break;end if ((0 + 0)==v695) then if  not v692 then return;end v691.ElementProperties[v692]=v691.ElementProperties[v692] or {} ;v695=1;end end end;spawn(function() while v33 do local v808=0 -0 ;local v809;while true do if (v808==(427 -(183 + 244))) then wait(1 + 0 );v809={};v808=1;end if (v808==(731 -(434 + 296))) then for v1259,v1260 in pairs(v507.ElementProperties) do if (pcall(function() return v1259.Visible;end)==false) then table.insert(v809,v1259);end end for v1261,v1262 in ipairs(v809) do v507.ElementProperties[v1262]=nil;end break;end end end end);end;v3.AnimateResize=function(v511,v512) local v513=(v512 and v24) or v22 ;local v514=(v512 and v25) or v23 ;local v515=v511.MainFrame.Size.x;local v516=v511.MainFrame.Size.y;local v517=0.3;local v518=time();spawn(function() local v696=0;local v697=0 -0 ;while (v696<v517) and v33  do v696=time() -v518 ;v697=math.min(v696/v517 ,513 -(169 + 343) );local v810=v697 * ((2 + 0) -v697) ;local v811=v515 + ((v513-v515) * v810) ;local v812=v516 + ((v514-v516) * v810) ;v511.MainFrame.Size={v811,v812};v511.BorderFrame.Size={v811-(5.5 -3) ,v812-(2.5 + 0) };v511.InnerFrame.Size={v511.BorderFrame.Size.x-3 ,v511.BorderFrame.Size.y-3 };v511.ContentBg.Size={v511.InnerFrame.Size.x-3 ,v511.InnerFrame.Size.y-(879 -(423 + 453)) };v511.TitleBar.Size={v511.ContentBg.Size.x-10 ,20};v511.ContentFrame.Size={v511.ContentBg.Size.x-10 ,v511.ContentBg.Size.y-35 };if v511.SelectionHighlight then v511.SelectionHighlight.Size={v511.ContentFrame.Size.x-(3 + 17) ,45};end v511:UpdateCornerPositions();if v511.LogoFrame then local v1163=0 + 0 ;while true do if (v1163==(1 + 0)) then if v511.LogoText then v511.LogoText.Position={v511.LogoFrame.Position.x + (v511.LogoFrame.Size.x/2) ,(v511.LogoFrame.Position.y + (v511.LogoFrame.Size.y/2)) -(5 + 2) };end break;end if (v1163==(0 + 0)) then v511.LogoFrame.Size={v511.ContentBg.Size.x-(15 + 5) ,52 -22 };v511.LogoFrame.Position={v511.ContentBg.Position.x + 10 ,v511.ContentFrame.Position.y + (14 -9) };v1163=919 -(782 + 136) ;end end end v511:UpdateLayout();wait(855.016 -(112 + 743) );end v511.MainFrame.Size={v513,v514};v511:UpdateLayout();v511:UpdateVisibility();end);end;v3.Cleanup=function(v519) for v699,v700 in pairs(v519) do if (type(v700)=="table") then for v1164,v1165 in pairs(v700) do if ((v1165==v519) or ((type(v1165)=="table") and (v1165[1 + 0 ]==v519))) then v700[v1164]=nil;end end end end v33=false;v2.Clicked=false;v2.Pressed=false;v17=false;v9=false;v8=false;v34=false;v15=nil;v16=nil;v519.AnimationFrames={};v519.PendingAnimations={};v519.ElementProperties={};if v519.ScriptOptions then for v1053= #v519.ScriptOptions,719 -(493 + 225) , -(3 -2) do if v519.ScriptOptions[v1053] then v519.ScriptOptions[v1053]=nil;end end end if v519.AuthorLabels then for v1054= #v519.AuthorLabels,1 + 0 , -(2 -1) do if v519.AuthorLabels[v1054] then v519.AuthorLabels[v1054]=nil;end end end v519.HoveredElement=nil;v519.LastHoveredIndex=nil;v519.SelectedElement=nil;setmetatable(v519,nil);end;v3.AnimateTransparency=function(v528,v529,v530,v531,v532) local v533=0;local v534;while true do if (v533==(0 + 0)) then v534=time();spawn(function() local v1166=0 -0 ;local v1167;while true do if (0==v1166) then v1167=0;while (v1167<v532) and v33  do v1167=time() -v534 ;local v1337=math.min(v1167/v532 ,1);local v1338=v1337 * ((1 + 1) -v1337) ;local v1339=v530 + ((v531-v530) * v1338) ;v529.Transparency=v1339;wait(0.016);end v1166=1 -0 ;end if ((1596 -(210 + 1385))==v1166) then v529.Transparency=v531;break;end end end);break;end end end;v3.IsHovered=function(v535,v536) if ( not v536 or  not v536.Visible) then return false;end local v537=getmouselocation(v1);local v538=v536.Position;local v539=v536.Size;if ( not v538 or  not v539) then return false;end return (v537.x>=v538.x) and (v537.x<=(v538.x + v539.x)) and (v537.y>=v538.y) and (v537.y<=(v538.y + v539.y)) ;end;v3.CreateButton=function(v540,v541) local v542=0;local v543;local v544;local v545;local v546;while true do if (v542==0) then v543=Drawing.new("Square");v543.Filled=true;v543.Visible=v541.visible or false ;v543.Size=v541.size or {100,30} ;v542=1;end if (v542==(2 -0)) then v544=Drawing.new("Square");v544.Filled=false;v544.Visible=v543.Visible;v544.Size={v543.Size.x,v543.Size.y};v542=7 -4 ;end if (v542==(3 + 1)) then table.insert(v4,v544);v545=Drawing.new("Text");v545.Text=v541.text or "Button" ;v545.Visible=v543.Visible;v542=14 -9 ;end if (v542==(575 -(489 + 85))) then v543.Position=v541.position or {1501 -(277 + 1224) ,1493 -(663 + 830) } ;v543.Color=v541.color or v0.ButtonNormal ;v543.Transparency=v541.transparency or v11 ;table.insert(v4,v543);v542=2;end if (v542==7) then table.insert(v6,v546);return v546;end if (v542==(3 + 0)) then v544.Position={v543.Position.x,v543.Position.y};v544.Color=v541.borderColor or v0.Border ;v544.Thickness=876 -(461 + 414) ;v544.Transparency=v541.transparency or v11 ;v542=1 + 3 ;end if (v542==(3 + 3)) then v545.Center=true;v545.Position={v543.Position.x + (v543.Size.x/(2 + 0)) ,(v543.Position.y + (v543.Size.y/(2 -0))) -(v545.Size/(1 + 1)) };table.insert(v5,v545);v546={Type="Button",Background=v543,Border=v544,Text=v545,Callback=v541.callback,Hover=false,Pressed=false,DefaultColor=v541.color or v0.ButtonNormal ,HoverColor=v541.hoverColor or v0.ButtonHover ,PressColor=v541.pressColor or v0.ButtonPress ,BorderColor=v541.borderColor or v0.Border ,BorderHoverColor=v541.borderHoverColor or v0.Accent ,ButtonData=v541.buttonData or {} };v542=7;end if (v542==(7 -2)) then v545.Color=v541.textColor or v0.Text ;v545.Size=v541.textSize or v13 ;v545.Font=v541.font or v14 ;v545.Transparency=v541.textTransparency or v12 ;v542=2 + 4 ;end end end;v3.UpdateButtonTextPosition=function(v547,v548) if (v548 and v548.Background) then if v548.Text then local v1168=0 + 0 ;while true do if (v1168==(0 -0)) then v548.Text.Position={v548.Background.Position.x + (v548.Background.Size.x/(1 + 1)) ,(v548.Background.Position.y + (v548.Background.Size.y/(1 + 1))) -(v548.Text.Size/(7 -5)) };v548.Text.Visible=v548.Background.Visible;break;end end end if v548.Border then local v1169=0 -0 ;while true do if (v1169==1) then v548.Border.Visible=v548.Background.Visible;if (v548.Hover or v548.Pressed) then v548.Border.Color=v548.BorderHoverColor;else v548.Border.Color=v548.BorderColor;end break;end if (v1169==(0 + 0)) then v548.Border.Position={v548.Background.Position.x,v548.Background.Position.y};v548.Border.Size={v548.Background.Size.x,v548.Background.Size.y};v1169=214 -(199 + 14) ;end end end end end;v3.HandleButtonInteractions=function(v549) spawn(function() while v33 do local v819=0;local v820;local v821;local v822;local v823;while true do if (v819==(7 -5)) then if (v2.Pressed and  not v17) then local v1313=0;while true do if (v1313==0) then v17=true;for v1438,v1439 in ipairs(v6) do if (v1439 and v1439.Background and v1439.Background.Visible and v549:IsButtonHovered(v1439)) then v16=v1439;v1439.Pressed=true;pcall(function() v1439.Background.Color=v1439.PressColor;end);pcall(function() local v1511=0;local v1512;local v1513;local v1514;while true do if (v1511==(1551 -(647 + 902))) then v1439.Background.Position={v1513[234 -(85 + 148) ] + ((v1512[1] * (1 -v1514))/(1291 -(426 + 863))) ,v1513[2] + ((v1512[1656 -(873 + 781) ] * (1 -v1514))/2) };v549:UpdateButtonTextPosition(v1439);break;end if (v1511==(1 -0)) then v1514=0.95 -0 ;v1439.Background.Size={v1512[1] * v1514 ,v1512[2 -0 ] * v1514 };v1511=5 -3 ;end if ((1947 -(414 + 1533))==v1511) then v1512={v1439.Background.Size.x,v1439.Background.Size.y};v1513={v1439.Background.Position.x,v1439.Background.Position.y};v1511=1480 -(888 + 591) ;end end end);break;end end break;end end elseif (v823 and v16) then local v1387=0 -0 ;local v1388;while true do if (v1387==2) then if v549:IsButtonHovered(v1388) then if v1388.Callback then pcall(function() v1388.Callback();end);end pcall(function() v1388.Background.Color=v1388.HoverColor;end);else pcall(function() v1388.Background.Color=v1388.DefaultColor;end);end v1388.Pressed=false;break;end if (v1387==(0 + 0)) then v1388=v16;v16=nil;v1387=1;end if (v1387==(3 -2)) then v17=false;pcall(function() local v1473=0 + 0 ;local v1474;local v1475;while true do if (v1473==0) then v1474={v1388.Background.Size.x/(0.95 + 0) ,v1388.Background.Size.y/(0.95 + 0) };v1475={v1388.Background.Position.x-(((v1388.Background.Size.x * ((1 -0) -(0.95 -0)))/(1680 -(136 + 1542)))/(0.95 -0)) ,v1388.Background.Position.y-(((v1388.Background.Size.y * ((1 -0) -0.95))/(2 + 0))/(486.95 -(68 + 418))) };v1473=1;end if (v1473==(4 -2)) then v549:UpdateButtonTextPosition(v1388);break;end if (v1473==(1 -0)) then v1388.Background.Size=v1474;v1388.Background.Position=v1475;v1473=2;end end end);v1387=2 + 0 ;end end elseif ( not v2.Pressed and v17) then v17=false;if v16 then local v1476=v16;v1476.Pressed=false;v16=nil;pcall(function() local v1515=1092 -(770 + 322) ;local v1516;local v1517;while true do if (v1515==(1 + 1)) then v549:UpdateButtonTextPosition(v1476);v1476.Background.Color=v1476.DefaultColor;break;end if (v1515==1) then v1476.Background.Size=v1516;v1476.Background.Position=v1517;v1515=1 + 1 ;end if (v1515==(0 + 0)) then v1516={v1476.Background.Size.x/0.95 ,v1476.Background.Size.y/0.95 };v1517={v1476.Background.Position.x-(((v1476.Background.Size.x * ((3 -2) -0.95))/(2 + 0))/(0.95 -0)) ,v1476.Background.Position.y-(((v1476.Background.Size.y * ((1 + 0) -(0.95 + 0)))/(2 + 0))/(0.95 -0)) };v1515=1 -0 ;end end end);end end v15=nil;for v1265,v1266 in ipairs(v6) do if (v1266 and v1266.Background and v1266.Background.Visible and (v1266~=v16)) then local v1341=v549:IsButtonHovered(v1266);if v1341 then v15=v1266;v1266.Hover=true;if (((v1266==v549.TabAnueButton) and (v29==(1 + 0))) or ((v1266==v549.TabCommunityButton) and (v29==(9 -7)))) then local v1460=0 -0 ;while true do if (v1460==(0 + 0)) then v1266.Background.Color=v0.TabActive;if v1266.Border then v1266.Border.Color=v0.Highlight;end break;end end elseif (((v1266==v549.TabAnueButton) and (v29~=(4 -3))) or ((v1266==v549.TabCommunityButton) and (v29~=2))) then if  not v1266.Pressed then pcall(function() v1266.Background.Color=v1266.HoverColor;end);end elseif  not v1266.Pressed then pcall(function() v1266.Background.Color=v1266.HoverColor;end);end else v1266.Hover=false;if (((v1266==v549.TabAnueButton) and (v29==(832 -(762 + 69)))) or ((v1266==v549.TabCommunityButton) and (v29==(6 -4)))) then v1266.Background.Color=v0.TabActive;if v1266.Border then v1266.Border.Color=v0.Highlight;end elseif (((v1266==v549.TabAnueButton) and (v29~=(1 + 0))) or ((v1266==v549.TabCommunityButton) and (v29~=(2 + 0)))) then if  not v1266.Pressed then pcall(function() v1266.Background.Color=v0.TabInactive;end);if v1266.Border then v1266.Border.Color=v0.Border;end end elseif  not v1266.Pressed then pcall(function() v1266.Background.Color=v1266.DefaultColor;end);end end end end wait(0.01 -0 );break;end if (v819==1) then v822=isleftpressed();v823=v2.Pressed and  not v822 ;v2.Clicked=v821;v2.Pressed=v822;v819=1 + 1 ;end if (v819==0) then v820=getmouselocation(v1);v2.X=v820.x;v2.Y=v820.y;v821=isleftclicked();v819=1;end end end end);end;v3.CreateControlButtons=function(v550) local v551=v550:CreateButton({position={(v550.TitleBar.Position.x + v550.TitleBar.Size.x) -30 ,v550.TitleBar.Position.y + (19 -14) },size={25,173 -(8 + 149) },text="X",textSize=1334 -(1199 + 121) ,color={135 -75 ,9 + 11 ,46 -26 },hoverColor={200,102 -42 ,87 -27 },pressColor={111 + 39 ,499 -(304 + 165) ,29 + 1 },borderColor={2069 -(1618 + 351) ,1046 -(10 + 1006) ,5 + 25 },borderHoverColor={1288 -(912 + 121) ,1369 -(1140 + 149) ,52 + 28 },visible=true,buttonData={isCloseButton=true},callback=function() pcall(function() v550:ToggleUI();end);end});local v552=v550:CreateButton({position={(v550.TitleBar.Position.x + v550.TitleBar.Size.x) -60 ,v550.TitleBar.Position.y + 5 },size={46 -21 ,55 -39 },text=(v8 and "-") or "+" ,textSize=14,color={226 -(165 + 21) ,40,285 -225 },hoverColor={24 + 36 ,60,41 + 59 },pressColor={1427 -(819 + 578) ,773 -(588 + 155) ,50},borderColor={37 + 23 ,1826 -(1536 + 230) ,80},borderHoverColor={22 + 78 ,26 + 74 ,588 -388 },visible=true,buttonData={isExpandButton=true},callback=function() pcall(function() v550:ToggleExpanded();end);end});v550.CloseButton=v551;v550.ExpandButton=v552;v550._closeButtonText=v551.Text;v550._expandButtonText=v552.Text;if v550.VersionText then v550.VersionText.Position={v550.ExpandButton.Background.Position.x-(25 + 10) ,v550.ExpandButton.Background.Position.y + 1 + 0 };end end;v3.UpdateControlButtonsPosition=function(v559) if (v559.CloseButton and v559.ExpandButton) then local v825=0;while true do if (v825==(0 + 0)) then v559.CloseButton.Background.Position={(v559.TitleBar.Position.x + v559.TitleBar.Size.x) -(91 -61) ,v559.TitleBar.Position.y + (656 -(59 + 592)) };v559.ExpandButton.Background.Position={(v559.TitleBar.Position.x + v559.TitleBar.Size.x) -(132 -72) ,v559.TitleBar.Position.y + (8 -3) };v825=1 + 0 ;end if (v825==(173 -(70 + 101))) then if v559.VersionText then v559.VersionText.Position={v559.ExpandButton.Background.Position.x-35 ,v559.ExpandButton.Background.Position.y + (2 -1) };end break;end if (v825==1) then v559:UpdateButtonTextPosition(v559.CloseButton);v559:UpdateButtonTextPosition(v559.ExpandButton);v825=243 -(123 + 118) ;end end end end;v3.CheckUIHover=function(v560) local v561=getmouselocation(v1);for v701,v702 in ipairs(v6) do if (v702 and v702.Background and v702.Background.Visible) then local v1078=0;local v1079;local v1080;while true do if (v1078==(1 + 0)) then if ((v561.x>=v1079.x) and (v561.x<=(v1079.x + v1080.x)) and (v561.y>=v1079.y) and (v561.y<=(v1079.y + v1080.y))) then return true,"button",v702;end break;end if (v1078==(0 + 0)) then v1079=v702.Background.Position;v1080=v702.Background.Size;v1078=1400 -(653 + 746) ;end end end end if (v560.TitleBar and v560.TitleBar.Visible) then local v826=v560.TitleBar.Position;local v827=v560.TitleBar.Size;if ((v561.x>=v826.x) and (v561.x<=(v826.x + v827.x)) and (v561.y>=v826.y) and (v561.y<=(v826.y + v827.y))) then return true,"title",v560.TitleBar;end end if (v560.MainFrame and v560.MainFrame.Visible) then local v828=v560.MainFrame.Position;local v829=v560.MainFrame.Size;if ((v561.x>=v828.x) and (v561.x<=(v828.x + v829.x)) and (v561.y>=v828.y) and (v561.y<=(v828.y + v829.y))) then return true,"main",v560.MainFrame;end end return false,nil,nil;end;v3.IsButtonHovered=function(v562,v563) if  not v563 then return false;end if  not v563.Background then return false;end if  not v563.Background.Visible then return false;end local v564=getmouselocation(v1);if  not v564 then return false;end if ((type(v564)~="table") and (type(v564)~="userdata")) then return false;end if ((type(v564.x)~="number") or (type(v564.y)~="number")) then return false;end local v565=v563.Background.Position;if  not v565 then return false;end if ((type(v565)~="table") and (type(v565)~="userdata")) then return false;end if ((type(v565.x)~="number") or (type(v565.y)~="number")) then return false;end local v566=v563.Background.Size;if  not v566 then return false;end if ((type(v566)~="table") and (type(v566)~="userdata")) then return false;end if ((type(v566.x)~="number") or (type(v566.y)~="number")) then return false;end local v567=(v564.x>=(v565.x-2)) and (v564.x<=(v565.x + v566.x + (3 -1))) and (v564.y>=(v565.y-2)) and (v564.y<=(v565.y + v566.y + (2 -0))) ;local v568=false;if (v562.TabAnueButton and (v563==v562.TabAnueButton)) then local v830=0 -0 ;while true do if ((0 + 0)==v830) then v568=true;if (v29==(1 + 0)) then pcall(function() if v563.Background then v563.Background.Color=v0.TabActive;end end);pcall(function() if v563.Border then v563.Border.Color=v0.Highlight;end end);return v567;end break;end end elseif (v562.TabCommunityButton and (v563==v562.TabCommunityButton)) then v568=true;if (v29==(2 + 0)) then local v1269=0 + 0 ;while true do if (v1269==(0 + 0)) then if v563.Background then v563.Background.Color=v0.TabActive;end if v563.Border then v563.Border.Color=v0.Highlight;end v1269=2 -1 ;end if (v1269==(1 + 0)) then return v567;end end end end if (v567 and v563.Border) then if v568 then if (((v563==v562.TabAnueButton) and (v29~=(1 -0))) or ((v563==v562.TabCommunityButton) and (v29~=(1236 -(885 + 349))))) then if v563.Background then v563.Background.Color=v0.ButtonHover;end if v563.Border then v563.Border.Color=v0.Highlight;end end elseif v563.Border then local v1270=0;while true do if (v1270==(0 + 0)) then v563.Border.Color=v563.BorderHoverColor or v0.Highlight ;if ((type(v563.Border)=="table") or (type(v563.Border)=="userdata")) then v562:SafeSetThickness(v563.Border,4 -2 );end break;end end end elseif v563.Border then if v568 then if (((v563==v562.TabAnueButton) and (v29~=(2 -1))) or ((v563==v562.TabCommunityButton) and (v29~=(970 -(915 + 53))))) then local v1346=0;while true do if (v1346==0) then if v563.Background then v563.Background.Color=v0.TabInactive;end if v563.Border then v563.Border.Color=v0.Border;end break;end end end elseif v563.Border then local v1347=0;while true do if (v1347==(801 -(768 + 33))) then v563.Border.Color=v563.BorderColor or v0.Border ;if ((type(v563.Border)=="table") or (type(v563.Border)=="userdata")) then v562:SafeSetThickness(v563.Border,3 -2 );end break;end end end end return v567;end;v3.ExecuteSelectedScript=function(v569) if  not v8 then return;end local v570=((v29==1) and v26) or v27 ;local v571=((v30-(1 -0)) * v31) + (329 -(287 + 41)) ;local v572=(v571 + v28) -1 ;if (v572<= #v570) then local v831=v570[v572];if v831 then v569:ExecuteScript(v831);end end end;v3.CheckScriptOptionsHover=function(v573) if ( not v8 or  not v573.MainFrame or  not v573.MainFrame.Visible or v9) then v34=false;return;end local v574=getmouselocation(v1);if  not v574 then return;end local v575=((v29==(848 -(638 + 209))) and v26) or v27 ;local v576=((v30-(1 + 0)) * v31) + 1 ;local v577=math.min((v576 + v31) -(1687 -(96 + 1590)) , #v575);local v578=((v29==1) and (1672 -(741 + 931))) or  #v26 ;local v579=55;if ( not v573.ContentFrame or  not v573.LogoFrame or  not v573.SelectionHighlight) then v34=false;return;end v34=false;for v703=v576,v577 do local v704=v578 + v703 ;local v705=(v703-v576) + 1 + 0 ;if (v573.ScriptOptions and v573.ScriptOptions[v704]) then local v1081=v573.ScriptOptions[v704];if v1081.Position then local v1212=v1081.Position;local v1213=128 -83 ;local v1214=(v574.x>=(v573.ContentFrame.Position.x + (46 -36))) and (v574.x<=((v573.ContentFrame.Position.x + v573.ContentFrame.Size.x) -(5 + 5))) and (v574.y>=(v1212.y-(4 + 4))) and (v574.y<=(v1212.y + v1213)) ;if v1214 then v34=true;if (v35~=v705) then local v1390=0;while true do if (v1390==0) then v35=v705;v28=v705;v1390=1;end if (v1390==(1 + 0)) then v573:UpdateVisibility();if (v573.LogoFrame and v573.LogoFrame.Position and v573.LogoFrame.Size and v573.SelectionHighlight) then local v1520=0;local v1521;local v1522;while true do if (v1520==1) then v573.SelectionHighlight.Size={v573.ContentFrame.Size.x-(75 -55) ,22 + 23 };v573.SelectionHighlight.Position={v573.ContentFrame.Position.x + (40 -30) ,v1522};break;end if (v1520==(494 -(64 + 430))) then v1521=v573.LogoFrame.Position.y + v573.LogoFrame.Size.y + 15 + 0 ;v1522=(v1521 + ((v705-(364 -(106 + 257))) * v579)) -(6 + 2) ;v1520=722 -(496 + 225) ;end end end break;end end end break;end end end end if  not v34 then v35=nil;end end;v3.AnimateSelectionHighlight=function(v580,v581) if ( not v580.SelectionHighlight or  not v580.ContentFrame) then return;end if ( not v580.SelectionHighlight.Position or  not v580.SelectionHighlight.Position.y) then return;end local v582=v580.SelectionHighlight.Position.y;local v583=v581-v582 ;v580.SelectionHighlight.Size={v580.ContentFrame.Size.x-(97 -77) ,1944 -(30 + 1869) };if (math.abs(v583)<(1374 -(213 + 1156))) then v580.SelectionHighlight.Position={v580.ContentFrame.Position.x + 10 ,v581};return;end spawn(function() local v706=0.15 + 0 ;local v707=time();local v708=v582;while ((time() -v707)<v706) and v33  do if ( not v580.SelectionHighlight or  not v580.ContentFrame) then break;end local v833=(time() -v707)/v706 ;v833=v833 * (2 -v833) ;local v834=v708 + (v583 * v833) ;pcall(function() v580.SelectionHighlight.Position={v580.ContentFrame.Position.x + 10 ,v834};end);wait(0.01);end pcall(function() if (v580.SelectionHighlight and v580.ContentFrame) then v580.SelectionHighlight.Position={v580.ContentFrame.Position.x + 10 ,v581};end end);end);end;v3.SafeSetThickness=function(v585,v586,v587) local v588=0;while true do if (v588==(79 -(32 + 47))) then if  not v586 then return;end pcall(function() v586.Thickness=v587;end);break;end end end;v3.SafeLoadstring=function(v589,v590) local v591=1977 -(1053 + 924) ;local v592;local v593;local v594;local v595;local v596;local v597;while true do if (v591==(3 + 0)) then v596,v597=pcall(function() spawn(function() v594();end);end);v592.success=v596;v591=4;end if (v591==(1 -0)) then v593=setmetatable({},{__index=_G});v594,v595=loadstring(v590);v591=1650 -(685 + 963) ;end if (v591==2) then if  not v594 then local v1215=0;while true do if (v1215==(0 -0)) then v592.error="Failed to load script: "   .. tostring(v595) ;return v592;end end end setfenv(v594,v593);v591=3 -0 ;end if (v591==(1709 -(541 + 1168))) then v592={success=false,error=nil};if ( not v590 or (type(v590)~="string")) then local v1216=1597 -(645 + 952) ;while true do if (0==v1216) then v592.error="Invalid code type";return v592;end end end v591=839 -(669 + 169) ;end if (v591==(13 -9)) then if  not v596 then v592.error="Error executing script: "   .. tostring(v597) ;end return v592;end end end;return v3:Init();
+local Colors = {
+    Background = {25, 25, 35},
+    Border = {90, 90, 210},
+    InnerBg = {35, 35, 45},
+    InnerBg2 = {45, 45, 60},
+    TitleBg = {30, 30, 40},
+    Highlight = {110, 110, 255},
+    Text = {255, 255, 255},
+    TextSecondary = {210, 210, 210},
+    Accent = {90, 90, 210},
+    ButtonNormal = {45, 45, 65},
+    ButtonHover = {65, 65, 85},
+    ButtonPress = {35, 35, 55},
+    TabActive = {70, 70, 200},
+    TabInactive = {50, 50, 70}
+}
+
+local MouseService = findservice(Game, "MouseService")
+local Mouse = {
+    X = 0,
+    Y = 0,
+    Clicked = false,
+    Pressed = false
+}
+
+local AnueHub = {}
+local UIElements = {}
+local TextElements = {}
+local ButtonElements = {}
+local IsVisible = true
+local IsExpanded = false
+local IsDragging = false
+local DragOffset = {x = 0, y = 0}
+local ui_transparency = 0.95
+local text_transparency = 0.95
+local text_size = 15
+local font = 5
+local HoveredButton = nil
+local ActiveButton = nil
+local MouseHeld = false
+local LastClickTime = 0
+local ExecutionCooldown = false
+local ConfirmationDialogActive = false
+local ScriptToExecute = nil
+
+local original_width = 400
+local original_height = 300
+
+local expanded_width = 550
+local expanded_height = 650
+
+local anue_scripts = {
+    {
+        name = "MM2 ESP SCRIPT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/severe-mm2/refs/heads/main/v2"))()',
+        author = "anue"
+    },
+    {
+        name = "CRIMINALITY UI ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/crim.lua"))()',
+        author = "anue"
+    },
+    {
+        name = "FORSAKEN UI ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/forsaken"))()',
+        author = "anue"
+    },
+    {
+        name = "BGSI AUTO FARM / RIFTS ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/bgsi"))()',
+        author = "anue"
+    },
+    {
+        name = "BLOOD DEBT ESP SCRIPT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/blood-debt/refs/heads/main/ESP"))()',
+        author = "anue"
+    },
+    {
+        name = "FLEE THE FACILITY",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/flee%20the%20facility"))()',
+        author = "anue"
+    },
+    {
+        name = "FIVE NIGHTS HUNTED UI",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/FiveNightsHunted"))()',
+        author = "anue"
+    },
+    {
+        name = "THE WILD WEST ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/wildwest"))()',
+        author = "anue"
+    },
+    {
+        name = "BLOX FRUITS - FRUIT ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/fruits%20esp"))()',
+        author = "anue"
+    },
+    {
+        name = "FRONTLINES ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/frontlines"))()',
+        author = "anue"
+    },
+    {
+        name = "PROJECT REMIX SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/project%20remix"))()',
+        author = "anue"
+    },
+    {
+        name = "TRIDENT SURVIVAL SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/trident"))()',
+        author = "anue"
+    },
+    {
+        name = "FRONTLINES SUPPORT (WIP)",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Frontlines%20Support%20WIP"))()',
+        author = "anue"
+    },
+    {
+        name = "LONE SURVIVAL SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Lone%20Survival%20Support"))()',
+        author = "anue"
+    },
+    {
+        name = "GUNFIGHT ARENA SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Gunfight%20Arena"))()',
+        author = "anue"
+    },
+    {
+        name = "SKINWALKERS SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Skinswalkers"))()',
+        author = "anue"
+    },
+    {
+        name = "RAMPANT REBORN PVP SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Rampant%20Reborn"))()',
+        author = "anue"
+    },
+    {
+        name = "BOOGA BOOGA ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/booga%20booga"))()',
+        author = "anue"
+    }
+}
+
+local community_scripts = {
+    {
+        name = "DEEPWOKEN ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/deepwoken"))()',
+        author = "umwfp"
+    },
+    {
+        name = "ARSENAL",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/arsenal"))()',
+        author = "roterygoose23"
+    },
+    {
+        name = "INF JUMP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/inf%20jump"))()',
+        author = "king bob"
+    },
+    {
+        name = "UNIVERSAL MOD CHECKER",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/UNIVERSAL%20MOD%20CHECKER"))()',
+        author = "getchildren"
+    },
+    {
+        name = "LOCK'S NPC AIMBOT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/NotLockTheHobo/LocksNpcAimbot/refs/heads/main/games/severe/sv_lna_baseplate.lua"))()',
+        author = "lock"
+    },
+    {
+        name = "DEAD RAILS ITEM ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Dead%20Rails"))()',
+        author = "q379"
+    },
+    {
+        name = "BRM5",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/BRM5.lua"))()',
+        author = "bernard the butcher"
+    },
+    {
+        name = "DEADLINE",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Deadline"))()',
+        author = "bernard the butcher"
+    },
+    {
+        name = "LONE SURVIVAL",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/LONE%20SURVIVAL"))()',
+        author = "shimotvink"
+    },
+    {
+        name = "FISCH",
+        loadstring = 'loadstring(game:HttpGet("https://i-am.injured.lol/p/raw/686nyqgmlq"))()',
+        author = "Alex - vantareal"
+    },
+    {
+        name = "MTC4 INFINITE MAG AMMO",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/MTC4"))()',
+        author = "bernard the butcher"
+    },
+    {
+        name = "COUNTER BLOX GUN MODS",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/CounterBlox"))()',
+        author = "peke"
+    },
+    {
+        name = "AFTERMATH ZOMBIES AIMBOT/ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Aftermath%20Zombies"))()',
+        author = "9zs"
+    },
+    {
+        name = "DEADLINE SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/Deadline.lua"))()',
+        author = "bernard the butcher"
+    },
+    {
+        name = "BRM5 SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/BRM5.lua"))()',
+        author = "bernard the butcher"
+    },
+    {
+        name = "AOT: FREEDOM WAR UI",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/1byp4/Severe/refs/heads/main/AOT%20Freedom%20War.lua"))()',
+        author = "1byp4"
+    },
+    {
+        name = "DEAD RAILS PARTIAL SUPPORT (ZOMBIES)",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/sen-jp/Severe-Luas/refs/heads/main/Deadrails.lua"))()',
+        author = "sen"
+    },
+    {
+        name = "JUMPHEIGHT BOOST FOR FF2",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/sen-jp/Severe-Luas/refs/heads/main/FootballFusion2.lua"))()',
+        author = "sen"
+    },
+    {
+        name = "SCORCHED EARTH SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/ScorchedEarth"))()',
+        author = "bernard the butcher"
+    },
+    {
+        name = "ARMSOFSOLITAIRE",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/ArmsOfSolitaire"))()',
+        author = "bernard the butcher"
+    },
+    {
+        name = "POSSESOR SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Possesor"))()',
+        author = "Opokeu"
+    },
+    {
+        name = "AFTERMATH SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/minions638/severe-lua/refs/heads/main/aftermath.lua"))()',
+        author = "umwfp"
+    },
+    {
+        name = "RIOTFALL [BETA] SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/sen-jp/Severe-Luas/refs/heads/main/RIOTFALL.lua"))()',
+        author = "sen"
+    },
+    {
+        name = "RUSH POINT SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/sen-jp/Severe-Luas/refs/heads/main/RushPoint.lua"))()',
+        author = "sen"
+    },
+    {
+        name = "FRONTLINES SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/sen-jp/Severe-Luas/refs/heads/main/Frontlines.lua"))()',
+        author = "sen"
+    },
+    {
+        name = "POSSESOR SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Possesor"))()',
+        author = "Opokeu"
+    },
+    {
+        name = "INVISIBLE CHECK",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/INVISIBLE%20CHECK"))()',
+        author = "1byp4"
+    },
+    {
+        name = "NPC GAME SUPPORT",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/NPC.lua"))()',
+        author = "bernard the butcher"
+    },
+    {
+        name = "QUICK SAVE",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Quick%20Save"))()',
+        author = "king bob"
+    },
+    {
+        name = "THE WILD WEST GAME SUPPORT - PLAYERS AND ANIMALS",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/TheWildWest.lua"))()',
+        author = "bernard the butcher"
+    },
+    {
+        name = "THE WILD WEST GAME SUPPORT - ORES",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/Jimenth/fawk/refs/heads/main/TheWildWestOres.lua"))()',
+        author = "bernard the butcher"
+    },
+    {
+        name = "FREECAM",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/Freecam"))()',
+        author = "x88"
+    },
+    {
+        name = "RIVALS GUN ESP",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/lrd14/rivals-testing/refs/heads/main/main.lua"))()',
+        author = "bertu"
+    },
+    {
+        name = "AOT FW",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/AOT%20FW"))()',
+        author = "Pork"
+    }
+}
+
+local selected_index = 1
+local selected_tab = 1
+local current_page = 1
+local max_items_per_page = 9
+local SCREEN_DIMENSIONS = getscreendimensions()
+local ui_running = true
+
+local IsHovering = false 
+local MouseHoverIndex = nil 
+
+local FloatingLogo = nil 
+local FloatingLogoBg = nil 
+local FloatingLogoBorder = nil 
+
+local ConfirmationDialogElements = {}
+
+function AnueHub:Init()
+
+local new_community_scripts = {
+    {
+        name = "More Scripts Coming Soon!",
+        loadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/anue1337/ui/refs/heads/main/a"))()',
+        author = "o.O"
+    }
+}
+
+    self:CreateFloatingLogo()
+
+    self:CreateMainWindow()
+    self:CreateContentArea()
+    self:CreateElementPropertiesTracker()
+    self:CreateControlButtons()
+    self:CreateTabsSystem()
+    self:CreateHelpTexts()
+    self:CreateTitleHoverIndicator()
+
+    if self.ExpandButton then
+        self._expandButtonText = self.ExpandButton.Text
+    end
+
+    if self.CloseButton then
+        self._closeButtonText = self.CloseButton.Text
+    end
+
+    self:AddCommunityScripts(new_community_scripts)
+
+    self:RegisterInputHandlers()
+    self:HandleButtonInteractions()
+
+    self:UpdateLayout()
+
+    return self
+end
+
+function AnueHub:CreateFloatingLogo()
+
+    FloatingLogoBg = Drawing.new("Circle")
+    FloatingLogoBg.Filled = true
+    FloatingLogoBg.NumSides = 30 
+    FloatingLogoBg.Radius = 25
+
+    FloatingLogoBg.Position = {SCREEN_DIMENSIONS.x / 2, 100} 
+    FloatingLogoBg.Color = {30, 30, 40} 
+    FloatingLogoBg.Transparency = 0.85
+    FloatingLogoBg.Visible = false
+    table.insert(UIElements, FloatingLogoBg)
+
+    FloatingLogoBorder = Drawing.new("Circle") 
+    FloatingLogoBorder.Filled = false
+    FloatingLogoBorder.NumSides = 30
+    FloatingLogoBorder.Radius = 25
+    FloatingLogoBorder.Thickness = 2
+    FloatingLogoBorder.Position = {SCREEN_DIMENSIONS.x / 2, 100} 
+    FloatingLogoBorder.Color = Colors.Border
+    FloatingLogoBorder.Transparency = 0.9
+    FloatingLogoBorder.Visible = false
+    table.insert(UIElements, FloatingLogoBorder)
+
+    FloatingLogo = Drawing.new("Image")
+    FloatingLogo.Url = "https://cdn.nest.rip/uploads/17230644-70b2-4de4-aa2b-17e23bc47a8c.png"
+    FloatingLogo.Size = {35, 35}
+
+    FloatingLogo.Position = {SCREEN_DIMENSIONS.x / 2 - 17.5, 100 - 17.5} 
+    FloatingLogo.Transparency = 1
+    FloatingLogo.Visible = false
+    table.insert(UIElements, FloatingLogo)
+
+    local isHovered = false
+
+    spawn(function()
+        local selfRef = self 
+        while ui_running do
+            if not IsVisible and FloatingLogo and FloatingLogo.Visible then
+                local mouse_pos = getmouseposition()
+
+                local is_over_logo = 
+                    math.sqrt((mouse_pos.x - FloatingLogoBg.Position.x)^2 + 
+                              (mouse_pos.y - FloatingLogoBg.Position.y)^2) <= FloatingLogoBg.Radius
+
+                if is_over_logo and not isHovered then
+                    isHovered = true
+
+                    spawn(function()
+                        local start_radius = FloatingLogoBg.Radius
+                        local target_radius = 27
+                        local duration = 0.2
+                        local start_time = time()
+
+                        while time() - start_time < duration and ui_running and isHovered do
+                            local progress = (time() - start_time) / duration
+                            local eased = progress * (2 - progress) 
+                            local current = start_radius + (target_radius - start_radius) * eased
+
+                            FloatingLogoBg.Radius = current
+                            FloatingLogoBorder.Radius = current
+
+                            FloatingLogoBg.Color = {
+                                30 + 20 * eased,
+                                30 + 20 * eased,
+                                40 + 30 * eased
+                            }
+
+                            local newSize = 35 + 5 * eased
+                            FloatingLogo.Size = {newSize, newSize}
+                            FloatingLogo.Position = {
+                                SCREEN_DIMENSIONS.x / 2 - newSize / 2,
+                                100 - newSize / 2
+                            }
+
+                            wait(0.01)
+                        end
+                    end)
+                elseif not is_over_logo and isHovered then
+                    isHovered = false
+
+                    spawn(function()
+                        local start_radius = FloatingLogoBg.Radius
+                        local target_radius = 25
+                        local duration = 0.2
+                        local start_time = time()
+
+                        while time() - start_time < duration and ui_running and not isHovered do
+                            local progress = (time() - start_time) / duration
+                            local eased = progress * (2 - progress) 
+                            local current = start_radius + (target_radius - start_radius) * eased
+
+                            FloatingLogoBg.Radius = current
+                            FloatingLogoBorder.Radius = current
+
+                            FloatingLogoBg.Color = {
+                                math.max(30, FloatingLogoBg.Color and FloatingLogoBg.Color[1] and FloatingLogoBg.Color[1] - 20 * eased or 30),
+                                math.max(30, FloatingLogoBg.Color and FloatingLogoBg.Color[2] and FloatingLogoBg.Color[2] - 20 * eased or 30),
+                                math.max(40, FloatingLogoBg.Color and FloatingLogoBg.Color[3] and FloatingLogoBg.Color[3] - 30 * eased or 40)
+                            }
+
+                            local newSize = math.max(35, FloatingLogo.Size.x - 5 * eased)
+                            FloatingLogo.Size = {newSize, newSize}
+                            FloatingLogo.Position = {
+                                SCREEN_DIMENSIONS.x / 2 - newSize / 2,
+                                100 - newSize / 2
+                            }
+
+                            wait(0.01)
+                        end
+
+                        if not isHovered then
+                            FloatingLogoBg.Radius = 25
+                            FloatingLogoBorder.Radius = 25
+                            FloatingLogoBg.Color = {30, 30, 40}
+                            FloatingLogo.Size = {35, 35}
+                            FloatingLogo.Position = {SCREEN_DIMENSIONS.x / 2 - 17.5, 100 - 17.5}
+                        end
+                    end)
+                end
+
+                if is_over_logo and isleftclicked() then
+                    selfRef:ToggleUI() 
+                end
+            end
+
+            wait(0.01)
+        end
+    end)
+end
+
+function AnueHub:CreateMainWindow()
+
+    self.MainFrame = Drawing.new("Square")
+    self.MainFrame.Filled = true
+    self.MainFrame.Visible = true
+    self.MainFrame.Size = {original_width, original_height}
+    self.MainFrame.Position = {
+        20,
+        SCREEN_DIMENSIONS.y / 2 - original_height / 2
+    }
+    self.MainFrame.Color = Colors.Background
+    self.MainFrame.Transparency = ui_transparency
+    table.insert(UIElements, self.MainFrame)
+
+    self.BorderFrame = self:CreateFrame(self.MainFrame, 2, Colors.Border)
+    self.InnerFrame = self:CreateFrame(self.BorderFrame, 3, Colors.Background)
+    self.ContentBg = self:CreateFrame(self.InnerFrame, 3, Colors.InnerBg)
+
+    self:CreateCorners()
+
+    self.TitleBar = Drawing.new("Square")
+    self.TitleBar.Filled = true
+    self.TitleBar.Visible = true
+    self.TitleBar.Size = {self.ContentBg.Size.x - 10, 26} 
+    self.TitleBar.Position = {self.ContentBg.Position.x + 5, self.ContentBg.Position.y + 5}
+    self.TitleBar.Color = Colors.TitleBg
+    self.TitleBar.Transparency = ui_transparency
+    table.insert(UIElements, self.TitleBar)
+
+    self.TitleBarAccent = Drawing.new("Square")
+    self.TitleBarAccent.Filled = true
+    self.TitleBarAccent.Visible = true
+    self.TitleBarAccent.Size = {self.TitleBar.Size.x, 2}
+    self.TitleBarAccent.Position = {
+        self.TitleBar.Position.x,
+        self.TitleBar.Position.y + self.TitleBar.Size.y
+    }
+    self.TitleBarAccent.Color = Colors.Accent
+    self.TitleBarAccent.Transparency = ui_transparency * 0.8
+    table.insert(UIElements, self.TitleBarAccent)
+
+    self.TitleText = Drawing.new("Text")
+    self.TitleText.Text = ""  
+    self.TitleText.Visible = true
+    self.TitleText.Color = Colors.Highlight
+    self.TitleText.Size = 18
+    self.TitleText.Font = 5
+    self.TitleText.Transparency = text_transparency
+
+    self.TitleText.Position = {
+        self.TitleBar.Position.x + self.TitleBar.Size.x / 2,
+        self.TitleBar.Position.y + 10
+    }
+    self.TitleText.Center = true
+    self.TitleText.Outline = true
+    table.insert(TextElements, self.TitleText)
+
+    self.TitleGlow = Drawing.new("Text")
+    self.TitleGlow.Text = ""  
+    self.TitleGlow.Visible = true
+    self.TitleGlow.Color = {Colors.Highlight[1] * 0.7, Colors.Highlight[2] * 0.7, Colors.Highlight[3] * 0.7}
+    self.TitleGlow.Size = 18
+    self.TitleGlow.Font = 5
+    self.TitleGlow.Transparency = text_transparency * 0.6
+    self.TitleGlow.Position = {
+        self.TitleBar.Position.x + self.TitleBar.Size.x / 2 + 1,
+        self.TitleBar.Position.y + 11
+    }
+    self.TitleGlow.Center = true
+    table.insert(TextElements, self.TitleGlow)
+
+    self.TitleLogo = Drawing.new("Image")
+    self.TitleLogo.Url = "https://cdn.nest.rip/uploads/17230644-70b2-4de4-aa2b-17e23bc47a8c.png"
+    self.TitleLogo.Visible = true
+    self.TitleLogo.Size = {20, 20} 
+    self.TitleLogo.Position = {
+        self.ContentBg.Position.x + 10,
+        self.ContentBg.Position.y + 6
+    }
+    self.TitleLogo.Transparency = 1
+    table.insert(UIElements, self.TitleLogo)
+
+    self.VersionText = Drawing.new("Text")
+    self.VersionText.Text = "v2.0"
+    self.VersionText.Visible = true
+    self.VersionText.Color = Colors.TextSecondary
+    self.VersionText.Size = 12
+    self.VersionText.Font = 5
+    self.VersionText.Transparency = text_transparency * 0.7
+
+    self.VersionText.Position = {0, 0} 
+    table.insert(TextElements, self.VersionText)
+
+end
+
+function AnueHub:CreateFrame(parent, offset, color)
+    local frame = Drawing.new("Square")
+    frame.Filled = true
+    frame.Visible = true
+    frame.Size = {parent.Size.x - offset, parent.Size.y - offset}
+    frame.Position = {parent.Position.x + offset/2, parent.Position.y + offset/2}
+    frame.Color = color
+    frame.Transparency = ui_transparency
+    table.insert(UIElements, frame)
+    return frame
+end
+
+function AnueHub:CreateCorners()
+
+    self.TopLeft = Drawing.new("Square")
+    self.TopLeft.Filled = true
+    self.TopLeft.Visible = true
+    self.TopLeft.Size = {10, 10}
+    self.TopLeft.Position = {self.MainFrame.Position.x - 5, self.MainFrame.Position.y - 5}
+    self.TopLeft.Color = Colors.Border
+    self.TopLeft.Transparency = ui_transparency * 0.7
+    table.insert(UIElements, self.TopLeft)
+
+    self.TopRight = Drawing.new("Square")
+    self.TopRight.Filled = true
+    self.TopRight.Visible = true
+    self.TopRight.Size = {10, 10}
+    self.TopRight.Position = {self.MainFrame.Position.x + self.MainFrame.Size.x - 5, self.MainFrame.Position.y - 5}
+    self.TopRight.Color = Colors.Border
+    self.TopRight.Transparency = ui_transparency * 0.7
+    table.insert(UIElements, self.TopRight)
+
+    self.BottomLeft = Drawing.new("Square")
+    self.BottomLeft.Filled = true
+    self.BottomLeft.Visible = true
+    self.BottomLeft.Size = {10, 10}
+    self.BottomLeft.Position = {self.MainFrame.Position.x - 5, self.MainFrame.Position.y + self.MainFrame.Size.y - 5}
+    self.BottomLeft.Color = Colors.Border
+    self.BottomLeft.Transparency = ui_transparency * 0.7
+    table.insert(UIElements, self.BottomLeft)
+
+    self.BottomRight = Drawing.new("Square")
+    self.BottomRight.Filled = true
+    self.BottomRight.Visible = true
+    self.BottomRight.Size = {10, 10}
+    self.BottomRight.Position = {self.MainFrame.Position.x + self.MainFrame.Size.x - 5, self.MainFrame.Position.y + self.MainFrame.Size.y - 5}
+    self.BottomRight.Color = Colors.Border
+    self.BottomRight.Transparency = ui_transparency * 0.7
+    table.insert(UIElements, self.BottomRight)
+end
+
+function AnueHub:CreateTabsSystem()
+
+    self.TabAnueButton = self:CreateButton({
+        position = {self.ContentBg.Position.x + 15, self.TitleBar.Position.y + self.TitleBar.Size.y + 5},
+        size = {120, 25},
+        text = "Anue Scripts (F1)",
+        textSize = 13,
+        color = selected_tab == 1 and Colors.TabActive or Colors.TabInactive,
+        hoverColor = Colors.ButtonHover,
+        pressColor = Colors.ButtonPress,
+        borderColor = selected_tab == 1 and Colors.Highlight or Colors.Border,
+        borderHoverColor = Colors.Highlight,
+        visible = false,
+        callback = function()
+
+            pcall(function()
+                if selected_tab ~= 1 then
+                    self:SelectTab(1)
+                end
+            end)
+        end
+    })
+
+    self.TabCommunityButton = self:CreateButton({
+        position = {self.ContentBg.Position.x + 145, self.TitleBar.Position.y + self.TitleBar.Size.y + 5},
+        size = {150, 25},
+        text = "Community Scripts (F2)",
+        textSize = 13,
+        color = selected_tab == 2 and Colors.TabActive or Colors.TabInactive,
+        hoverColor = Colors.ButtonHover,
+        pressColor = Colors.ButtonPress,
+        borderColor = selected_tab == 2 and Colors.Highlight or Colors.Border,
+        borderHoverColor = Colors.Highlight,
+        visible = false,
+        callback = function()
+
+            pcall(function()
+                if selected_tab ~= 2 then
+                    self:SelectTab(2)
+                end
+            end)
+        end
+    })
+
+    self.TabIndicator = Drawing.new("Square")
+    self.TabIndicator.Filled = true
+    self.TabIndicator.Visible = false
+    self.TabIndicator.Size = {120, 2}
+    self.TabIndicator.Color = Colors.Highlight
+    self.TabIndicator.Transparency = 1
+    self.TabIndicator.Position = {
+        self.TabAnueButton.Background.Position.x,
+        self.TabAnueButton.Background.Position.y + self.TabAnueButton.Background.Size.y
+    }
+    table.insert(UIElements, self.TabIndicator)
+
+    self.PageIndicator = Drawing.new("Text")
+    self.PageIndicator.Text = "Page 1/1"
+    self.PageIndicator.Visible = false
+    self.PageIndicator.Center = false
+    self.PageIndicator.Color = Colors.TextSecondary
+    self.PageIndicator.Size = 13
+    self.PageIndicator.Font = font
+    self.PageIndicator.Transparency = text_transparency
+
+    if self.ContentFrame then
+        self.PageIndicator.Position = {
+            self.ContentFrame.Position.x + self.ContentFrame.Size.x - 60,
+            self.ContentFrame.Position.y + self.ContentFrame.Size.y - 20
+        }
+    else
+
+        self.PageIndicator.Position = {
+            self.ContentBg.Position.x + self.ContentBg.Size.x - 60,
+            self.ContentBg.Position.y + self.ContentBg.Size.y - 20
+        }
+    end
+    table.insert(TextElements, self.PageIndicator)
+
+    self.PrevPageButton = self:CreateButton({
+        position = {
+            self.ContentFrame.Position.x + 10,
+            self.ContentFrame.Position.y + self.ContentFrame.Size.y - 35
+        },
+        size = {80, 25},
+        text = "< Prev",
+        textSize = 13,
+        color = {40, 40, 60},
+        hoverColor = {60, 60, 100},
+        pressColor = {30, 30, 50},
+        borderColor = {60, 60, 80},
+        borderHoverColor = {100, 100, 200},
+        visible = false,
+        callback = function()
+
+            pcall(function()
+                if current_page > 1 then
+                    current_page = current_page - 1
+                    selected_index = 1
+                    self:UpdateVisibility()
+                    self:UpdateScriptPositions()
+                end
+            end)
+        end
+    })
+
+    self.NextPageButton = self:CreateButton({
+        position = {
+            self.ContentFrame.Position.x + self.ContentFrame.Size.x - 90,
+            self.ContentFrame.Position.y + self.ContentFrame.Size.y - 35
+        },
+        size = {80, 25},
+        text = "Next >",
+        textSize = 13,
+        color = {40, 40, 60},
+        hoverColor = {60, 60, 100},
+        pressColor = {30, 30, 50},
+        borderColor = {60, 60, 80},
+        borderHoverColor = {100, 100, 200},
+        visible = false,
+        callback = function()
+
+            pcall(function()
+                local active_scripts = selected_tab == 1 and anue_scripts or community_scripts
+                local total_pages = math.ceil(#active_scripts / max_items_per_page)
+                if current_page < total_pages then
+                    current_page = current_page + 1
+                    selected_index = 1
+                    self:UpdateVisibility()
+                    self:UpdateScriptPositions()
+                end
+            end)
+        end
+    })
+end
+
+function AnueHub:CreateContentArea()
+
+    self.ContentFrame = Drawing.new("Square")
+    self.ContentFrame.Filled = true
+    self.ContentFrame.Visible = true
+    self.ContentFrame.Size = {self.ContentBg.Size.x - 10, self.ContentBg.Size.y - 41} 
+    self.ContentFrame.Position = {
+        self.ContentBg.Position.x + 5,
+        self.TitleBar.Position.y + self.TitleBar.Size.y + 5
+    }
+    self.ContentFrame.Color = {25, 25, 25}
+    self.ContentFrame.Transparency = ui_transparency
+    table.insert(UIElements, self.ContentFrame)
+
+    self.ContentFrameBorder = Drawing.new("Square")
+    self.ContentFrameBorder.Filled = false
+    self.ContentFrameBorder.Visible = true
+    self.ContentFrameBorder.Size = {self.ContentFrame.Size.x, self.ContentFrame.Size.y}
+    self.ContentFrameBorder.Position = {self.ContentFrame.Position.x, self.ContentFrame.Position.y}
+    self.ContentFrameBorder.Color = Colors.Border
+    self.ContentFrameBorder.Thickness = 1
+    self.ContentFrameBorder.Transparency = ui_transparency * 0.5
+    table.insert(UIElements, self.ContentFrameBorder)
+
+    self.WelcomeDecorTop = Drawing.new("Square")
+    self.WelcomeDecorTop.Filled = true
+    self.WelcomeDecorTop.Visible = true
+    self.WelcomeDecorTop.Size = {120, 3}
+    self.WelcomeDecorTop.Color = Colors.Accent
+    self.WelcomeDecorTop.Transparency = ui_transparency * 0.9
+    self.WelcomeDecorTop.Position = {
+        self.ContentFrame.Position.x + self.ContentFrame.Size.x / 2 - 60,
+        self.ContentFrame.Position.y + self.ContentFrame.Size.y / 2 - 50
+    }
+    table.insert(UIElements, self.WelcomeDecorTop)
+
+    self.WelcomeDecorBottom = Drawing.new("Square")
+    self.WelcomeDecorBottom.Filled = true
+    self.WelcomeDecorBottom.Visible = true
+    self.WelcomeDecorBottom.Size = {120, 3}
+    self.WelcomeDecorBottom.Color = Colors.Accent
+    self.WelcomeDecorBottom.Transparency = ui_transparency * 0.9
+    self.WelcomeDecorBottom.Position = {
+        self.ContentFrame.Position.x + self.ContentFrame.Size.x / 2 - 60,
+        self.ContentFrame.Position.y + self.ContentFrame.Size.y / 2 + 30
+    }
+    table.insert(UIElements, self.WelcomeDecorBottom)
+
+    self.WelcomeLogo = Drawing.new("Image")
+    self.WelcomeLogo.Url = "https://cdn.nest.rip/uploads/17230644-70b2-4de4-aa2b-17e23bc47a8c.png"
+    self.WelcomeLogo.Visible = true
+    self.WelcomeLogo.Size = {70, 70} 
+    self.WelcomeLogo.Position = {
+        self.ContentFrame.Position.x + self.ContentFrame.Size.x / 2 - 35,
+        self.ContentFrame.Position.y + self.ContentFrame.Size.y / 2 - 50  
+    }
+    self.WelcomeLogo.Transparency = 1
+    table.insert(UIElements, self.WelcomeLogo)
+
+    self.WelcomeText = Drawing.new("Text")
+    self.WelcomeText.Text = "WELCOME TO ANUE SEVERE HUB"  
+    self.WelcomeText.Visible = true
+    self.WelcomeText.Center = true
+    self.WelcomeText.Color = Colors.Highlight
+    self.WelcomeText.Size = text_size + 1
+    self.WelcomeText.Font = font
+    self.WelcomeText.Transparency = text_transparency
+    self.WelcomeText.Position = {
+        self.ContentFrame.Position.x + self.ContentFrame.Size.x / 2,
+        self.ContentFrame.Position.y + self.ContentFrame.Size.y / 2 + 10  
+    }
+    self.WelcomeText.Outline = true
+    table.insert(TextElements, self.WelcomeText)
+
+    self.WelcomeVersionText = Drawing.new("Text")
+    self.WelcomeVersionText.Text = "Version 2.0"  
+    self.WelcomeVersionText.Visible = true
+    self.WelcomeVersionText.Center = true
+    self.WelcomeVersionText.Color = {Colors.TextSecondary[1] * 0.8, Colors.TextSecondary[2] * 0.8, Colors.TextSecondary[3] * 0.8}
+    self.WelcomeVersionText.Size = text_size - 2
+    self.WelcomeVersionText.Font = font
+    self.WelcomeVersionText.Transparency = text_transparency * 0.7
+    self.WelcomeVersionText.Position = {
+        self.ContentFrame.Position.x + self.ContentFrame.Size.x / 2,
+        self.ContentFrame.Position.y + self.ContentFrame.Size.y - 40
+    }
+    table.insert(TextElements, self.WelcomeVersionText)
+
+    self.EnterButton = self:CreateButton({
+        position = {
+            self.ContentFrame.Position.x + self.ContentFrame.Size.x / 2 - 50,
+            self.ContentFrame.Position.y + self.ContentFrame.Size.y - 80
+        },
+        size = {100, 25},
+        text = "ENTER",
+        textSize = 14,
+        color = {40, 40, 60},
+        hoverColor = {60, 60, 100},
+        pressColor = {30, 30, 50},
+        borderColor = {60, 60, 80},
+        borderHoverColor = {100, 100, 200},
+        visible = false,
+        callback = function()
+
+            pcall(function()
+                if not IsExpanded then
+                    self:ToggleExpanded()
+                end
+            end)
+        end
+    })
+
+    self.LogoFrame = Drawing.new("Square")
+    self.LogoFrame.Filled = true
+    self.LogoFrame.Visible = false
+    self.LogoFrame.Size = {self.ContentBg.Size.x - 20, 30}
+    self.LogoFrame.Position = {self.ContentBg.Position.x + 10, self.ContentBg.Position.y + 40}
+    self.LogoFrame.Color = Colors.InnerBg2
+    self.LogoFrame.Transparency = ui_transparency * 0.9
+    table.insert(UIElements, self.LogoFrame)
+
+    self.LogoBorder = Drawing.new("Square")
+    self.LogoBorder.Filled = false
+    self.LogoBorder.Visible = false
+    self.LogoBorder.Size = {self.LogoFrame.Size.x, self.LogoFrame.Size.y}
+    self.LogoBorder.Position = {self.LogoFrame.Position.x, self.LogoFrame.Position.y}
+    self.LogoBorder.Color = Colors.Border
+    self.LogoBorder.Thickness = 1.5
+    self.LogoBorder.Transparency = ui_transparency * 0.9
+    table.insert(UIElements, self.LogoBorder)
+
+    self.LogoImage = Drawing.new("Image")
+    self.LogoImage.Url = "https://cdn.nest.rip/uploads/17230644-70b2-4de4-aa2b-17e23bc47a8c.png"
+    self.LogoImage.Visible = false  
+    self.LogoImage.Size = {30, 30} 
+    self.LogoImage.Position = {
+        self.LogoFrame.Position.x + self.LogoFrame.Size.x / 2 - 15,
+        self.LogoFrame.Position.y
+    }
+    self.LogoImage.Transparency = 1
+    table.insert(UIElements, self.LogoImage)
+
+    self.LogoText = Drawing.new("Text")
+    self.LogoText.Text = "ANUE SEVERE HUB"
+    self.LogoText.Visible = false  
+    self.LogoText.Center = true
+    self.LogoText.Color = Colors.Highlight
+    self.LogoText.Size = text_size + 3
+    self.LogoText.Font = font
+    self.LogoText.Transparency = text_transparency  
+    self.LogoText.Position = {
+        self.LogoFrame.Position.x + self.LogoFrame.Size.x / 2,
+        self.LogoFrame.Position.y + self.LogoFrame.Size.y / 2 - 8
+    }
+    table.insert(TextElements, self.LogoText)
+
+    self.SelectionHighlight = Drawing.new("Square")
+    self.SelectionHighlight.Filled = true
+    self.SelectionHighlight.Visible = false
+    self.SelectionHighlight.Size = {self.ContentFrame.Size.x - 20, 45} 
+    self.SelectionHighlight.Color = Colors.Highlight
+    self.SelectionHighlight.Transparency = 0.15
+    table.insert(UIElements, self.SelectionHighlight)
+
+    self.ScriptOptions = {}
+    self.AuthorLabels = {}
+    self:CreateScriptOptions()
+end
+
+function AnueHub:CreateScriptOptions()
+    local start_y = self.LogoFrame.Position.y + self.LogoFrame.Size.y + 15
+    local option_spacing = 55  
+
+    for i, option in ipairs(anue_scripts) do
+        local text = Drawing.new("Text")
+        text.Text = option.name
+        text.Visible = false
+        text.Color = Colors.Text
+        text.Size = text_size
+        text.Font = font
+        text.Transparency = text_transparency
+        text.Position = {
+            self.ContentFrame.Position.x + 25,
+            start_y + (i-1) % max_items_per_page * option_spacing
+        }
+        table.insert(self.ScriptOptions, text)
+        table.insert(TextElements, text)
+
+        local author_text = Drawing.new("Text")
+        author_text.Text = "by " .. option.author
+        author_text.Visible = false
+        author_text.Color = {180, 180, 255}  
+        author_text.Size = text_size - 2     
+        author_text.Font = font
+        author_text.Transparency = text_transparency
+        author_text.Position = {
+            self.ContentFrame.Position.x + 30,
+            start_y + (i-1) % max_items_per_page * option_spacing + 20  
+        }
+        table.insert(self.AuthorLabels, author_text)
+        table.insert(TextElements, author_text)
+
+        local execute_button = self:CreateButton({
+            position = {
+                self.ContentFrame.Position.x + self.ContentFrame.Size.x - 120, 
+                start_y + (i-1) % max_items_per_page * option_spacing + 5 
+            },
+            size = {85, 25}, 
+            text = "Execute",
+            textSize = 12,
+            color = {90, 90, 210}, 
+            hoverColor = {110, 110, 255}, 
+            pressColor = {70, 70, 180}, 
+            borderColor = {100, 100, 230}, 
+            borderHoverColor = {130, 130, 255}, 
+            visible = false,
+            callback = function()
+                if i <= #anue_scripts then
+                    self:ExecuteScript(anue_scripts[i])
+                end
+            end
+        })
+
+        anue_scripts[i].ExecuteButton = execute_button
+    end
+
+    local offset = #anue_scripts
+    for i, option in ipairs(community_scripts) do
+        local text = Drawing.new("Text")
+        text.Text = option.name
+        text.Visible = false
+        text.Color = Colors.Text
+        text.Size = text_size
+        text.Font = font
+        text.Transparency = text_transparency
+        text.Position = {
+            self.ContentFrame.Position.x + 25,
+            start_y + (i-1) % max_items_per_page * option_spacing
+        }
+        table.insert(self.ScriptOptions, text)
+        table.insert(TextElements, text)
+
+        local author_text = Drawing.new("Text")
+        author_text.Text = "by " .. option.author
+        author_text.Visible = false
+        author_text.Color = {180, 180, 255}  
+        author_text.Size = text_size - 2     
+        author_text.Font = font
+        author_text.Transparency = text_transparency
+        author_text.Position = {
+            self.ContentFrame.Position.x + 30,
+            start_y + (i-1) % max_items_per_page * option_spacing + 20  
+        }
+        table.insert(self.AuthorLabels, author_text)
+        table.insert(TextElements, author_text)
+
+        local execute_button = self:CreateButton({
+            position = {
+                self.ContentFrame.Position.x + self.ContentFrame.Size.x - 120, 
+                start_y + (i-1) % max_items_per_page * option_spacing + 5
+            },
+            size = {85, 25}, 
+            text = "Execute",
+            textSize = 12,
+            color = {90, 90, 210}, 
+            hoverColor = {110, 110, 255}, 
+            pressColor = {70, 70, 180}, 
+            borderColor = {100, 100, 230}, 
+            borderHoverColor = {130, 130, 255}, 
+            visible = false,
+            callback = function()
+                self:ExecuteScript(community_scripts[i])
+            end
+        })
+
+        community_scripts[i].ExecuteButton = execute_button
+    end
+end
+
+function AnueHub:CreateHelpTexts()
+    self.GuideTexts = {}
+
+    self.OpenCloseGuide = Drawing.new("Text")
+    self.OpenCloseGuide.Text = "Press [HOME] to open hub"
+    self.OpenCloseGuide.Visible = true
+    self.OpenCloseGuide.Center = true
+    self.OpenCloseGuide.Color = {130, 130, 255} 
+    self.OpenCloseGuide.Size = 16 
+    self.OpenCloseGuide.Font = 5
+    self.OpenCloseGuide.Transparency = 1 
+    self.OpenCloseGuide.Position = {SCREEN_DIMENSIONS.x / 2, 20}
+    self.OpenCloseGuide.Outline = true
+
+    self.OpenCloseGuideShadow = Drawing.new("Text")
+    self.OpenCloseGuideShadow.Text = "Press [HOME] to open hub"
+    self.OpenCloseGuideShadow.Visible = true
+    self.OpenCloseGuideShadow.Center = true
+    self.OpenCloseGuideShadow.Color = {20, 20, 30} 
+    self.OpenCloseGuideShadow.Size = 16
+    self.OpenCloseGuideShadow.Font = 5
+    self.OpenCloseGuideShadow.Transparency = 1
+    self.OpenCloseGuideShadow.Position = {SCREEN_DIMENSIONS.x / 2 + 1, 20 + 1} 
+
+    table.insert(self.GuideTexts, self.OpenCloseGuideShadow)
+    table.insert(TextElements, self.OpenCloseGuideShadow)
+    table.insert(self.GuideTexts, self.OpenCloseGuide)
+    table.insert(TextElements, self.OpenCloseGuide)
+
+    self.ExpandGuide = Drawing.new("Text")
+    self.ExpandGuide.Text = "Press [ENTER] to expand menu"
+    self.ExpandGuide.Visible = false
+    self.ExpandGuide.Center = true
+    self.ExpandGuide.Color = {130, 130, 255} 
+    self.ExpandGuide.Size = 16 
+    self.ExpandGuide.Font = 5
+    self.ExpandGuide.Transparency = 1 
+    self.ExpandGuide.Position = {SCREEN_DIMENSIONS.x / 2, 45} 
+    self.ExpandGuide.Outline = true
+
+    self.ExpandGuideShadow = Drawing.new("Text")
+    self.ExpandGuideShadow.Text = "Press [ENTER] to expand menu"
+    self.ExpandGuideShadow.Visible = false
+    self.ExpandGuideShadow.Center = true
+    self.ExpandGuideShadow.Color = {20, 20, 30} 
+    self.ExpandGuideShadow.Size = 16
+    self.ExpandGuideShadow.Font = 5
+    self.ExpandGuideShadow.Transparency = 1
+    self.ExpandGuideShadow.Position = {SCREEN_DIMENSIONS.x / 2 + 1, 45 + 1} 
+
+    table.insert(self.GuideTexts, self.ExpandGuideShadow)
+    table.insert(TextElements, self.ExpandGuideShadow)
+    table.insert(self.GuideTexts, self.ExpandGuide)
+    table.insert(TextElements, self.ExpandGuide)
+
+    self.NavigationGuide = Drawing.new("Text")
+    self.NavigationGuide.Text = "Use [UP/DOWN] to navigate, [LEFT/RIGHT] to change page, [Y] to select script"
+    self.NavigationGuide.Visible = false
+    self.NavigationGuide.Center = true
+    self.NavigationGuide.Color = {130, 130, 255} 
+    self.NavigationGuide.Size = 16 
+    self.NavigationGuide.Font = 5
+    self.NavigationGuide.Transparency = 1 
+    self.NavigationGuide.Position = {SCREEN_DIMENSIONS.x / 2, 45} 
+    self.NavigationGuide.Outline = true
+
+    self.NavigationGuideShadow = Drawing.new("Text")
+    self.NavigationGuideShadow.Text = "Use [UP/DOWN] to navigate, [LEFT/RIGHT] to change page, [Y] to select script"
+    self.NavigationGuideShadow.Visible = false
+    self.NavigationGuideShadow.Center = true
+    self.NavigationGuideShadow.Color = {20, 20, 30} 
+    self.NavigationGuideShadow.Size = 16
+    self.NavigationGuideShadow.Font = 5
+    self.NavigationGuideShadow.Transparency = 1
+    self.NavigationGuideShadow.Position = {SCREEN_DIMENSIONS.x / 2 + 1, 45 + 1} 
+
+    table.insert(self.GuideTexts, self.NavigationGuideShadow)
+    table.insert(TextElements, self.NavigationGuideShadow)
+    table.insert(self.GuideTexts, self.NavigationGuide)
+    table.insert(TextElements, self.NavigationGuide)
+end
+
+function AnueHub:UpdateCornerPositions()
+    local x = self.MainFrame.Position.x
+    local y = self.MainFrame.Position.y
+    local width = self.MainFrame.Size.x
+    local height = self.MainFrame.Size.y
+
+    self.TopLeft.Position = {x - 5, y - 5}
+    self.TopRight.Position = {x + width - 5, y - 5}
+    self.BottomLeft.Position = {x - 5, y + height - 5}
+    self.BottomRight.Position = {x + width - 5, y + height - 5}
+end
+
+function AnueHub:UpdateLayout()
+
+    self.BorderFrame.Position = {self.MainFrame.Position.x + 2.5/2, self.MainFrame.Position.y + 2.5/2}
+
+    self.InnerFrame.Position = {self.BorderFrame.Position.x + 3/2, self.BorderFrame.Position.y + 3/2}
+
+    self.ContentBg.Position = {self.InnerFrame.Position.x + 3/2, self.InnerFrame.Position.y + 3/2}
+
+    self.TitleBar.Position = {self.ContentBg.Position.x + 5, self.ContentBg.Position.y + 5}
+
+    self.TitleText.Position = {
+        self.TitleBar.Position.x + self.TitleBar.Size.x / 2,
+        self.TitleBar.Position.y + 10
+    }
+
+    if self.TitleGlow then
+        self.TitleGlow.Position = {
+            self.TitleBar.Position.x + self.TitleBar.Size.x / 2 + 1,
+            self.TitleBar.Position.y + 11
+        }
+    end
+
+    if self.TitleLogo then
+        self.TitleLogo.Position = {
+            self.ContentBg.Position.x + 10,
+            self.ContentBg.Position.y + 6
+        }
+    end
+
+    self.ContentFrame.Position = {
+        self.ContentBg.Position.x + 5,
+        self.TitleBar.Position.y + self.TitleBar.Size.y + 5
+    }
+
+    self.WelcomeText.Position = {
+        self.ContentFrame.Position.x + self.ContentFrame.Size.x / 2,
+        self.ContentFrame.Position.y + self.ContentFrame.Size.y / 2 + 10  
+    }
+
+    if self.WelcomeVersionText then
+        self.WelcomeVersionText.Position = {
+            self.ContentFrame.Position.x + self.ContentFrame.Size.x / 2,
+            self.ContentFrame.Position.y + self.ContentFrame.Size.y - 40
+        }
+    end
+
+    if self.WelcomeDecorTop then
+        self.WelcomeDecorTop.Position = {
+            self.ContentFrame.Position.x + self.ContentFrame.Size.x / 2 - 60,
+            self.ContentFrame.Position.y + self.ContentFrame.Size.y / 2 - 50
+        }
+    end
+
+    if self.WelcomeDecorBottom then
+        self.WelcomeDecorBottom.Position = {
+            self.ContentFrame.Position.x + self.ContentFrame.Size.x / 2 - 60,
+            self.ContentFrame.Position.y + self.ContentFrame.Size.y / 2 + 30
+        }
+    end
+
+    if self.WelcomeLogo then
+        self.WelcomeLogo.Position = {
+            self.ContentFrame.Position.x + self.ContentFrame.Size.x / 2 - 35,
+            self.ContentFrame.Position.y + self.ContentFrame.Size.y / 2 - 50  
+        }
+    end
+
+    if IsExpanded and self.TabAnueButton and self.TabAnueButton.Background then
+
+        pcall(function()
+
+            self.TabAnueButton.Background.Position = {
+                self.ContentBg.Position.x + 15, 
+                self.TitleBar.Position.y + self.TitleBar.Size.y + 5
+            }
+
+            self.TabCommunityButton.Background.Position = {
+                self.ContentBg.Position.x + 145, 
+                self.TitleBar.Position.y + self.TitleBar.Size.y + 5
+            }
+
+            self:UpdateButtonTextPosition(self.TabAnueButton)
+            self:UpdateButtonTextPosition(self.TabCommunityButton)
+        end)
+
+        self.LogoFrame.Position = {
+            self.ContentBg.Position.x + 10, 
+            self.TabAnueButton.Background.Position.y + self.TabAnueButton.Background.Size.y + 10
+        }
+
+        if self.LogoImage then
+            self.LogoImage.Position = {
+                self.LogoFrame.Position.x + self.LogoFrame.Size.x / 2 - 15,
+                self.LogoFrame.Position.y
+            }
+        end
+
+        self.LogoText.Position = {
+            self.LogoFrame.Position.x + self.LogoFrame.Size.x / 2,
+            self.LogoFrame.Position.y + self.LogoFrame.Size.y / 2 - 8
+        }
+    end
+
+    if self.ContentFrame and self.PageIndicator then
+        self.PageIndicator.Position = {
+            self.ContentFrame.Position.x + self.ContentFrame.Size.x / 2,  
+            self.ContentFrame.Position.y + self.ContentFrame.Size.y - 20
+        }
+
+        if self.PrevPageButton and self.PrevPageButton.Background then
+            self.PrevPageButton.Background.Position = {
+                self.ContentFrame.Position.x + 10,
+                self.ContentFrame.Position.y + self.ContentFrame.Size.y - 35
+            }
+            self:UpdateButtonTextPosition(self.PrevPageButton)
+        end
+
+        if self.NextPageButton and self.NextPageButton.Background then
+            self.NextPageButton.Background.Position = {
+                self.ContentFrame.Position.x + self.ContentFrame.Size.x - 90,
+                self.ContentFrame.Position.y + self.ContentFrame.Size.y - 35
+            }
+            self:UpdateButtonTextPosition(self.NextPageButton)
+        end
+    end
+
+    self:UpdateControlButtonsPosition()
+
+    self:UpdateCornerPositions()
+    self:UpdateScriptPositions()
+
+    if self.TitleBarAccent then
+        self.TitleBarAccent.Position = {
+            self.TitleBar.Position.x,
+            self.TitleBar.Position.y + self.TitleBar.Size.y
+        }
+        self.TitleBarAccent.Size = {self.TitleBar.Size.x, 2}
+    end
+
+    if self.ContentFrameBorder then
+        self.ContentFrameBorder.Position = {self.ContentFrame.Position.x, self.ContentFrame.Position.y}
+        self.ContentFrameBorder.Size = {self.ContentFrame.Size.x, self.ContentFrame.Size.y}
+    end
+
+    if IsExpanded then
+
+        if self.TabIndicator and self.TabAnueButton and self.TabAnueButton.Background and 
+           self.TabCommunityButton and self.TabCommunityButton.Background then
+            pcall(function() 
+                self.TabIndicator.Position = {
+                    selected_tab == 1 and self.TabAnueButton.Background.Position.x or self.TabCommunityButton.Background.Position.x,
+                    self.TabAnueButton.Background.Position.y + self.TabAnueButton.Background.Size.y
+                }
+                self.TabIndicator.Visible = true
+            end)
+        end
+
+        if self.LogoBorder then
+            self.LogoBorder.Position = {self.LogoFrame.Position.x, self.LogoFrame.Position.y}
+            self.LogoBorder.Size = {self.LogoFrame.Size.x, self.LogoFrame.Size.y}
+        end
+    end
+
+    if self.EnterButton and self.EnterButton.Background then
+        self.EnterButton.Background.Position = {
+            self.ContentFrame.Position.x + self.ContentFrame.Size.x / 2 - 50,
+            self.ContentFrame.Position.y + self.ContentFrame.Size.y - 80
+        }
+
+        self:UpdateButtonTextPosition(self.EnterButton)
+        end
+    end
+
+function AnueHub:SelectTab(tab)
+    selected_tab = tab
+    selected_index = 1
+    current_page = 1
+
+    if self.TabAnueButton and self.TabAnueButton.Background and
+       self.TabCommunityButton and self.TabCommunityButton.Background then
+
+        pcall(function()
+            self.TabAnueButton.Background.Color = selected_tab == 1 and Colors.TabActive or Colors.TabInactive
+            self.TabAnueButton.Border.Color = selected_tab == 1 and Colors.Highlight or Colors.Border
+        end)
+
+        pcall(function()
+            self.TabCommunityButton.Background.Color = selected_tab == 2 and Colors.TabActive or Colors.TabInactive
+            self.TabCommunityButton.Border.Color = selected_tab == 2 and Colors.Highlight or Colors.Border
+        end)
+
+        if self.TabIndicator then
+            local targetX = selected_tab == 1 and 
+                            self.TabAnueButton.Background.Position.x or 
+                            self.TabCommunityButton.Background.Position.x
+            local startX = self.TabIndicator.Position.x
+            local startTime = time()
+            local duration = 0.2
+
+            spawn(function()
+                local elapsed = 0
+                while elapsed < duration and ui_running do
+                    elapsed = time() - startTime
+                    local progress = math.min(elapsed / duration, 1)
+                    local eased_progress = progress * (2 - progress)
+                    local currentX = startX + (targetX - startX) * eased_progress
+                    self.TabIndicator.Position = {currentX, self.TabIndicator.Position.y}
+
+                    local targetWidth = selected_tab == 1 and 120 or 150
+                    local startWidth = self.TabIndicator.Size.x
+                    local currentWidth = startWidth + (targetWidth - startWidth) * eased_progress
+                    self.TabIndicator.Size = {currentWidth, self.TabIndicator.Size.y}
+
+                    wait(0.016)
+                end
+
+                self.TabIndicator.Position = {targetX, self.TabIndicator.Position.y}
+                self.TabIndicator.Size = {selected_tab == 1 and 120 or 150, self.TabIndicator.Size.y}
+            end)
+        end
+    end
+
+    self:UpdateVisibility()
+    self:UpdateScriptPositions()
+end
+
+function AnueHub:UpdateScriptPositions(durante_arrasto)
+
+    if not IsExpanded then return end
+
+    local start_y = self.LogoFrame.Position.y + self.LogoFrame.Size.y + 15
+    local option_spacing = 55  
+    local active_scripts = selected_tab == 1 and anue_scripts or community_scripts
+    local start_index = (current_page - 1) * max_items_per_page + 1
+    local end_index = math.min(start_index + max_items_per_page - 1, #active_scripts)
+        local offset = selected_tab == 1 and 0 or #anue_scripts
+
+        for i = start_index, end_index do
+            local element_index = offset + i
+            local display_index = (i - start_index) + 1
+
+        if self.ScriptOptions[element_index] then
+            self.ScriptOptions[element_index].Position = {
+                self.ContentFrame.Position.x + 25,
+                start_y + (display_index - 1) * option_spacing
+            }
+
+            if self.AuthorLabels[element_index] then
+                self.AuthorLabels[element_index].Position = {
+                    self.ContentFrame.Position.x + 30,
+                    start_y + (display_index - 1) * option_spacing + 20 
+                }
+            end
+
+            local script_data = active_scripts[i]
+            if script_data and script_data.ExecuteButton then
+                script_data.ExecuteButton.Background.Position = {
+                    self.ContentFrame.Position.x + self.ContentFrame.Size.x - 120, 
+                    start_y + (display_index - 1) * option_spacing
+                }
+
+                script_data.ExecuteButton.Background.Color = {90, 90, 210} 
+                script_data.ExecuteButton.DefaultColor = {90, 90, 210}
+                script_data.ExecuteButton.HoverColor = {110, 110, 255}
+                script_data.ExecuteButton.PressColor = {70, 70, 180}
+                script_data.ExecuteButton.BorderColor = {100, 100, 230}
+                script_data.ExecuteButton.BorderHoverColor = {130, 130, 255}
+
+                if script_data.ExecuteButton.Border then
+                    script_data.ExecuteButton.Border.Color = {100, 100, 230}
+                end
+
+                self:UpdateButtonTextPosition(script_data.ExecuteButton)
+                script_data.ExecuteButton.Background.Visible = true
+                script_data.ExecuteButton.Text.Visible = true
+                script_data.ExecuteButton.Border.Visible = true
+                end
+            end
+        end
+
+    if durante_arrasto or IsHovering then
+        return
+    end
+
+    local start_y = self.LogoFrame.Position.y + self.LogoFrame.Size.y + 15
+    local target_y = start_y + (selected_index - 1) * option_spacing - 8 
+
+    self.SelectionHighlight.Size = {self.ContentFrame.Size.x - 20, 45}
+
+    self.SelectionHighlight.Position = {
+        self.ContentFrame.Position.x + 10,
+        target_y
+    }
+end
+
+function AnueHub:UpdateVisibility()
+
+    self.WelcomeText.Visible = not IsExpanded and self.MainFrame.Visible
+
+    if self.WelcomeVersionText then
+        self.WelcomeVersionText.Visible = not IsExpanded and self.MainFrame.Visible
+    end
+
+    if self.WelcomeDecorTop then
+        self.WelcomeDecorTop.Visible = not IsExpanded and self.MainFrame.Visible
+    end
+
+    if self.WelcomeDecorBottom then
+        self.WelcomeDecorBottom.Visible = not IsExpanded and self.MainFrame.Visible
+   end
+
+    if self.WelcomeLogo then
+        self.WelcomeLogo.Visible = not IsExpanded and self.MainFrame.Visible
+    end
+
+    self.TitleText.Visible = self.MainFrame.Visible
+    if self.TitleGlow then
+        self.TitleGlow.Visible = self.MainFrame.Visible
+    end
+
+    if self.TitleLogo then
+        self.TitleLogo.Visible = self.MainFrame.Visible
+    end
+
+    if self.VersionText then
+        self.VersionText.Visible = self.MainFrame.Visible
+    end
+
+    if self.TabAnueButton and self.TabCommunityButton then
+        self.TabAnueButton.Background.Visible = IsExpanded and self.MainFrame.Visible
+        self.TabAnueButton.Text.Visible = IsExpanded and self.MainFrame.Visible
+        self.TabAnueButton.Border.Visible = IsExpanded and self.MainFrame.Visible
+
+        self.TabCommunityButton.Background.Visible = IsExpanded and self.MainFrame.Visible
+        self.TabCommunityButton.Text.Visible = IsExpanded and self.MainFrame.Visible
+        self.TabCommunityButton.Border.Visible = IsExpanded and self.MainFrame.Visible
+    end
+
+    self.LogoFrame.Visible = IsExpanded and self.MainFrame.Visible
+    self.LogoBorder.Visible = IsExpanded and self.MainFrame.Visible
+
+    if self.LogoImage then
+        self.LogoImage.Visible = false
+    end
+
+    self.LogoText.Visible = IsExpanded and self.MainFrame.Visible
+
+    self.PageIndicator.Visible = IsExpanded and self.MainFrame.Visible
+    self.SelectionHighlight.Visible = IsExpanded and self.MainFrame.Visible
+    self.TabIndicator.Visible = IsExpanded and self.MainFrame.Visible
+
+    local active_scripts = selected_tab == 1 and anue_scripts or community_scripts
+    local total_pages = math.ceil(#active_scripts / max_items_per_page)
+    self.PageIndicator.Text = "Page " .. current_page .. "/" .. total_pages
+    self.PageIndicator.Center = true  
+
+    local start_index = (current_page - 1) * max_items_per_page + 1
+    local end_index = math.min(start_index + max_items_per_page - 1, #active_scripts)
+    local offset = selected_tab == 1 and 0 or #anue_scripts
+
+    for i = 1, #self.ScriptOptions do
+        self.ScriptOptions[i].Visible = false
+        self.AuthorLabels[i].Visible = false
+   end
+
+    for _, script in ipairs(anue_scripts) do
+        if script.ExecuteButton then
+            script.ExecuteButton.Background.Visible = false
+            script.ExecuteButton.Text.Visible = false
+            script.ExecuteButton.Border.Visible = false
+        end
+    end
+
+    for _, script in ipairs(community_scripts) do
+        if script.ExecuteButton then
+            script.ExecuteButton.Background.Visible = false
+            script.ExecuteButton.Text.Visible = false
+            script.ExecuteButton.Border.Visible = false
+        end
+    end
+
+    if IsExpanded and self.MainFrame.Visible then
+        for i = start_index, end_index do
+            local element_index = offset + i
+            self.ScriptOptions[element_index].Visible = true
+            self.AuthorLabels[element_index].Visible = true
+
+            local script_data = active_scripts[i]
+            if script_data and script_data.ExecuteButton then
+                script_data.ExecuteButton.Background.Visible = true
+                script_data.ExecuteButton.Text.Visible = true
+                script_data.ExecuteButton.Border.Visible = true
+            end
+
+            local display_index = i - start_index + 1
+            if display_index == selected_index then
+                self.ScriptOptions[element_index].Color = Colors.Highlight
+            else
+                self.ScriptOptions[element_index].Color = Colors.Text
+            end
+        end
+    end
+
+    self.OpenCloseGuide.Text = self.MainFrame.Visible and "Press [HOME] to close hub" or "Press [HOME] to open hub"
+    if self.OpenCloseGuideShadow then 
+        self.OpenCloseGuideShadow.Text = self.OpenCloseGuide.Text
+    end
+
+    self.ExpandGuide.Visible = self.MainFrame.Visible and not IsExpanded
+    if self.ExpandGuideShadow then
+        self.ExpandGuideShadow.Visible = self.ExpandGuide.Visible
+    end
+
+    self.NavigationGuide.Visible = self.MainFrame.Visible and IsExpanded
+    if self.NavigationGuideShadow then
+        self.NavigationGuideShadow.Visible = self.NavigationGuide.Visible
+    end
+
+    if self.EnterButton then
+        self.EnterButton.Background.Visible = not IsExpanded and self.MainFrame.Visible
+        self.EnterButton.Text.Visible = not IsExpanded and self.MainFrame.Visible
+        self.EnterButton.Border.Visible = not IsExpanded and self.MainFrame.Visible
+    end
+
+    if self.PrevPageButton and self.NextPageButton then
+        local active_scripts = selected_tab == 1 and anue_scripts or community_scripts
+        local total_pages = math.ceil(#active_scripts / max_items_per_page)
+
+        local show_page_buttons = IsExpanded and self.MainFrame.Visible and total_pages > 1
+
+        self.PrevPageButton.Background.Visible = show_page_buttons
+        self.PrevPageButton.Text.Visible = show_page_buttons
+        self.PrevPageButton.Border.Visible = show_page_buttons
+
+        self.NextPageButton.Background.Visible = show_page_buttons
+        self.NextPageButton.Text.Visible = show_page_buttons
+        self.NextPageButton.Border.Visible = show_page_buttons
+
+        if show_page_buttons then
+
+            if current_page == 1 then
+                self.PrevPageButton.Background.Color = {30, 30, 45} 
+                self.PrevPageButton.Text.Color = {150, 150, 150} 
+            else
+                self.PrevPageButton.Background.Color = {40, 40, 60}
+                self.PrevPageButton.Text.Color = Colors.Text
+                self.PrevPageButton.DefaultColor = {40, 40, 60}
+            end
+
+            if current_page == total_pages then
+                self.NextPageButton.Background.Color = {30, 30, 45} 
+                self.NextPageButton.Text.Color = {150, 150, 150} 
+            else
+                self.NextPageButton.Background.Color = {40, 40, 60}
+                self.NextPageButton.Text.Color = Colors.Text
+                self.NextPageButton.DefaultColor = {40, 40, 60}
+            end
+        end
+    end
+end
+
+function AnueHub:ResetToNonExpandedState()
+    IsExpanded = false
+    selected_index = 1
+    current_page = 1
+
+    self.MainFrame.Size = {original_width, original_height}
+    self.BorderFrame.Size = {original_width - 2.5, original_height - 2.5}
+    self.InnerFrame.Size = {self.BorderFrame.Size.x - 3, self.BorderFrame.Size.y - 3}
+    self.ContentBg.Size = {self.InnerFrame.Size.x - 3, self.InnerFrame.Size.y - 3}
+
+    self.TitleBar.Size = {self.ContentBg.Size.x - 10, 20}
+    self.ContentFrame.Size = {self.ContentBg.Size.x - 10, self.ContentBg.Size.y - 35}
+
+    if self.LogoFrame then
+        self.LogoFrame.Size = {self.ContentBg.Size.x - 20, 30}
+    end
+
+    if self.ContentFrame and self.PageIndicator then
+        self.PageIndicator.Position = {
+            self.ContentFrame.Position.x + self.ContentFrame.Size.x - 60,
+            self.ContentFrame.Position.y + self.ContentFrame.Size.y - 20
+        }
+    end
+
+    for _, element in pairs(UIElements) do
+        if element == self.MainFrame or 
+           element == self.BorderFrame or 
+           element == self.InnerFrame or 
+           element == self.ContentBg or 
+           element == self.TitleBar or 
+           element == self.ContentFrame then
+
+            element.Visible = self.MainFrame.Visible
+        else
+
+            if element == self.LogoFrame or 
+               element == self.SelectionHighlight then
+                element.Visible = false
+            end
+        end
+    end
+
+    for _, text in pairs(TextElements) do
+        if text == self.TitleText or 
+           text == self.WelcomeText or
+           text == self.WelcomeVersionText then
+
+            text.Visible = self.MainFrame.Visible
+        elseif text == self.LogoText or 
+               text == self.PageIndicator then
+
+            text.Visible = false
+        end
+    end
+
+    for i = 1, #self.ScriptOptions do
+        self.ScriptOptions[i].Visible = false
+        self.AuthorLabels[i].Visible = false
+    end
+
+    for _, script in ipairs(anue_scripts) do
+        if script.ExecuteButton then
+            script.ExecuteButton.Background.Visible = false
+            script.ExecuteButton.Text.Visible = false
+            script.ExecuteButton.Border.Visible = false
+        end
+    end
+
+    for _, script in ipairs(community_scripts) do
+        if script.ExecuteButton then
+            script.ExecuteButton.Background.Visible = false
+            script.ExecuteButton.Text.Visible = false
+            script.ExecuteButton.Border.Visible = false
+        end
+    end
+
+    if self.LogoBorder then
+        self.LogoBorder.Visible = false
+    end
+
+    if self.TabIndicator then
+        self.TabIndicator.Visible = false
+    end
+
+    self:UpdateLayout()
+    self:UpdateVisibility()
+
+    if self.PrevPageButton then
+        self.PrevPageButton.Background.Visible = false
+        self.PrevPageButton.Text.Visible = false
+        self.PrevPageButton.Border.Visible = false
+    end
+
+    if self.NextPageButton then
+        self.NextPageButton.Background.Visible = false
+        self.NextPageButton.Text.Visible = false
+        self.NextPageButton.Border.Visible = false
+            end
+        end
+
+function AnueHub:ToggleUI()
+    local wasVisible = IsVisible
+    IsVisible = not IsVisible
+
+    if FloatingLogo then FloatingLogo.Visible = not IsVisible end
+    if FloatingLogoBg then FloatingLogoBg.Visible = not IsVisible end
+    if FloatingLogoBorder then FloatingLogoBorder.Visible = not IsVisible end
+
+    if IsVisible then
+
+        local targetSize = {original_width, original_height}
+        if IsExpanded then
+            targetSize = {expanded_width, expanded_height}
+        end
+
+        self.MainFrame.Size = {targetSize[1] * 0.9, targetSize[2] * 0.9}
+        self.MainFrame.Visible = true
+        self.MainFrame.Transparency = 0
+
+        spawn(function()
+            local duration = 0.4
+            local startTime = time()
+            local elapsed = 0
+
+            while elapsed < duration and ui_running do
+                elapsed = time() - startTime
+                local progress = math.min(elapsed / duration, 1)
+
+                local scale
+                if progress < 0.7 then
+                    scale = 0.9 + (1.05 - 0.9) * (progress / 0.7)
+                else
+                    local p = (progress - 0.7) / 0.3
+                    scale = 1.05 - (1.05 - 1.0) * p
+                end
+
+                local fadeProgress = math.min(progress * 2, 1)
+
+                self.MainFrame.Size = {targetSize[1] * scale, targetSize[2] * scale}
+                self.MainFrame.Transparency = ui_transparency * fadeProgress
+                self:UpdateLayout()
+
+                wait(0.016)
+            end
+
+            self.MainFrame.Size = targetSize
+            self.MainFrame.Transparency = ui_transparency
+            self:UpdateLayout()
+        end)
+
+        for _, element in pairs(UIElements) do
+
+            if element ~= FloatingLogo and element ~= FloatingLogoBg and element ~= FloatingLogoBorder then
+            element.Visible = true
+            if element.Transparency ~= nil then
+                    local originalTrans = element.Transparency
+                    element.Transparency = 0
+                    self:AnimateTransparency(element, 0, originalTrans, 0.3)
+                end
+            end
+        end
+
+        for _, text in pairs(TextElements) do 
+            if not table.find(self.GuideTexts, text) then
+                text.Visible = true
+            if text.Transparency ~= nil then
+                    local originalTrans = text.Transparency
+                    text.Transparency = 0
+                    self:AnimateTransparency(text, 0, originalTrans, 0.3)
+            end
+            end
+        end
+
+        if self.TitleText then
+            self.TitleText.Visible = true
+
+        end
+
+        if self.TitleLogo then
+            self.TitleLogo.Visible = true
+            self.TitleLogo.Size = {25, 25} 
+            self.TitleLogo.Transparency = 0
+
+            spawn(function()
+                local duration = 0.4
+                local startTime = time()
+                local elapsed = 0
+
+                while elapsed < duration and ui_running do
+                    elapsed = time() - startTime
+                    local progress = math.min(elapsed / duration, 1)
+                    local eased_progress = progress * (2 - progress) 
+
+                    local current_scale = 25 - (25 - 20) * eased_progress
+                    self.TitleLogo.Size = {current_scale, current_scale}
+
+                    self.TitleLogo.Transparency = progress
+
+                    wait(0.016)
+                end
+
+                self.TitleLogo.Size = {20, 20}
+                self.TitleLogo.Transparency = 1
+            end)
+        end
+
+        if self.CloseButton then
+            self.CloseButton.Background.Visible = true
+            self.CloseButton.Text.Visible = true
+            self.CloseButton.Border.Visible = true
+        end
+
+        if self.ExpandButton then
+            self.ExpandButton.Background.Visible = true
+            self.ExpandButton.Text.Visible = true
+            self.ExpandButton.Border.Visible = true
+        end
+
+        self:UpdateVisibility()
+
+        if not IsExpanded then
+
+            if self.WelcomeDecorTop then
+                local originalWidth = self.WelcomeDecorTop.Size.x
+                self.WelcomeDecorTop.Size = {0, 3}
+
+spawn(function()
+                    local duration = 0.6
+                    local startTime = time()
+
+                    while time() - startTime < duration and ui_running do
+                        local progress = (time() - startTime) / duration
+                        local eased = progress * (2 - progress) 
+                        self.WelcomeDecorTop.Size = {originalWidth * eased, 3}
+                        wait(0.016)
+                    end
+
+                    self.WelcomeDecorTop.Size = {originalWidth, 3}
+                end)
+            end
+
+            if self.WelcomeDecorBottom then
+                local originalWidth = self.WelcomeDecorBottom.Size.x
+                self.WelcomeDecorBottom.Size = {0, 3}
+
+spawn(function()
+                    local duration = 0.6
+                    local startTime = time()
+
+                    while time() - startTime < duration and ui_running do
+                        local progress = (time() - startTime) / duration
+                        local eased = progress * (2 - progress) 
+                        self.WelcomeDecorBottom.Size = {originalWidth * eased, 3}
+                        wait(0.016)
+                    end
+
+                    self.WelcomeDecorBottom.Size = {originalWidth, 3}
+                end)
+            end
+
+            if self.WelcomeLogo then
+                self.WelcomeLogo.Transparency = 0
+
+spawn(function()
+                    local duration = 0.8
+                    local startTime = time()
+
+                    while time() - startTime < duration and ui_running do
+                        local progress = (time() - startTime) / duration
+                        local transparency = progress
+
+                        self.WelcomeLogo.Transparency = transparency
+
+                        wait(0.016)
+                    end
+
+                    self.WelcomeLogo.Transparency = 1
+                end)
+            end
+
+            if self.EnterButton and self.EnterButton.Background then
+                local originalY = self.EnterButton.Background.Position.y
+                self.EnterButton.Background.Position = {
+                    self.EnterButton.Background.Position.x,
+                    originalY + 20
+                }
+                self:UpdateButtonTextPosition(self.EnterButton)
+
+spawn(function()
+                    local duration = 0.5
+                    local startTime = time()
+
+                    while time() - startTime < duration and ui_running do
+                        local progress = (time() - startTime) / duration
+                        local eased_progress = progress * (2 - progress) 
+                        local currentY = originalY + 20 * (1 - eased_progress)
+
+                        self.EnterButton.Background.Position = {
+                            self.EnterButton.Background.Position.x,
+                            currentY
+                        }
+                        self:UpdateButtonTextPosition(self.EnterButton)
+
+                        wait(0.016)
+                    end
+
+                    self.EnterButton.Background.Position = {
+                        self.EnterButton.Background.Position.x,
+                        originalY
+                    }
+                    self:UpdateButtonTextPosition(self.EnterButton)
+                end)
+            end
+        end
+    else
+
+        if FloatingLogo and FloatingLogoBg then
+
+            FloatingLogoBg.Position = {SCREEN_DIMENSIONS.x / 2, 100}
+            FloatingLogo.Position = {SCREEN_DIMENSIONS.x / 2 - 17.5, 100 - 17.5}
+            FloatingLogoBg.Visible = true
+            FloatingLogo.Visible = true
+            if FloatingLogoBorder then
+                FloatingLogoBorder.Position = {SCREEN_DIMENSIONS.x / 2, 100}
+                FloatingLogoBorder.Visible = true
+            end
+
+            local startScale = 0
+            local endScale = 25 
+            local startTime = time()
+            local duration = 0.4
+
+spawn(function()
+                while time() - startTime < duration and ui_running and not IsVisible do
+                    local progress = (time() - startTime) / duration
+                    local eased = progress * (2 - progress) 
+                    local currentScale = startScale + (endScale - startScale) * eased
+
+                    FloatingLogoBg.Radius = currentScale
+                    if FloatingLogoBorder then
+                        FloatingLogoBorder.Radius = currentScale
+                        FloatingLogoBorder.Transparency = eased * 0.9
+                    end
+                    if FloatingLogoBg.Radius ~= nil then
+                        FloatingLogoBg.Transparency = eased * 0.85
+                    end
+
+                    local newSize = currentScale * 1.4
+                    FloatingLogo.Size = {newSize, newSize}
+                    FloatingLogo.Position = {
+                        SCREEN_DIMENSIONS.x / 2 - newSize / 2, 
+                        100 - newSize / 2
+                    }
+                    FloatingLogo.Transparency = eased
+
+                    wait(0.016)
+                end
+
+                if not IsVisible then
+                    FloatingLogoBg.Radius = endScale
+                    FloatingLogoBg.Transparency = 0.85
+                    if FloatingLogoBorder then
+                        FloatingLogoBorder.Radius = endScale
+                        FloatingLogoBorder.Transparency = 0.9
+                    end
+                    FloatingLogo.Size = {35, 35}
+                    FloatingLogo.Position = {SCREEN_DIMENSIONS.x / 2 - 17.5, 100 - 17.5}
+                    FloatingLogo.Transparency = 1
+    end
+end)
+        end
+
+        local fadeOutDuration = 0.4
+        local startTime = time()
+        local originalTransparencies = {}
+        local originalSize = {self.MainFrame.Size.x, self.MainFrame.Size.y}
+
+        for _, button in pairs(ButtonElements) do
+
+                pcall(function()
+                button.Background.Visible = false
+                button.Text.Visible = false
+                button.Border.Visible = false
+                end)
+            end
+
+        for _, script in ipairs(anue_scripts) do
+            if script.ExecuteButton then
+                pcall(function()
+                    script.ExecuteButton.Background.Visible = false
+                    script.ExecuteButton.Text.Visible = false
+                    script.ExecuteButton.Border.Visible = false
+                end)
+            end
+        end
+
+        for _, script in ipairs(community_scripts) do
+            if script.ExecuteButton then
+                pcall(function()
+                    script.ExecuteButton.Background.Visible = false
+                    script.ExecuteButton.Text.Visible = false
+                    script.ExecuteButton.Border.Visible = false
+                end)
+            end
+        end
+
+        for _, element in pairs(UIElements) do
+            if element.Transparency ~= nil and element ~= FloatingLogo and element ~= FloatingLogoBg and element ~= FloatingLogoBorder then
+                originalTransparencies[element] = element.Transparency
+            end
+        end
+
+        for _, text in pairs(TextElements) do 
+            if not table.find(self.GuideTexts, text) and text.Transparency ~= nil then
+                originalTransparencies[text] = text.Transparency
+            end
+        end
+
+spawn(function()
+            local elapsed = 0
+
+            while elapsed < fadeOutDuration and ui_running do
+                elapsed = time() - startTime
+                local progress = math.min(elapsed / fadeOutDuration, 1)
+                local fadeAmount = 1 - progress
+                local scaleAmount = 1 - (progress * 0.1) 
+
+                for element, originalTransparency in pairs(originalTransparencies) do
+                    if element.Transparency ~= nil then
+                        element.Transparency = originalTransparency * fadeAmount
+                    end
+                end
+
+                self.MainFrame.Size = {
+                    originalSize[1] * scaleAmount,
+                    originalSize[2] * scaleAmount
+                }
+                self:UpdateLayout()
+
+                wait(0.016)
+            end
+
+        for _, element in pairs(UIElements) do
+
+                if element ~= FloatingLogo and element ~= FloatingLogoBg and element ~= FloatingLogoBorder then
+            element.Visible = false
+                end
+        end
+
+        for _, text in pairs(TextElements) do 
+                if not table.find(self.GuideTexts, text) then
+                text.Visible = false
+            end
+        end
+
+            for element, originalTransparency in pairs(originalTransparencies) do
+                if element.Transparency ~= nil then
+                    element.Transparency = originalTransparency
+                end
+            end
+
+            self:ResetToNonExpandedState()
+                end)
+            end
+
+    self.OpenCloseGuide.Text = IsVisible and "Press [HOME] to close hub" or "Press [HOME] to open hub"
+    if self.OpenCloseGuideShadow then 
+        self.OpenCloseGuideShadow.Text = self.OpenCloseGuide.Text
+    end
+
+    self.ExpandGuide.Visible = self.MainFrame.Visible and not IsExpanded
+    if self.ExpandGuideShadow then
+        self.ExpandGuideShadow.Visible = self.ExpandGuide.Visible
+    end
+
+    self.NavigationGuide.Visible = self.MainFrame.Visible and IsExpanded
+    if self.NavigationGuideShadow then
+        self.NavigationGuideShadow.Visible = self.NavigationGuide.Visible
+    end
+end
+
+function AnueHub:ToggleExpanded()
+    IsExpanded = not IsExpanded
+
+    if self._expandButtonText then
+
+                pcall(function()
+            self._expandButtonText.Text = IsExpanded and "-" or "+"
+        end)
+    elseif self.ExpandButton and self.ExpandButton.Text then
+
+                pcall(function()
+            self.ExpandButton.Text.Text = IsExpanded and "-" or "+"
+                end)
+            end
+
+    self:AnimateResize(IsExpanded)
+end
+
+function AnueHub:ExecuteScript(script_data)
+
+    if ExecutionCooldown then
+
+        self:ShowCooldownNotification()
+        return
+    end
+
+    self:ShowConfirmationDialog(script_data)
+end
+
+function AnueHub:ShowConfirmationDialog(script_data)
+    if ConfirmationDialogActive then return end
+    ConfirmationDialogActive = true
+    ScriptToExecute = script_data
+
+    for _, element in ipairs(ConfirmationDialogElements) do
+        pcall(function() 
+            if element then 
+                element.Visible = false
+                element:Remove() 
+    end
+end)
+    end
+
+    ConfirmationDialogElements = {}
+
+    local overlay = Drawing.new("Square")
+    overlay.Filled = true
+    overlay.Visible = true
+    overlay.Size = {SCREEN_DIMENSIONS.x, SCREEN_DIMENSIONS.y}
+    overlay.Position = {0, 0}
+    overlay.Color = {10, 10, 15}
+    overlay.Transparency = 0.7
+    table.insert(ConfirmationDialogElements, overlay)
+    self.ConfirmOverlay = overlay
+
+    local window = Drawing.new("Square")
+    window.Filled = true
+    window.Visible = true
+    window.Size = {400, 200}
+    window.Position = {
+        SCREEN_DIMENSIONS.x / 2 - 200,
+        SCREEN_DIMENSIONS.y / 2 - 100
+    }
+    window.Color = Colors.Background
+    window.Transparency = 0.95
+    table.insert(ConfirmationDialogElements, window)
+    self.ConfirmWindow = window
+
+    local border = Drawing.new("Square")
+    border.Filled = false
+    border.Visible = true
+    border.Size = {400, 200}
+    border.Position = {
+        SCREEN_DIMENSIONS.x / 2 - 200,
+        SCREEN_DIMENSIONS.y / 2 - 100
+    }
+    border.Color = Colors.Border
+    self:SafeSetThickness(border, 2)
+    border.Transparency = 0.95
+    table.insert(ConfirmationDialogElements, border)
+    self.ConfirmBorder = border
+
+    local title = Drawing.new("Text")
+    title.Text = "Confirm Execution"
+    title.Visible = true
+    title.Center = true
+    title.Color = Colors.Highlight
+    title.Size = text_size + 2
+    title.Font = font 
+    title.Transparency = text_transparency
+    title.Position = {
+        SCREEN_DIMENSIONS.x / 2,
+        SCREEN_DIMENSIONS.y / 2 - 85
+    }
+    title.Outline = true
+    table.insert(ConfirmationDialogElements, title)
+    self.ConfirmTitle = title
+
+    local message = Drawing.new("Text")
+    message.Text = "Are you sure you want to execute\n\"" .. script_data.name .. "\"?"
+    message.Visible = true
+    message.Center = true
+    message.Color = Colors.Text
+    message.Size = text_size
+    message.Font = font 
+    message.Transparency = text_transparency
+    message.Position = {
+        SCREEN_DIMENSIONS.x / 2,
+        SCREEN_DIMENSIONS.y / 2 - 40
+    }
+    table.insert(ConfirmationDialogElements, message)
+    self.ConfirmMessage = message
+
+    local author = Drawing.new("Text")
+    author.Text = "by: " .. script_data.author
+    author.Visible = true
+    author.Center = true
+    author.Color = {180, 180, 255}
+    author.Size = text_size - 2
+    author.Font = font 
+    author.Transparency = text_transparency
+    author.Position = {
+        SCREEN_DIMENSIONS.x / 2,
+        SCREEN_DIMENSIONS.y / 2 - 10
+    }
+    table.insert(ConfirmationDialogElements, author)
+    self.ConfirmAuthor = author
+
+    self.ConfirmYesButton = self:CreateButton({
+        position = {
+            SCREEN_DIMENSIONS.x / 2 - 110,
+            SCREEN_DIMENSIONS.y / 2 + 30
+        },
+        size = {100, 35},
+        text = "Yes",
+        textSize = 16,
+        font = font, 
+        color = {70, 120, 70}, 
+        hoverColor = {90, 160, 90},
+        pressColor = {50, 100, 50},
+        borderColor = {100, 170, 100},
+        borderHoverColor = {120, 200, 120},
+        visible = true,
+        callback = function()
+            self:CloseConfirmationDialog()
+            self:ActuallyExecuteScript(script_data)
+        end
+    })
+
+    if self.ConfirmYesButton then
+        if self.ConfirmYesButton.Background then table.insert(ConfirmationDialogElements, self.ConfirmYesButton.Background) end
+        if self.ConfirmYesButton.Text then table.insert(ConfirmationDialogElements, self.ConfirmYesButton.Text) end
+        if self.ConfirmYesButton.Border then table.insert(ConfirmationDialogElements, self.ConfirmYesButton.Border) end
+    end
+
+    self.ConfirmNoButton = self:CreateButton({
+        position = {
+            SCREEN_DIMENSIONS.x / 2 + 10,
+            SCREEN_DIMENSIONS.y / 2 + 30
+        },
+        size = {100, 35},
+        text = "No",
+        textSize = 16,
+        font = font, 
+        color = {120, 70, 70}, 
+        hoverColor = {160, 90, 90},
+        pressColor = {100, 50, 50},
+        borderColor = {170, 100, 100},
+        borderHoverColor = {200, 120, 120},
+        visible = true,
+        callback = function()
+            self:CloseConfirmationDialog()
+        end
+    })
+
+    if self.ConfirmNoButton then
+        if self.ConfirmNoButton.Background then table.insert(ConfirmationDialogElements, self.ConfirmNoButton.Background) end
+        if self.ConfirmNoButton.Text then table.insert(ConfirmationDialogElements, self.ConfirmNoButton.Text) end
+        if self.ConfirmNoButton.Border then table.insert(ConfirmationDialogElements, self.ConfirmNoButton.Border) end
+    end
+end
+
+function AnueHub:CloseConfirmationDialog()
+
+    ConfirmationDialogActive = false
+    ScriptToExecute = nil
+
+    local elementsToRemove = {}
+    for _, element in ipairs(ConfirmationDialogElements) do
+        if element then
+            table.insert(elementsToRemove, element)
+        end
+    end
+
+    for _, element in ipairs(elementsToRemove) do
+        if element then
+
+            pcall(function() element.Visible = false end)
+        end
+    end
+
+    wait(0.05)
+
+    for _, element in ipairs(elementsToRemove) do
+        if element then
+            pcall(function() element:Remove() end)
+        end
+    end
+
+    self.ConfirmOverlay = nil
+    self.ConfirmWindow = nil
+    self.ConfirmBorder = nil
+    self.ConfirmTitle = nil
+    self.ConfirmMessage = nil
+    self.ConfirmAuthor = nil
+
+    if self.ConfirmYesButton then
+        self.ConfirmYesButton.Background = nil
+        self.ConfirmYesButton.Text = nil
+        self.ConfirmYesButton.Border = nil
+        self.ConfirmYesButton = nil
+    end
+
+    if self.ConfirmNoButton then
+        self.ConfirmNoButton.Background = nil
+        self.ConfirmNoButton.Text = nil
+        self.ConfirmNoButton.Border = nil
+        self.ConfirmNoButton = nil
+    end
+
+    ConfirmationDialogElements = {}
+end
+
+function AnueHub:ActuallyExecuteScript(script_data)
+
+    SET_SCHEDULER_TIMEOUT(false)
+
+    local script_code = script_data.loadstring
+
+    local countdownElements = {}
+
+    local countdown_overlay = Drawing.new("Square")
+    countdown_overlay.Filled = true
+    countdown_overlay.Visible = true
+    countdown_overlay.Size = {SCREEN_DIMENSIONS.x, SCREEN_DIMENSIONS.y}
+    countdown_overlay.Position = {0, 0}
+    countdown_overlay.Color = {10, 10, 15}
+    countdown_overlay.Transparency = 0.7
+    table.insert(countdownElements, countdown_overlay)
+
+    local countdown_bg = Drawing.new("Square")
+    countdown_bg.Filled = true
+    countdown_bg.Visible = true
+    countdown_bg.Size = {400, 180}
+    countdown_bg.Position = {
+        SCREEN_DIMENSIONS.x / 2 - 200,
+        SCREEN_DIMENSIONS.y / 2 - 90
+    }
+    countdown_bg.Color = Colors.Background
+    countdown_bg.Transparency = 0.95
+    table.insert(countdownElements, countdown_bg)
+
+    local countdown_text = Drawing.new("Text")
+    countdown_text.Text = "5"
+    countdown_text.Visible = true
+    countdown_text.Center = true
+    countdown_text.Color = Colors.Accent
+    countdown_text.Size = text_size + 8
+    countdown_text.Font = font
+    countdown_text.Position = {
+        SCREEN_DIMENSIONS.x / 2,
+        countdown_bg.Position.y + 60
+    }
+    countdown_text.Outline = true
+    table.insert(countdownElements, countdown_text)
+
+    local progress_bg = Drawing.new("Square")
+    progress_bg.Filled = true
+    progress_bg.Visible = true
+    progress_bg.Size = {300, 10}
+    progress_bg.Position = {
+        SCREEN_DIMENSIONS.x / 2 - 150,
+        countdown_text.Position.y + 40
+    }
+    progress_bg.Color = Colors.InnerBg2
+    progress_bg.Transparency = 0.9
+    table.insert(countdownElements, progress_bg)
+
+    local progress_fill = Drawing.new("Square")
+    progress_fill.Filled = true
+    progress_fill.Visible = true
+    progress_fill.Size = {0, 10}
+    progress_fill.Position = {
+        SCREEN_DIMENSIONS.x / 2 - 150,
+        countdown_text.Position.y + 40
+    }
+    progress_fill.Color = Colors.Accent
+    progress_fill.Transparency = 0.9
+    table.insert(countdownElements, progress_fill)
+
+    for i = 5, 1, -1 do
+        countdown_text.Text = tostring(i)
+        progress_fill.Size = {300 * ((5 - i) / 5), 10}
+        wait(1)
+    end
+
+    countdown_text.Text = "Cleaning..."
+    progress_fill.Size = {300, 10}
+    progress_fill.Color = {50, 200, 50}
+
+    ui_running = false
+    IsVisible = false
+    IsExpanded = false
+        IsDragging = false
+        IsHovering = false
+    MouseHeld = false
+
+    UIElements = {}
+    TextElements = {}
+    ButtonElements = {}
+    countdownElements = {}
+
+    self.MainFrame = nil
+    self.ContentFrame = nil
+    self.LogoFrame = nil
+    setmetatable(self, nil)
+
+    Drawing.clear()
+
+    wait(0.1)
+
+    SET_SCHEDULER_TIMEOUT(true)
+
+    loadstring(script_code)()
+
+    spawn(function()
+        wait(5)
+        ExecutionCooldown = false
+    end)
+end
+
+function AnueHub:ShowCooldownNotification()
+
+    local notificationElements = {}
+
+    local notification_overlay = Drawing.new("Square")
+    notification_overlay.Filled = true
+    notification_overlay.Visible = true
+    notification_overlay.Size = {SCREEN_DIMENSIONS.x, SCREEN_DIMENSIONS.y}
+    notification_overlay.Position = {0, 0}
+    notification_overlay.Color = {10, 10, 15}
+    notification_overlay.Transparency = 0.5
+    table.insert(notificationElements, notification_overlay)
+
+    local notification_bg = Drawing.new("Square")
+    notification_bg.Filled = true
+    notification_bg.Visible = true
+    notification_bg.Size = {400, 120}
+    notification_bg.Position = {
+        SCREEN_DIMENSIONS.x / 2 - 200,
+        SCREEN_DIMENSIONS.y / 2 - 60
+    }
+    notification_bg.Color = Colors.Background
+    notification_bg.Transparency = 0.95
+    table.insert(notificationElements, notification_bg)
+
+    local notification_border = Drawing.new("Square")
+    notification_border.Filled = false
+    notification_border.Visible = true
+    notification_border.Size = notification_bg.Size
+    notification_border.Position = notification_bg.Position
+    notification_border.Color = Colors.Border
+    self:SafeSetThickness(notification_border, 2)
+    notification_border.Transparency = 0.95
+    table.insert(notificationElements, notification_border)
+
+    local title_text = Drawing.new("Text")
+    title_text.Text = "Cooldown Notice"
+    title_text.Visible = true
+    title_text.Center = true
+    title_text.Color = Colors.Highlight
+    title_text.Size = text_size + 2
+    title_text.Font = font 
+    title_text.Transparency = text_transparency
+    title_text.Position = {
+        SCREEN_DIMENSIONS.x / 2,
+        notification_bg.Position.y + 20
+    }
+    title_text.Outline = true
+    table.insert(notificationElements, title_text)
+
+    local notification_text = Drawing.new("Text")
+    notification_text.Text = "Please wait 5 seconds to execute another script"
+    notification_text.Visible = true
+    notification_text.Center = true
+    notification_text.Color = Colors.TextSecondary
+    notification_text.Size = text_size
+    notification_text.Font = font 
+    notification_text.Position = {
+        SCREEN_DIMENSIONS.x / 2,
+        notification_bg.Position.y + 60
+    }
+    notification_text.Outline = true
+    table.insert(notificationElements, notification_text)
+
+    local icon = Drawing.new("Circle")
+    icon.Filled = false
+    icon.Visible = true
+    icon.Position = {
+        SCREEN_DIMENSIONS.x / 2 - 130,
+        notification_bg.Position.y + 60
+    }
+    icon.Radius = 10
+    icon.NumSides = 20
+    icon.Color = {200, 100, 100}
+    self:SafeSetThickness(icon, 2)
+    icon.Transparency = 0.9
+    table.insert(notificationElements, icon)
+
+    local threadActive = true
+
+    spawn(function()
+        local startTime = time()
+        local duration = 2 
+
+        for i = 1, 10 do
+            if not threadActive or not ui_running then break end
+            local alpha = i / 10
+            for _, element in ipairs(notificationElements) do
+                pcall(function() element.Transparency = element.Transparency * alpha end)
+            end
+            wait(0.01)
+        end
+
+        for i = 1, duration * 10 do
+            if not threadActive or not ui_running then break end
+            wait(0.1)
+        end
+
+        for i = 10, 1, -1 do
+            if not threadActive or not ui_running then break end
+            local alpha = i / 10
+            for _, element in ipairs(notificationElements) do
+                pcall(function() element.Transparency = element.Transparency * alpha end)
+            end
+            wait(0.01)
+        end
+
+        for _, element in ipairs(notificationElements) do
+            pcall(function() 
+                element.Visible = false
+                element:Remove() 
+            end)
+        end
+
+        table.clear(notificationElements)
+        threadActive = false
+    end)
+
+    if not ui_running then
+        threadActive = false
+        for _, element in ipairs(notificationElements) do
+            pcall(function() 
+                element.Visible = false
+                element:Remove() 
+            end)
+        end
+        table.clear(notificationElements)
+    end
+end
+
+function AnueHub:RegisterInputHandlers()
+
+spawn(function()
+    while ui_running do
+            if self.MainFrame.Visible then
+                local mouse_pos = getmouselocation(MouseService)
+
+                local is_over_title = 
+                    mouse_pos.x >= self.TitleBar.Position.x and 
+                    mouse_pos.x <= self.TitleBar.Position.x + self.TitleBar.Size.x and
+                    mouse_pos.y >= self.TitleBar.Position.y and
+                    mouse_pos.y <= self.TitleBar.Position.y + self.TitleBar.Size.y
+
+                if is_over_title and isleftpressed() and not IsDragging then
+                    IsDragging = true
+                    DragOffset.x = mouse_pos.x - self.MainFrame.Position.x
+                    DragOffset.y = mouse_pos.y - self.MainFrame.Position.y
+                end
+
+                if IsDragging then
+                    if isleftpressed() then
+                        self.MainFrame.Position = {
+                            mouse_pos.x - DragOffset.x,
+                            mouse_pos.y - DragOffset.y
+                        }
+                        self:UpdateLayout()
+
+                    else
+                        IsDragging = false
+                end
+            end
+            else
+                IsDragging = false
+        end
+
+        wait(0.01)
+    end
+end)
+
+spawn(function()
+        local home_pressed = false
+        local enter_pressed = false
+        local f1_pressed = false
+        local f2_pressed = false
+        local arrow_pressed = false
+        local y_pressed = false
+
+    while ui_running do
+                local pressed_keys = getpressedkeys()
+            local current_home = false
+            local current_enter = false
+            local current_f1 = false
+            local current_f2 = false
+                local arrow_up = false
+                local arrow_down = false
+                local arrow_left = false
+                local arrow_right = false
+            local current_y = false
+
+                for _, key in ipairs(pressed_keys) do
+                    local key_name = key:lower()
+                if key_name == "home" then current_home = true end
+                if key_name == "enter" then current_enter = true end
+                if key_name == "f1" then current_f1 = true end
+                if key_name == "f2" then current_f2 = true end
+                    if key_name == "uparrow" then arrow_up = true end
+                    if key_name == "downarrow" then arrow_down = true end
+                    if key_name == "leftarrow" then arrow_left = true end
+                    if key_name == "rightarrow" then arrow_right = true end
+                if key_name == "y" then current_y = true end
+            end
+
+            if current_home and not home_pressed then
+                self:ToggleUI()
+            end
+            home_pressed = current_home
+
+            if current_enter and not enter_pressed and self.MainFrame.Visible then
+                self:ToggleExpanded()
+            end
+            enter_pressed = current_enter
+
+            if current_f1 and not f1_pressed and selected_tab ~= 1 and IsExpanded then
+                self:SelectTab(1)
+            end
+            f1_pressed = current_f1
+
+            if current_f2 and not f2_pressed and selected_tab ~= 2 and IsExpanded then
+                self:SelectTab(2)
+            end
+            f2_pressed = current_f2
+
+            if self.MainFrame.Visible and IsExpanded and not arrow_pressed then
+                        local active_scripts = selected_tab == 1 and anue_scripts or community_scripts
+                        local start_index = (current_page - 1) * max_items_per_page + 1
+                        local end_index = math.min(start_index + max_items_per_page - 1, #active_scripts)
+                        local items_in_current_page = end_index - start_index + 1
+
+                        if arrow_up then 
+                            selected_index = math.max(1, selected_index - 1) 
+                    self:UpdateVisibility()
+                    self:UpdateScriptPositions()
+                        end
+
+                        if arrow_down then 
+                            selected_index = math.min(items_in_current_page, selected_index + 1) 
+                    self:UpdateVisibility()
+                    self:UpdateScriptPositions()
+                end
+
+                        local total_pages = math.ceil(#active_scripts / max_items_per_page)
+
+                        if arrow_left and current_page > 1 then
+                            current_page = current_page - 1
+                            selected_index = 1
+                    self:UpdateVisibility()
+                    self:UpdateScriptPositions()
+                        end
+
+                        if arrow_right and current_page < total_pages then
+                            current_page = current_page + 1
+                            selected_index = 1
+                    self:UpdateVisibility()
+                    self:UpdateScriptPositions()
+                end
+            end
+            arrow_pressed = arrow_up or arrow_down or arrow_left or arrow_right
+
+            if current_y and not y_pressed and self.MainFrame.Visible and IsExpanded then
+                self:ExecuteSelectedScript()
+            end
+            y_pressed = current_y
+
+            wait(0.05)
+        end
+    end)
+
+    spawn(function()
+        while ui_running do
+            self:UpdateVisibility()
+
+            self:CheckScriptOptionsHover()
+            wait(0.05) 
+        end
+    end)
+end
+
+function AnueHub:Destroy()
+
+    ui_running = false
+    IsVisible = false
+    IsExpanded = false
+
+    Drawing.clear()
+
+    UIElements = {}
+    TextElements = {}
+    ButtonElements = {}
+
+    self.MainFrame = nil
+    self.ContentFrame = nil
+    self.LogoFrame = nil
+
+    setmetatable(self, nil)
+end
+
+function table.find(t, value)
+    if type(t) ~= "table" then return false end
+    for _, v in pairs(t) do
+        if v == value then
+            return true
+        end
+    end
+    return false
+end
+
+function AnueHub:AddCommunityScripts(scripts)
+
+    if not table.clear then
+        table.clear = function(t)
+            for k in pairs(t) do
+                t[k] = nil
+            end
+        end
+    end
+
+    for _, script in ipairs(scripts) do
+        table.insert(community_scripts, script)
+
+        local i = #community_scripts
+        local start_y = self.ContentFrame.Position.y + 40
+        local option_spacing = 50  
+
+        local text = Drawing.new("Text")
+        text.Text = script.name
+        text.Visible = false
+        text.Color = Colors.Text
+        text.Size = text_size
+        text.Font = font
+        text.Transparency = text_transparency
+        text.Position = {
+            self.ContentFrame.Position.x + 20,
+            start_y + (i-1) % max_items_per_page * option_spacing
+        }
+        table.insert(self.ScriptOptions, text)
+        table.insert(TextElements, text)
+
+        local author_text = Drawing.new("Text")
+        author_text.Text = "by " .. script.author
+        author_text.Visible = false
+        author_text.Color = {180, 180, 255}
+        author_text.Size = text_size - 2
+        author_text.Font = font
+        author_text.Transparency = text_transparency
+        author_text.Position = {
+            self.ContentFrame.Position.x + 25,
+            start_y + (i-1) % max_items_per_page * option_spacing + 20
+        }
+        table.insert(self.AuthorLabels, author_text)
+        table.insert(TextElements, author_text)
+
+        local execute_button = self:CreateButton({
+            position = {
+                self.ContentFrame.Position.x + self.ContentFrame.Size.x - 95,
+                start_y + (i-1) % max_items_per_page * option_spacing + 5
+            },
+            size = {85, 25}, 
+            text = "Execute",
+            textSize = 12,
+            color = {50, 80, 50},
+            hoverColor = {70, 130, 70},
+            pressColor = {40, 100, 40},
+            borderColor = {70, 110, 70},
+            borderHoverColor = {90, 190, 90},
+            visible = false,
+            callback = function()
+                self:ExecuteScript(community_scripts[i])
+            end
+        })
+
+        script.ExecuteButton = execute_button
+    end
+
+    self:UpdateVisibility()
+    self:UpdateScriptPositions()
+end
+
+function AnueHub:CreateTitleHoverIndicator()
+    self.TitleHoverIndicator = Drawing.new("Square")
+    self.TitleHoverIndicator.Filled = true
+    self.TitleHoverIndicator.Visible = false
+    self.TitleHoverIndicator.Color = Colors.Highlight
+    self.TitleHoverIndicator.Transparency = 0.3
+    table.insert(UIElements, self.TitleHoverIndicator)
+
+spawn(function()
+    while ui_running do
+            if self.MainFrame.Visible then
+            local mouse_pos = getmouseposition()
+
+            local is_over_title = 
+                    mouse_pos.x >= self.TitleBar.Position.x and 
+                    mouse_pos.x <= self.TitleBar.Position.x + self.TitleBar.Size.x and
+                    mouse_pos.y >= self.TitleBar.Position.y and
+                    mouse_pos.y <= self.TitleBar.Position.y + self.TitleBar.Size.y
+
+                if is_over_title and not IsDragging then
+                    self.TitleHoverIndicator.Visible = true
+                    self.TitleHoverIndicator.Size = self.TitleBar.Size
+                    self.TitleHoverIndicator.Position = self.TitleBar.Position
+
+                    self.TitleBar.Color = {
+                        Colors.TitleBg[1] + 10,
+                        Colors.TitleBg[2] + 10,
+                        Colors.TitleBg[3] + 10
+                    }
+                else
+                    self.TitleHoverIndicator.Visible = false
+                    self.TitleBar.Color = Colors.TitleBg
+                end
+            else
+                self.TitleHoverIndicator.Visible = false
+            end
+
+            wait(0.01)
+        end
+    end)
+end
+
+function AnueHub:AnimateUI(element, property, start_value, end_value, duration, callback)
+    local start_time = time()
+    local range = {}
+
+    if type(start_value) == "table" and type(end_value) == "table" then
+        for i, v in pairs(start_value) do
+            range[i] = end_value[i] - v
+        end
+    else
+        range = end_value - start_value
+    end
+
+    spawn(function()
+        local elapsed = 0
+        local progress = 0
+
+        while elapsed < duration and ui_running do
+            elapsed = time() - start_time
+            progress = math.min(elapsed / duration, 1)
+
+            local eased_progress = progress * (2 - progress)
+
+            if type(start_value) == "table" and type(end_value) == "table" then
+                local current_value = {}
+                for i, v in pairs(start_value) do
+                    current_value[i] = v + range[i] * eased_progress
+                end
+                element[property] = current_value
+            else
+                element[property] = start_value + range * eased_progress
+            end
+
+            wait(0.016)
+        end
+
+        element[property] = end_value
+
+        if callback then
+            callback()
+    end
+end)
+end
+
+function AnueHub:CreateElementPropertiesTracker()
+    self.ElementProperties = {}
+
+    function self:GetElementProperty(element, property, default)
+        if not element then return default end
+        if not self.ElementProperties[element] then return default end
+        if self.ElementProperties[element][property] == nil then return default end
+        return self.ElementProperties[element][property]
+    end
+
+    function self:SetElementProperty(element, property, value)
+        if not element then return end
+        self.ElementProperties[element] = self.ElementProperties[element] or {}
+        self.ElementProperties[element][property] = value
+    end
+
+spawn(function()
+    while ui_running do
+            wait(1)
+
+            local keys_to_remove = {}
+            for element, _ in pairs(self.ElementProperties) do
+                if pcall(function() return element.Visible end) == false then
+                    table.insert(keys_to_remove, element)
+                end
+            end
+
+            for _, key in ipairs(keys_to_remove) do
+                self.ElementProperties[key] = nil
+            end
+    end
+end)
+end
+
+function AnueHub:AnimateResize(is_expanding)
+    local target_width = is_expanding and expanded_width or original_width
+    local target_height = is_expanding and expanded_height or original_height
+
+    local start_width = self.MainFrame.Size.x
+    local start_height = self.MainFrame.Size.y
+    local duration = 0.3
+    local start_time = time()
+
+    spawn(function()
+        local elapsed = 0
+        local progress = 0
+
+        while elapsed < duration and ui_running do
+            elapsed = time() - start_time
+            progress = math.min(elapsed / duration, 1)
+
+            local eased_progress = progress * (2 - progress)
+
+            local current_width = start_width + (target_width - start_width) * eased_progress
+            local current_height = start_height + (target_height - start_height) * eased_progress
+
+            self.MainFrame.Size = {current_width, current_height}
+
+            self.BorderFrame.Size = {current_width - 2.5, current_height - 2.5}
+            self.InnerFrame.Size = {self.BorderFrame.Size.x - 3, self.BorderFrame.Size.y - 3}
+            self.ContentBg.Size = {self.InnerFrame.Size.x - 3, self.InnerFrame.Size.y - 3}
+            self.TitleBar.Size = {self.ContentBg.Size.x - 10, 20}
+            self.ContentFrame.Size = {self.ContentBg.Size.x - 10, self.ContentBg.Size.y - 35}
+
+            if self.SelectionHighlight then
+                self.SelectionHighlight.Size = {self.ContentFrame.Size.x - 20, 45}
+            end
+
+            self:UpdateCornerPositions()
+
+            if self.LogoFrame then
+                self.LogoFrame.Size = {self.ContentBg.Size.x - 20, 30}
+                self.LogoFrame.Position = {self.ContentBg.Position.x + 10, self.ContentFrame.Position.y + 5}
+
+                if self.LogoText then
+                    self.LogoText.Position = {
+                        self.LogoFrame.Position.x + self.LogoFrame.Size.x / 2,
+                        self.LogoFrame.Position.y + self.LogoFrame.Size.y / 2 - 7
+                    }
+        end
+    end
+
+            self:UpdateLayout()
+
+            wait(0.016) 
+        end
+
+        self.MainFrame.Size = {target_width, target_height}
+        self:UpdateLayout()
+        self:UpdateVisibility()
+    end)
+end
+
+function AnueHub:Cleanup()
+
+    for key, value in pairs(self) do
+        if type(value) == "table" then
+
+            for subkey, subvalue in pairs(value) do
+                if subvalue == self or (type(subvalue) == "table" and subvalue[1] == self) then
+                    value[subkey] = nil
+                end
+            end
+        end
+    end
+
+    ui_running = false
+
+    Mouse.Clicked = false
+    Mouse.Pressed = false
+
+    MouseHeld = false
+    IsDragging = false
+    IsExpanded = false
+    IsHovering = false
+    HoveredButton = nil
+    ActiveButton = nil
+
+    self.AnimationFrames = {}
+    self.PendingAnimations = {}
+    self.ElementProperties = {}
+
+    if self.ScriptOptions then
+        for i = #self.ScriptOptions, 1, -1 do
+            if self.ScriptOptions[i] then
+                self.ScriptOptions[i] = nil
+            end
+        end
+    end
+
+    if self.AuthorLabels then
+        for i = #self.AuthorLabels, 1, -1 do
+            if self.AuthorLabels[i] then
+                self.AuthorLabels[i] = nil
+            end
+        end
+    end
+
+    self.HoveredElement = nil
+    self.LastHoveredIndex = nil
+    self.SelectedElement = nil
+
+    setmetatable(self, nil)
+end
+
+function AnueHub:AnimateTransparency(element, startValue, endValue, duration)
+    local startTime = time()
+
+    spawn(function()
+        local elapsed = 0
+
+        while elapsed < duration and ui_running do
+            elapsed = time() - startTime
+            local progress = math.min(elapsed / duration, 1)
+            local eased_progress = progress * (2 - progress) 
+
+            local currentValue = startValue + (endValue - startValue) * eased_progress
+            element.Transparency = currentValue
+
+            wait(0.016)
+        end
+
+        element.Transparency = endValue
+    end)
+end
+
+function AnueHub:IsHovered(element)
+    if not element or not element.Visible then return false end
+
+    local mouse_pos = getmouselocation(MouseService)
+    local pos = element.Position
+    local size = element.Size
+
+    if not pos or not size then return false end
+
+    return mouse_pos.x >= pos.x and 
+           mouse_pos.x <= pos.x + size.x and 
+           mouse_pos.y >= pos.y and 
+           mouse_pos.y <= pos.y + size.y
+end
+
+function AnueHub:CreateButton(options)
+
+    local background = Drawing.new("Square")
+    background.Filled = true
+    background.Visible = options.visible or false
+    background.Size = options.size or {100, 30}
+    background.Position = options.position or {0, 0}
+    background.Color = options.color or Colors.ButtonNormal
+    background.Transparency = options.transparency or ui_transparency
+    table.insert(UIElements, background)
+
+    local border = Drawing.new("Square")
+    border.Filled = false
+    border.Visible = background.Visible
+    border.Size = {background.Size.x, background.Size.y}
+    border.Position = {background.Position.x, background.Position.y}
+    border.Color = options.borderColor or Colors.Border
+    border.Thickness = 1
+    border.Transparency = options.transparency or ui_transparency
+    table.insert(UIElements, border)
+
+    local text = Drawing.new("Text")
+    text.Text = options.text or "Button"
+    text.Visible = background.Visible
+    text.Color = options.textColor or Colors.Text
+    text.Size = options.textSize or text_size
+    text.Font = options.font or font 
+    text.Transparency = options.textTransparency or text_transparency
+    text.Center = true
+
+    text.Position = {
+        background.Position.x + (background.Size.x / 2),
+        background.Position.y + (background.Size.y / 2) - (text.Size / 2)
+    }
+    table.insert(TextElements, text)
+
+    local button = {
+        Type = "Button",
+        Background = background,
+        Border = border,
+        Text = text,
+        Callback = options.callback,
+        Hover = false,
+        Pressed = false,
+        DefaultColor = options.color or Colors.ButtonNormal,
+        HoverColor = options.hoverColor or Colors.ButtonHover,
+        PressColor = options.pressColor or Colors.ButtonPress,
+        BorderColor = options.borderColor or Colors.Border,
+        BorderHoverColor = options.borderHoverColor or Colors.Accent,
+        ButtonData = options.buttonData or {} 
+    }
+
+    table.insert(ButtonElements, button)
+    return button
+end
+
+function AnueHub:UpdateButtonTextPosition(button)
+    if button and button.Background then
+        if button.Text then
+            button.Text.Position = {
+                button.Background.Position.x + (button.Background.Size.x / 2),
+                button.Background.Position.y + (button.Background.Size.y / 2) - (button.Text.Size / 2)
+            }
+            button.Text.Visible = button.Background.Visible
+        end
+
+        if button.Border then
+            button.Border.Position = {button.Background.Position.x, button.Background.Position.y}
+            button.Border.Size = {button.Background.Size.x, button.Background.Size.y}
+            button.Border.Visible = button.Background.Visible
+
+            if button.Hover or button.Pressed then
+                button.Border.Color = button.BorderHoverColor
+            else
+                button.Border.Color = button.BorderColor
+            end
+        end
+    end
+end
+
+function AnueHub:HandleButtonInteractions()
+    spawn(function()
+        while ui_running do
+
+            local mouse_location = getmouselocation(MouseService)
+            Mouse.X = mouse_location.x
+            Mouse.Y = mouse_location.y
+            local now_clicked = isleftclicked()
+            local now_pressed = isleftpressed()
+
+            local click_completed = Mouse.Pressed and not now_pressed
+
+            Mouse.Clicked = now_clicked
+            Mouse.Pressed = now_pressed
+
+            if Mouse.Pressed and not MouseHeld then
+                MouseHeld = true
+
+                for _, button in ipairs(ButtonElements) do
+                    if button and button.Background and button.Background.Visible and self:IsButtonHovered(button) then
+                        ActiveButton = button
+                        button.Pressed = true
+
+                        pcall(function()
+                            button.Background.Color = button.PressColor
+                        end)
+
+                        pcall(function()
+
+                            local original_size = {button.Background.Size.x, button.Background.Size.y}
+                            local original_pos = {button.Background.Position.x, button.Background.Position.y}
+                            local scale = 0.95
+
+                            button.Background.Size = {
+                                original_size[1] * scale,
+                                original_size[2] * scale
+                            }
+
+                            button.Background.Position = {
+                                original_pos[1] + (original_size[1] * (1-scale))/2,
+                                original_pos[2] + (original_size[2] * (1-scale))/2
+                            }
+
+                            self:UpdateButtonTextPosition(button)
+                        end)
+                        break
+                    end
+                end
+            elseif click_completed and ActiveButton then
+
+                local button = ActiveButton
+                ActiveButton = nil
+                MouseHeld = false
+
+                pcall(function() 
+                    local original_size = {button.Background.Size.x / 0.95, button.Background.Size.y / 0.95}
+                    local original_pos = {
+                        button.Background.Position.x - (button.Background.Size.x * (1-0.95))/2 / 0.95,
+                        button.Background.Position.y - (button.Background.Size.y * (1-0.95))/2 / 0.95
+                    }
+
+                    button.Background.Size = original_size
+                    button.Background.Position = original_pos
+                    self:UpdateButtonTextPosition(button)
+                end)
+
+                if self:IsButtonHovered(button) then
+
+                    if button.Callback then
+                        pcall(function()
+                            button.Callback()
+                        end)
+                    end
+
+                    pcall(function() 
+                        button.Background.Color = button.HoverColor
+                    end)
+                else
+                    pcall(function() 
+                        button.Background.Color = button.DefaultColor
+                    end)
+                end
+
+                button.Pressed = false
+            elseif not Mouse.Pressed and MouseHeld then
+
+                MouseHeld = false
+                if ActiveButton then
+                    local button = ActiveButton
+                    button.Pressed = false
+                    ActiveButton = nil
+
+                    pcall(function() 
+                        local original_size = {button.Background.Size.x / 0.95, button.Background.Size.y / 0.95}
+                        local original_pos = {
+                            button.Background.Position.x - (button.Background.Size.x * (1-0.95))/2 / 0.95,
+                            button.Background.Position.y - (button.Background.Size.y * (1-0.95))/2 / 0.95
+                        }
+
+                        button.Background.Size = original_size
+                        button.Background.Position = original_pos
+                        self:UpdateButtonTextPosition(button)
+
+                        button.Background.Color = button.DefaultColor
+                    end)
+                end
+            end
+
+            HoveredButton = nil
+
+            for _, button in ipairs(ButtonElements) do
+                if button and button.Background and button.Background.Visible and button ~= ActiveButton then
+                    local isHovered = self:IsButtonHovered(button)
+
+                    if isHovered then
+                        HoveredButton = button
+                        button.Hover = true
+
+                        if (button == self.TabAnueButton and selected_tab == 1) or 
+                           (button == self.TabCommunityButton and selected_tab == 2) then
+
+                            button.Background.Color = Colors.TabActive
+                            if button.Border then
+                                button.Border.Color = Colors.Highlight
+                            end
+                        elseif (button == self.TabAnueButton and selected_tab ~= 1) or 
+                               (button == self.TabCommunityButton and selected_tab ~= 2) then
+
+                            if not button.Pressed then
+                                pcall(function() 
+                                    button.Background.Color = button.HoverColor
+                                end)
+                            end
+                        else
+
+                            if not button.Pressed then
+                                pcall(function() 
+                                    button.Background.Color = button.HoverColor
+                                end)
+                            end
+                        end
+                    else
+                        button.Hover = false
+
+                        if (button == self.TabAnueButton and selected_tab == 1) or 
+                           (button == self.TabCommunityButton and selected_tab == 2) then
+
+                            button.Background.Color = Colors.TabActive
+                            if button.Border then
+                                button.Border.Color = Colors.Highlight
+                            end
+                        elseif (button == self.TabAnueButton and selected_tab ~= 1) or 
+                               (button == self.TabCommunityButton and selected_tab ~= 2) then
+
+                            if not button.Pressed then
+                                pcall(function() 
+                                    button.Background.Color = Colors.TabInactive
+                                end)
+                                if button.Border then
+                                    button.Border.Color = Colors.Border
+                                end
+                            end
+                        else
+
+                            if not button.Pressed then
+                                pcall(function() 
+                                    button.Background.Color = button.DefaultColor
+                                end)
+                            end
+                        end
+                    end
+                end
+            end
+
+            wait(0.01)
+        end
+    end)
+end
+
+function AnueHub:CreateControlButtons()
+
+    local closeButton = self:CreateButton({
+        position = {self.TitleBar.Position.x + self.TitleBar.Size.x - 30, self.TitleBar.Position.y + 5},
+        size = {25, 16},
+        text = "X",
+        textSize = 14,
+        color = {60, 20, 20},
+        hoverColor = {200, 60, 60},
+        pressColor = {150, 30, 30},
+        borderColor = {100, 30, 30},
+        borderHoverColor = {255, 80, 80},
+        visible = true,
+        buttonData = {isCloseButton = true},
+        callback = function()
+
+            pcall(function()
+                self:ToggleUI()
+            end)
+        end
+    })
+
+    local expandButton = self:CreateButton({
+        position = {self.TitleBar.Position.x + self.TitleBar.Size.x - 60, self.TitleBar.Position.y + 5},
+        size = {25, 16},
+        text = IsExpanded and "-" or "+",
+        textSize = 14,
+        color = {40, 40, 60},
+        hoverColor = {60, 60, 100},
+        pressColor = {30, 30, 50},
+        borderColor = {60, 60, 80},
+        borderHoverColor = {100, 100, 200},
+        visible = true,
+        buttonData = {isExpandButton = true},
+        callback = function()
+
+            pcall(function()
+                self:ToggleExpanded()
+            end)
+        end
+    })
+
+    self.CloseButton = closeButton
+    self.ExpandButton = expandButton
+
+    self._closeButtonText = closeButton.Text
+    self._expandButtonText = expandButton.Text
+
+    if self.VersionText then
+        self.VersionText.Position = {
+            self.ExpandButton.Background.Position.x - 35,
+            self.ExpandButton.Background.Position.y + 1
+        }
+    end
+end
+
+function AnueHub:UpdateControlButtonsPosition()
+    if self.CloseButton and self.ExpandButton then
+        self.CloseButton.Background.Position = {
+            self.TitleBar.Position.x + self.TitleBar.Size.x - 30,
+            self.TitleBar.Position.y + 5
+        }
+
+        self.ExpandButton.Background.Position = {
+            self.TitleBar.Position.x + self.TitleBar.Size.x - 60,
+            self.TitleBar.Position.y + 5
+        }
+
+        self:UpdateButtonTextPosition(self.CloseButton)
+        self:UpdateButtonTextPosition(self.ExpandButton)
+
+        if self.VersionText then
+            self.VersionText.Position = {
+                self.ExpandButton.Background.Position.x - 35,
+                self.ExpandButton.Background.Position.y + 1
+            }
+        end
+    end
+end
+
+function AnueHub:CheckUIHover()
+
+    local mouse_pos = getmouselocation(MouseService)
+
+    for _, button in ipairs(ButtonElements) do
+        if button and button.Background and button.Background.Visible then
+            local btn_pos = button.Background.Position
+            local btn_size = button.Background.Size
+            if mouse_pos.x >= btn_pos.x and 
+               mouse_pos.x <= btn_pos.x + btn_size.x and 
+               mouse_pos.y >= btn_pos.y and 
+               mouse_pos.y <= btn_pos.y + btn_size.y then
+                return true, "button", button
+            end
+        end
+    end
+
+    if self.TitleBar and self.TitleBar.Visible then
+        local title_pos = self.TitleBar.Position
+        local title_size = self.TitleBar.Size
+        if mouse_pos.x >= title_pos.x and 
+           mouse_pos.x <= title_pos.x + title_size.x and 
+           mouse_pos.y >= title_pos.y and 
+           mouse_pos.y <= title_pos.y + title_size.y then
+            return true, "title", self.TitleBar
+        end
+    end
+
+    if self.MainFrame and self.MainFrame.Visible then
+        local frame_pos = self.MainFrame.Position
+        local frame_size = self.MainFrame.Size
+        if mouse_pos.x >= frame_pos.x and 
+           mouse_pos.x <= frame_pos.x + frame_size.x and 
+           mouse_pos.y >= frame_pos.y and 
+           mouse_pos.y <= frame_pos.y + frame_size.y then
+            return true, "main", self.MainFrame
+        end
+    end
+
+    return false, nil, nil
+end
+
+function AnueHub:IsButtonHovered(button)
+
+    if not button then return false end
+    if not button.Background then return false end
+    if not button.Background.Visible then return false end
+
+    local mouse_pos = getmouselocation(MouseService)
+    if not mouse_pos then return false end
+
+    if type(mouse_pos) ~= "table" and type(mouse_pos) ~= "userdata" then return false end
+    if type(mouse_pos.x) ~= "number" or type(mouse_pos.y) ~= "number" then return false end
+
+    local btn_pos = button.Background.Position
+    if not btn_pos then return false end
+
+    if type(btn_pos) ~= "table" and type(btn_pos) ~= "userdata" then return false end
+    if type(btn_pos.x) ~= "number" or type(btn_pos.y) ~= "number" then return false end
+
+    local btn_size = button.Background.Size
+    if not btn_size then return false end
+
+    if type(btn_size) ~= "table" and type(btn_size) ~= "userdata" then return false end
+    if type(btn_size.x) ~= "number" or type(btn_size.y) ~= "number" then return false end
+
+    local is_hovered = mouse_pos.x >= (btn_pos.x - 2) and 
+           mouse_pos.x <= (btn_pos.x + btn_size.x + 2) and 
+           mouse_pos.y >= (btn_pos.y - 2) and 
+           mouse_pos.y <= (btn_pos.y + btn_size.y + 2)
+
+    local is_tab_button = false
+    if self.TabAnueButton and (button == self.TabAnueButton) then
+        is_tab_button = true
+        if selected_tab == 1 then
+            pcall(function() if button.Background then button.Background.Color = Colors.TabActive end end)
+            pcall(function() if button.Border then button.Border.Color = Colors.Highlight end end)
+            return is_hovered
+        end
+    elseif self.TabCommunityButton and (button == self.TabCommunityButton) then
+        is_tab_button = true
+        if selected_tab == 2 then
+            if button.Background then button.Background.Color = Colors.TabActive end
+            if button.Border then button.Border.Color = Colors.Highlight end
+            return is_hovered
+        end
+    end
+
+    if is_hovered and button.Border then
+        if is_tab_button then
+
+            if (button == self.TabAnueButton and selected_tab ~= 1) or
+               (button == self.TabCommunityButton and selected_tab ~= 2) then
+                if button.Background then button.Background.Color = Colors.ButtonHover end
+                if button.Border then button.Border.Color = Colors.Highlight end
+            end
+        else
+
+            if button.Border then 
+                button.Border.Color = button.BorderHoverColor or Colors.Highlight
+
+                if type(button.Border) == "table" or type(button.Border) == "userdata" then
+
+                    self:SafeSetThickness(button.Border, 2)
+                end
+            end
+        end
+    elseif button.Border then
+        if is_tab_button then
+
+            if (button == self.TabAnueButton and selected_tab ~= 1) or
+               (button == self.TabCommunityButton and selected_tab ~= 2) then
+                if button.Background then button.Background.Color = Colors.TabInactive end
+                if button.Border then button.Border.Color = Colors.Border end
+            end
+        else
+
+            if button.Border then
+                button.Border.Color = button.BorderColor or Colors.Border
+
+                if type(button.Border) == "table" or type(button.Border) == "userdata" then
+
+                    self:SafeSetThickness(button.Border, 1)
+                end
+            end
+    end
+end
+
+    return is_hovered
+end
+
+function AnueHub:ExecuteSelectedScript()
+    if not IsExpanded then return end
+
+    local active_scripts = selected_tab == 1 and anue_scripts or community_scripts
+    local start_index = (current_page - 1) * max_items_per_page + 1
+    local selected_script_index = start_index + selected_index - 1
+
+    if selected_script_index <= #active_scripts then
+        local script_data = active_scripts[selected_script_index]
+        if script_data then
+            self:ExecuteScript(script_data)
+        end
+    end
+end
+
+function AnueHub:CheckScriptOptionsHover()
+    if not IsExpanded or not self.MainFrame or not self.MainFrame.Visible or IsDragging then 
+
+        IsHovering = false
+        return 
+    end
+
+    local mouse_pos = getmouselocation(MouseService)
+    if not mouse_pos then return end
+
+    local active_scripts = selected_tab == 1 and anue_scripts or community_scripts
+    local start_index = (current_page - 1) * max_items_per_page + 1
+    local end_index = math.min(start_index + max_items_per_page - 1, #active_scripts)
+    local offset = selected_tab == 1 and 0 or #anue_scripts
+
+    local option_spacing = 55
+
+    if not self.ContentFrame or not self.LogoFrame or not self.SelectionHighlight then
+        IsHovering = false
+        return
+    end
+
+    IsHovering = false
+
+    for i = start_index, end_index do
+        local element_index = offset + i
+        local display_index = (i - start_index) + 1
+
+        if self.ScriptOptions and self.ScriptOptions[element_index] then
+            local script_option = self.ScriptOptions[element_index]
+            if script_option.Position then
+                local script_position = script_option.Position
+                local script_height = 45 
+
+                local is_hover = 
+                    mouse_pos.x >= self.ContentFrame.Position.x + 10 and 
+                    mouse_pos.x <= self.ContentFrame.Position.x + self.ContentFrame.Size.x - 10 and
+                    mouse_pos.y >= script_position.y - 8 and 
+                    mouse_pos.y <= script_position.y + script_height
+
+                if is_hover then
+                    IsHovering = true
+
+                    if MouseHoverIndex ~= display_index then
+                        MouseHoverIndex = display_index
+                        selected_index = display_index 
+
+                        self:UpdateVisibility()
+
+                        if self.LogoFrame and self.LogoFrame.Position and 
+                           self.LogoFrame.Size and self.SelectionHighlight then
+                            local start_y = self.LogoFrame.Position.y + self.LogoFrame.Size.y + 15
+                            local target_y = start_y + (display_index - 1) * option_spacing - 8
+
+                            self.SelectionHighlight.Size = {self.ContentFrame.Size.x - 20, 45}
+
+                            self.SelectionHighlight.Position = {
+                                self.ContentFrame.Position.x + 10,
+                                target_y
+                            }
+                        end
+                    end
+
+                    break 
+                end
+            end
+        end
+    end
+
+    if not IsHovering then
+        MouseHoverIndex = nil
+    end
+end
+
+function AnueHub:AnimateSelectionHighlight(target_y)
+
+    if not self.SelectionHighlight or not self.ContentFrame then
+        return
+    end
+
+    if not self.SelectionHighlight.Position or not self.SelectionHighlight.Position.y then
+        return
+    end
+
+    local current_y = self.SelectionHighlight.Position.y
+    local distance = target_y - current_y
+
+    self.SelectionHighlight.Size = {self.ContentFrame.Size.x - 20, 45}
+
+    if math.abs(distance) < 5 then
+        self.SelectionHighlight.Position = {
+            self.ContentFrame.Position.x + 10,
+            target_y
+        }
+        return
+    end
+
+    spawn(function()
+        local duration = 0.15 
+        local start_time = time()
+        local start_y = current_y
+
+        while time() - start_time < duration and ui_running do
+
+            if not self.SelectionHighlight or not self.ContentFrame then
+                break
+            end
+
+            local progress = (time() - start_time) / duration
+            progress = progress * (2 - progress) 
+
+            local new_y = start_y + distance * progress
+
+            pcall(function()
+                self.SelectionHighlight.Position = {
+                    self.ContentFrame.Position.x + 10,
+                    new_y
+                }
+            end)
+
+            wait(0.01)
+        end
+
+        pcall(function()
+            if self.SelectionHighlight and self.ContentFrame then
+                self.SelectionHighlight.Position = {
+                    self.ContentFrame.Position.x + 10,
+                    target_y
+                }
+            end
+        end)
+    end)
+end
+
+function AnueHub:SafeSetThickness(obj, value)
+    if not obj then return end
+
+    pcall(function() 
+        obj.Thickness = value 
+    end)
+end
+
+function AnueHub:SafeLoadstring(code)
+
+    local result = {success = false, error = nil}
+
+    if not code or type(code) ~= "string" then
+        result.error = "Invalid code type"
+        return result
+    end
+
+    local env = setmetatable({}, {__index = _G})
+
+    local loaded_fn, load_error = loadstring(code)
+
+    if not loaded_fn then
+        result.error = "Failed to load script: " .. tostring(load_error)
+        return result
+    end
+
+    setfenv(loaded_fn, env)
+
+    local success, exec_error = pcall(function()
+
+        spawn(function()
+        loaded_fn()
+        end)
+    end)
+
+    result.success = success
+    if not success then
+        result.error = "Error executing script: " .. tostring(exec_error)
+    end
+
+    return result
+end
+
+return AnueHub:Init()
