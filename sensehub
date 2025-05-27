@@ -14,7 +14,10 @@ local Colors = {
     ["Border"] = {40, 40, 40},
     ["HoverColor"] = {32, 32, 32},
     ["CheckboxEnabled"] = {138, 43, 226},
-    ["SectionHeader"] = {30, 30, 30}
+    ["SectionHeader"] = {30, 30, 30},
+    ["SliderGrab"] = {138, 43, 226},
+    ["ButtonBg"] = {28, 28, 28},
+    ["ButtonHover"] = {35, 35, 35}
 }
 
 -- Mouse state tracking
@@ -88,6 +91,8 @@ function Library:Create(Options)
             X = DefaultPos[1],
             Y = DefaultPos[2],
             Elements = {},
+            Tabs = {},
+            CurrentTab = "misc",
             ElementY = 30,
             Padding = 8,
             Enabled = false,
@@ -134,6 +139,45 @@ function Library:Create(Options)
         Window.Content.Transparency = 1
         Window.Content.Visible = false
         Window.Content.zIndex = Window.ZIndex + 2
+
+        -- Create sidebar icons
+        local sidebarItems = {
+            {icon = "misc", y = 60, label = "MISC"},
+            {icon = "aim", y = 120, label = "AIM"},
+            {icon = "visual", y = 180, label = "VISUALS"},
+            {icon = "movement", y = 240, label = "MOVE"},
+            {icon = "config", y = 300, label = "CONFIG"}
+        }
+
+        for _, item in ipairs(sidebarItems) do
+            -- Icon background
+            local iconBg = Drawing.new("Square")
+            iconBg.Size = {110, 40}
+            iconBg.Position = {Window.X + 5, Window.Y + item.y - 20}
+            iconBg.Color = Colors["SidebarBg"]
+            iconBg.Filled = true
+            iconBg.Transparency = 1
+            iconBg.Visible = false
+            iconBg.zIndex = Window.ZIndex + 3
+
+            -- Icon label
+            local label = Drawing.new("Text")
+            label.Text = item.label
+            label.Position = {Window.X + 10, Window.Y + item.y + 12}
+            label.Color = Colors["TextSecondary"]
+            label.Size = 10
+            label.Font = 2
+            label.Transparency = 1
+            label.Visible = false
+            label.zIndex = Window.ZIndex + 4
+
+            -- Store tab elements
+            Window.Tabs[item.icon] = {
+                Background = iconBg,
+                Label = label,
+                Elements = {}
+            }
+        end
 
         -- Check if point is in window's draggable area
         function Window:IsInDraggableArea(X, Y)
@@ -368,6 +412,176 @@ function Library:Create(Options)
                 return Toggle
             end
 
+            -- Create slider
+            function Section:Slider(Options)
+                local SliderName = Options.Name or "Slider"
+                local Min = Options.Min or 0
+                local Max = Options.Max or 100
+                local Default = math.clamp(Options.Default or Min, Min, Max)
+                local Increment = Options.Increment or 1
+                local Callback = Options.Callback or function() end
+                
+                local Slider = {
+                    Type = "Slider",
+                    Name = SliderName,
+                    Value = Default,
+                    Min = Min,
+                    Max = Max,
+                    Increment = Increment,
+                    Callback = Callback,
+                    Y = self.ElementY
+                }
+                
+                -- Slider text
+                Slider.Text = Drawing.new("Text")
+                Slider.Text.Text = SliderName
+                Slider.Text.Position = {self.X + 10, self.Y + self.ElementY}
+                Slider.Text.Color = Colors["Text"]
+                Slider.Text.Size = 13
+                Slider.Text.Font = 2
+                Slider.Text.Transparency = 1
+                Slider.Text.Visible = Window.Enabled
+                Slider.Text.zIndex = Window.ZIndex + 5
+                
+                -- Slider value text
+                Slider.ValueText = Drawing.new("Text")
+                Slider.ValueText.Text = tostring(Default)
+                Slider.ValueText.Position = {self.X + self.Width - 30, self.Y + self.ElementY}
+                Slider.ValueText.Color = Colors["Text"]
+                Slider.ValueText.Size = 13
+                Slider.ValueText.Font = 2
+                Slider.ValueText.Transparency = 1
+                Slider.ValueText.Visible = Window.Enabled
+                Slider.ValueText.zIndex = Window.ZIndex + 5
+                
+                -- Slider background
+                Slider.Background = Drawing.new("Square")
+                Slider.Background.Size = {self.Width - 20, 8}
+                Slider.Background.Position = {self.X + 10, self.Y + self.ElementY + 20}
+                Slider.Background.Color = Colors["SectionBg"]
+                Slider.Background.Filled = true
+                Slider.Background.Transparency = 1
+                Slider.Background.Visible = Window.Enabled
+                Slider.Background.zIndex = Window.ZIndex + 5
+                
+                -- Slider fill
+                Slider.Fill = Drawing.new("Square")
+                local fillWidth = ((Default - Min) / (Max - Min)) * (self.Width - 20)
+                Slider.Fill.Size = {fillWidth, 8}
+                Slider.Fill.Position = {self.X + 10, self.Y + self.ElementY + 20}
+                Slider.Fill.Color = Colors["SliderGrab"]
+                Slider.Fill.Filled = true
+                Slider.Fill.Transparency = 1
+                Slider.Fill.Visible = Window.Enabled
+                Slider.Fill.zIndex = Window.ZIndex + 6
+                
+                -- Slider grab
+                Slider.Grab = Drawing.new("Square")
+                Slider.Grab.Size = {6, 14}
+                Slider.Grab.Position = {self.X + 10 + fillWidth - 3, self.Y + self.ElementY + 17}
+                Slider.Grab.Color = Colors["SliderGrab"]
+                Slider.Grab.Filled = true
+                Slider.Grab.Transparency = 1
+                Slider.Grab.Visible = Window.Enabled
+                Slider.Grab.zIndex = Window.ZIndex + 7
+
+                function Slider:SetValue(Value)
+                    self.Value = math.clamp(Value, self.Min, self.Max)
+                    self.ValueText.Text = tostring(self.Value)
+                    
+                    local fillWidth = ((self.Value - self.Min) / (self.Max - self.Min)) * (Section.Width - 20)
+                    self.Fill.Size = {fillWidth, 8}
+                    self.Grab.Position = {Section.X + 10 + fillWidth - 3, Section.Y + self.Y + 17}
+                    
+                    if self.Callback then
+                        spawn(function() self.Callback(self.Value) end)
+                    end
+                end
+
+                function Slider:UpdatePosition()
+                    self.Text.Position = {Section.X + 10, Section.Y + self.Y}
+                    self.ValueText.Position = {Section.X + Section.Width - 30, Section.Y + self.Y}
+                    self.Background.Position = {Section.X + 10, Section.Y + self.Y + 20}
+                    self.Fill.Position = {Section.X + 10, Section.Y + self.Y + 20}
+                    local fillWidth = ((self.Value - self.Min) / (self.Max - self.Min)) * (Section.Width - 20)
+                    self.Grab.Position = {Section.X + 10 + fillWidth - 3, Section.Y + self.Y + 17}
+                end
+
+                function Slider:SetVisibility(Visible)
+                    SetVisibility(self.Text, Visible)
+                    SetVisibility(self.ValueText, Visible)
+                    SetVisibility(self.Background, Visible)
+                    SetVisibility(self.Fill, Visible)
+                    SetVisibility(self.Grab, Visible)
+                end
+
+                table.insert(Section.Elements, Slider)
+                self.ElementY = self.ElementY + 45
+                return Slider
+            end
+
+            -- Create button
+            function Section:Button(Options)
+                local ButtonName = Options.Name or "Button"
+                local Callback = Options.Callback or function() end
+                
+                local Button = {
+                    Type = "Button",
+                    Name = ButtonName,
+                    Callback = Callback,
+                    Y = self.ElementY
+                }
+                
+                -- Button background
+                Button.Background = Drawing.new("Square")
+                Button.Background.Size = {self.Width - 20, 30}
+                Button.Background.Position = {self.X + 10, self.Y + self.ElementY}
+                Button.Background.Color = Colors["ButtonBg"]
+                Button.Background.Filled = true
+                Button.Background.Transparency = 1
+                Button.Background.Visible = Window.Enabled
+                Button.Background.zIndex = Window.ZIndex + 5
+                
+                -- Button border
+                Button.Border = Drawing.new("Square")
+                Button.Border.Size = {self.Width - 20, 30}
+                Button.Border.Position = {self.X + 10, self.Y + self.ElementY}
+                Button.Border.Color = Colors["Border"]
+                Button.Border.Filled = false
+                Button.Border.Thickness = 1
+                Button.Border.Transparency = 1
+                Button.Border.Visible = Window.Enabled
+                Button.Border.zIndex = Window.ZIndex + 6
+                
+                -- Button text
+                Button.Text = Drawing.new("Text")
+                Button.Text.Text = ButtonName
+                Button.Text.Position = {self.X + (self.Width / 2), self.Y + self.ElementY + 8}
+                Button.Text.Color = Colors["Text"]
+                Button.Text.Size = 13
+                Button.Text.Font = 2
+                Button.Text.Center = true
+                Button.Text.Transparency = 1
+                Button.Text.Visible = Window.Enabled
+                Button.Text.zIndex = Window.ZIndex + 7
+
+                function Button:UpdatePosition()
+                    self.Background.Position = {Section.X + 10, Section.Y + self.Y}
+                    self.Border.Position = {Section.X + 10, Section.Y + self.Y}
+                    self.Text.Position = {Section.X + (Section.Width / 2), Section.Y + self.Y + 8}
+                end
+
+                function Button:SetVisibility(Visible)
+                    SetVisibility(self.Background, Visible)
+                    SetVisibility(self.Border, Visible)
+                    SetVisibility(self.Text, Visible)
+                end
+
+                table.insert(Section.Elements, Button)
+                self.ElementY = self.ElementY + 40
+                return Button
+            end
+
             table.insert(self.Elements, Section)
             return Section
         end
@@ -402,7 +616,7 @@ function Library:Create(Options)
                 DraggedWindow = nil
             end
             
-            -- Handle toggle interactions
+            -- Handle element interactions
             for _, Window in ipairs(Windows) do
                 if Window.Enabled then
                     for _, Element in ipairs(Window.Elements) do
@@ -420,6 +634,32 @@ function Library:Create(Options)
                                         end
                                     else
                                         SubElement.Background.Color = Colors["SectionBg"]
+                                    end
+                                elseif SubElement.Type == "Slider" and SubElement.Background then
+                                    local SliderX = SubElement.Background.Position.x
+                                    local SliderY = SubElement.Background.Position.y
+                                    local SliderWidth = SubElement.Background.Size.x
+                                    local SliderHeight = SubElement.Background.Size.y
+                                    
+                                    if IsMouseOver(SliderX, SliderY - 2, SliderWidth, SliderHeight + 4) and Mouse.Pressed then
+                                        local Percentage = math.clamp((Mouse.X - SliderX) / SliderWidth, 0, 1)
+                                        local Value = SubElement.Min + (Percentage * (SubElement.Max - SubElement.Min))
+                                        SubElement:SetValue(Value)
+                                    end
+                                elseif SubElement.Type == "Button" and SubElement.Background then
+                                    local ButtonX = SubElement.Background.Position.x
+                                    local ButtonY = SubElement.Background.Position.y
+                                    local ButtonWidth = SubElement.Background.Size.x
+                                    local ButtonHeight = SubElement.Background.Size.y
+                                    
+                                    if IsMouseOver(ButtonX, ButtonY, ButtonWidth, ButtonHeight) then
+                                        SubElement.Background.Color = Colors["ButtonHover"]
+                                        
+                                        if Mouse.Clicked and not Mouse.WasClicked then
+                                            spawn(SubElement.Callback)
+                                        end
+                                    else
+                                        SubElement.Background.Color = Colors["ButtonBg"]
                                     end
                                 end
                             end
